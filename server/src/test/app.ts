@@ -6,12 +6,12 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { createApp } from '../app';
+import { createApp, type AppOptions } from '../app';
 import type { DB } from '../db/client';
 import * as schema from '../db/schema';
 import { hashPassword } from '../modules/acesso/senha';
 
-export async function startTestApp() {
+export async function startTestApp(options: AppOptions = {}) {
   const client = new PGlite();
   const db = drizzle(client, { schema });
   await migrate(db, { migrationsFolder: fileURLToPath(new URL('../../drizzle', import.meta.url)) });
@@ -22,7 +22,7 @@ export async function startTestApp() {
     { username: 'arthur', passwordHash: await hashPassword('senha-admin'), role: 'admin' },
   ]);
 
-  const server = createApp(db as unknown as DB).listen(0);
+  const server = createApp(db as unknown as DB, options).listen(0);
   await new Promise((r) => server.once('listening', r));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 

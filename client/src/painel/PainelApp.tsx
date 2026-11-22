@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, type Sessao } from './api';
+import { Agenda } from './Agenda';
 import { Configuracoes } from './Configuracoes';
 import { Contas } from './Contas';
 import { Inicio } from './Inicio';
 import { Login } from './Login';
 
-type Tela = 'inicio' | 'configuracoes' | 'contas';
+type Tela = 'inicio' | 'agenda' | 'configuracoes' | 'contas';
 const TELAS: { id: Tela; nome: string; soAdmin?: boolean }[] = [
   { id: 'inicio', nome: 'Início' },
+  { id: 'agenda', nome: 'Agenda' },
   { id: 'configuracoes', nome: 'Configurações' },
   { id: 'contas', nome: 'Contas', soAdmin: true },
 ];
@@ -80,6 +82,7 @@ export function PainelApp() {
         ))}
       </nav>
       {atual === 'inicio' && <Inicio onAuthError={onAuthError} />}
+      {atual === 'agenda' && <Agenda onAuthError={onAuthError} />}
       {atual === 'configuracoes' && <Configuracoes papel={sessao.papel} onAuthError={onAuthError} />}
       {atual === 'contas' && <Contas onAuthError={onAuthError} />}
     </div>

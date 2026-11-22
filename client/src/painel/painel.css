@@ -132,3 +132,131 @@
   margin: 0.75rem 0 0;
   color: #1f6f3e;
 }
+
+/* Agenda (etapa 2) */
+.agenda {
+  max-width: 52rem;
+}
+.agenda__block {
+  margin-bottom: 1rem;
+}
+.agenda__msg {
+  position: sticky;
+  top: 4rem;
+  z-index: 1;
+  margin: 0 0 1rem;
+  padding: 0.6rem 1rem;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--sombra-2);
+}
+.week {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.75rem 0 0;
+}
+.week__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 10px;
+  background: var(--creme);
+}
+.week__row--off {
+  opacity: 0.7;
+}
+.week__day {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 8rem;
+  font-weight: bold;
+}
+.week__day input {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--marrom);
+}
+.week__times {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.week__times input,
+.agenda select,
+.agenda input[type='date'],
+.agenda input[type='number'] {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: #fff;
+  min-height: 2.5rem;
+}
+.week__closed {
+  color: #8a7a5c;
+  font-size: 0.9rem;
+}
+.agenda__list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.agenda__list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: var(--creme);
+}
+.agenda__list small {
+  color: #6d5c3d;
+}
+.agenda__empty {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  color: #8a7a5c;
+}
+.agenda__form {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--borda);
+}
+.agenda__inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+.agenda__inline .field {
+  margin-top: 0;
+}
+.agenda__grow {
+  flex: 1 1 12rem;
+}
+.agenda__btn {
+  flex: 0 0 auto;
+  padding: 0 1.25rem;
+  min-height: 2.75rem;
+}
+.agenda__actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+.agenda__actions .add {
+  flex: 0 0 auto;
+  padding: 0 1.25rem;
+}
+.agenda__open {
+  margin-top: 0.75rem;
+}

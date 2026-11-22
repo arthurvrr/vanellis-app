@@ -13,6 +13,27 @@ export interface Configuracoes {
   address: string | null;
   mapsUrl: string | null;
 }
+export interface Horario {
+  weekday: number;
+  open: string;
+  close: string;
+}
+export interface HorarioSemanal {
+  id: number;
+  validFrom: string;
+  validUntil: string | null;
+  hours: Horario[];
+}
+export interface AgendaPainel {
+  today: string;
+  current: HorarioSemanal | null;
+  upcoming: HorarioSemanal[];
+  restrictions: { id: number; weekday: number | null; start: string; end: string; label: string | null }[];
+  blockedDates: { date: string; reason: string | null }[];
+  specialDates: { date: string; name: string }[];
+  closedPeriods: { id: number; date: string; start: string; end: string }[];
+  config: { minLeadHours: number; windowMonths: number };
+}
 export interface Status {
   ordersPaused: boolean;
   pricesHidden: boolean;
@@ -50,5 +71,9 @@ export const api = {
   configuracoes: () => call<Configuracoes>('GET', '/painel/configuracoes'),
   setConfiguracoes: (patch: Partial<Record<keyof Configuracoes, string>>) =>
     call<Configuracoes>('PUT', '/painel/configuracoes', patch),
+  agenda: () => call<AgendaPainel>('GET', '/painel/agenda'),
+  /** Qualquer mudança na agenda; a resposta é a agenda inteira atualizada. */
+  agendaMuda: (method: 'POST' | 'PUT' | 'DELETE', path: string, body: unknown = {}) =>
+    call<AgendaPainel>(method, `/painel/agenda${path}`, body),
   senhaOperador: (senha: string) => call<{ usuario: string }>('PUT', '/auth/operador/senha', { senha }),
 };

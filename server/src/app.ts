@@ -1,14 +1,21 @@
+import { nowInBrasilia } from '@vanellis/shared';
 import express, { type ErrorRequestHandler } from 'express';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { db as defaultDb, type DB } from './db/client';
 import { acessoRouter } from './modules/acesso/routes';
+import { agendaPainelRouter } from './modules/agenda/painel';
 import { agendaRouter } from './modules/agenda/routes';
 import { catalogoRouter } from './modules/catalogo/routes';
 import { configuracoesPainelRouter, configuracoesRouter } from './modules/configuracoes/routes';
 import { painelRouter } from './modules/painel/routes';
 
-export function createApp(db: DB = defaultDb) {
+export interface AppOptions {
+  /** Agora em Brasília, 'AAAA-MM-DDTHH:MM'. Fixo nos testes. */
+  now?: () => string;
+}
+
+export function createApp(db: DB = defaultDb, { now = () => nowInBrasilia() }: AppOptions = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '100kb' }));
@@ -19,10 +26,11 @@ export function createApp(db: DB = defaultDb) {
 
   // Um router por módulo de domínio (RNF14). Entrega entra aqui quando for implementada.
   app.use('/api/catalogo', catalogoRouter);
-  app.use('/api/agenda', agendaRouter);
+  app.use('/api/agenda', agendaRouter(db, now));
   app.use('/api/configuracoes', configuracoesRouter(db));
   app.use('/api/auth', acessoRouter(db));
   app.use('/api/painel/configuracoes', configuracoesPainelRouter(db));
+  app.use('/api/painel/agenda', agendaPainelRouter(db, () => now().slice(0, 10)));
   app.use('/api/painel', painelRouter(db));
 
   app.use('/api', (_req, res) => {
