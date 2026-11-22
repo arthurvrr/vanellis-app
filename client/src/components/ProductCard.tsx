@@ -1,0 +1,89 @@
+import {
+  cardImage,
+  cardPrice,
+  formatBRL,
+  type OptionGroupDTO,
+  type ProductDTO,
+  type Selection,
+} from '@vanellis/shared';
+import { useState } from 'react';
+
+// Card genérico: desenha os grupos de opção que o produto tiver, sem tipos fixos.
+// Mostra só o essencial (RN49); avisos ficam no checkout (RN48).
+export function ProductCard({ product }: { product: ProductDTO }) {
+  const [selection, setSelection] = useState<Selection>({});
+
+  const toggle = (group: OptionGroupDTO, optionId: number) => {
+    setSelection((prev) => {
+      const current = prev[group.id] ?? [];
+      let next: number[];
+      if (group.maxSelect === 1) next = current[0] === optionId ? [] : [optionId];
+      else if (current.includes(optionId)) next = current.filter((id) => id !== optionId);
+      else if (current.length < group.maxSelect) next = [...current, optionId];
+      else next = current;
+      return { ...prev, [group.id]: next };
+    });
+  };
+
+  const price = cardPrice(product, selection);
+  const image = cardImage(product, selection);
+  const chosenDescriptions = product.groups
+    .flatMap((g) => g.options.filter((o) => selection[g.id]?.includes(o.id)))
+    .map((o) => o.description)
+    .filter(Boolean);
+
+  return (
+    <article className={product.available ? 'card' : 'card card--off'}>
+      {image && <img className="card__img" src={image} alt={product.imageAlt ?? product.name} loading="lazy" />}
+      <div className="card__body">
+        <div className="card__head">
+          <h2 className="card__name">{product.name}</h2>
+          {price.value !== null && (
+            <p className="card__price">
+              {price.fromPrice && <span className="card__from">a partir de </span>}
+              {formatBRL(price.value)}
+              <span className="card__unit">/{price.unit}</span>
+            </p>
+          )}
+        </div>
+        {product.description && <p className="card__desc">{product.description}</p>}
+
+        {product.groups.map((g) => (
+          <fieldset key={g.id} className="group">
+            <legend>
+              {g.name}
+              {g.maxSelect > 1 && <span className="group__hint"> (até {g.maxSelect})</span>}
+              {g.minSelect === 0 && <span className="group__hint"> (opcional)</span>}
+            </legend>
+            <div className="group__options">
+              {g.options
+                .filter((o) => o.available)
+                .map((o) => {
+                  const on = selection[g.id]?.includes(o.id) ?? false;
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      className={on ? 'chip chip--on' : 'chip'}
+                      aria-pressed={on}
+                      onClick={() => toggle(g, o.id)}
+                    >
+                      {o.name}
+                      {o.priceMode === 'add' && o.price !== null && ` +${formatBRL(o.price)}`}
+                    </button>
+                  );
+                })}
+            </div>
+          </fieldset>
+        ))}
+
+        {chosenDescriptions.map((d) => (
+          <p key={d} className="card__desc">
+            {d}
+          </p>
+        ))}
+        {!product.available && <p className="card__off">Indisponível no momento</p>}
+      </div>
+    </article>
+  );
+}

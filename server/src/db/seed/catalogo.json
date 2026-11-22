@@ -1,0 +1,1946 @@
+{
+  "categorias": [
+    {
+      "protoId": 1,
+      "name": "Salgados",
+      "slug": "salgados",
+      "position": 0
+    },
+    {
+      "protoId": 2,
+      "name": "Tortas",
+      "slug": "tortas",
+      "position": 1
+    },
+    {
+      "protoId": 3,
+      "name": "Doces",
+      "slug": "doces",
+      "position": 2
+    }
+  ],
+  "produtos": [
+    {
+      "categoryProtoId": 1,
+      "name": "Bolinha de Queijo",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/bolinha-queijo.jpg",
+      "imageAlt": "Bolinha de queijo",
+      "saleUnit": "UN",
+      "basePrice": 1.8,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 0,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Coxinha",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/coxinha-frango.webp",
+      "imageAlt": "Coxinha de frango",
+      "saleUnit": "UN",
+      "basePrice": 1.6,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 1,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Croquete Carne",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/croquete-de-carne.jpg",
+      "imageAlt": "Croquete de carne",
+      "saleUnit": "UN",
+      "basePrice": 1.8,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 2,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Enroladinho Frito",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/enroladinho-frito.jpg",
+      "imageAlt": "Enroladinho Frito",
+      "saleUnit": "UN",
+      "basePrice": 1.6,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 3,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Folhadinho de Salsicha",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/folhadinho-salsicha.png",
+      "imageAlt": "Folhadinho de salsicha",
+      "saleUnit": "UN",
+      "basePrice": 1.8,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 4,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Doguinho",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/doguinho-salsicha.png",
+      "imageAlt": "Doguinho",
+      "saleUnit": "UN",
+      "basePrice": 1.8,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 5,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Prensadinho",
+      "description": "Aproximadamente 40 gramas",
+      "imageUrl": "/images/card-images/sanduiche-prensadinho.png",
+      "imageAlt": "Prensadinho",
+      "saleUnit": "UN",
+      "basePrice": 2.6,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 6,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Cachorro Quente",
+      "description": "Pãozinho fofinho com suculento recheio de salsicha picada ao molho de tomate, temperado com alho, cebola e um toque de salsa. Aprox. 40g por unidade.",
+      "imageUrl": "/images/card-images/cachorro-quente.jpg",
+      "imageAlt": "Cachorro quente",
+      "saleUnit": "UN",
+      "basePrice": 2.5,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 7,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Risoles",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/risoles.png",
+      "imageAlt": "Risoles",
+      "saleUnit": "UN",
+      "basePrice": 1.6,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 8,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Carne",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Frango",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Palmito",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Calabresa",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Queijo",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Frios",
+              "description": null,
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "simpleFlavorAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Pastel de Pastelina",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/pastel-pastelina.jpg",
+      "imageAlt": "Pastel de Pastelina",
+      "saleUnit": "UN",
+      "basePrice": 2,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 9,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Carne",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Frango",
+              "description": null,
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "simpleFlavorAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Empadinha",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/empada-assada.png",
+      "imageAlt": "Empadinha Assada",
+      "saleUnit": "UN",
+      "basePrice": 2.3,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 10,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Frango",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Palmito",
+              "description": null,
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "simpleFlavorAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Pastel de Forno",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/pastelzinho-forno.jpg",
+      "imageAlt": "Pastel de Forno",
+      "saleUnit": "UN",
+      "basePrice": 1.8,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 11,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Carne",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Frango",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Brócolis",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Palmito",
+              "description": null,
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "simpleFlavorAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Canapé",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/canape.jpg",
+      "imageAlt": "Canapé",
+      "saleUnit": "UN",
+      "basePrice": 2.8,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 12,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Gorgonzola & Nozes",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Tomate Seco",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Palmito",
+              "description": null,
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "simpleFlavorAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Mini Quiche",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/mini-quiche.jpg",
+      "imageAlt": "Mini Quiche",
+      "saleUnit": "UN",
+      "basePrice": 2.8,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 13,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Frango",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Lorraine",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Palmito",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Alho Poró",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Queijo",
+              "description": null,
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "simpleFlavorAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Mini Pizza",
+      "description": "Aproximadamente 50 gramas",
+      "imageUrl": "/images/card-images/mini-pizza.png",
+      "imageAlt": "Mini pizza",
+      "saleUnit": "UN",
+      "basePrice": 2.8,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 14,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Frango",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Mussarela",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Marguerita",
+              "description": null,
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "simpleFlavorAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Barquete",
+      "description": "Aproximadamente 50 gramas",
+      "imageUrl": "/images/card-images/barquete.png",
+      "imageAlt": "Barquete",
+      "saleUnit": "UN",
+      "basePrice": 2.8,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 15,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Tomate Seco",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Fios de Ovos",
+              "description": null,
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "simpleFlavorAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Mini Hambúrguer",
+      "description": "Aproximadamente 90 gramas",
+      "imageUrl": "/images/card-images/mini-hamburguer.webp",
+      "imageAlt": "Mini Hambúrguer",
+      "saleUnit": "UN",
+      "basePrice": null,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 10,
+      "position": 16,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Tradicional",
+              "description": "Teste",
+              "imageUrl": null,
+              "priceMode": "replace",
+              "price": 5
+            },
+            {
+              "name": "Cheddar",
+              "description": null,
+              "imageUrl": null,
+              "priceMode": "replace",
+              "price": 5
+            },
+            {
+              "name": "Vegetariano",
+              "description": null,
+              "imageUrl": null,
+              "priceMode": "replace",
+              "price": 3.5
+            }
+          ]
+        }
+      ],
+      "origin": "priceByFlavor-staticSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Torta Quiche",
+      "description": "Uma deliciosa torta salgada, perfeita para qualquer ocasião.",
+      "imageUrl": "/images/card-images/quiche-pequeno.jpg",
+      "imageAlt": "Torta Quiche",
+      "saleUnit": "UN",
+      "basePrice": null,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 17,
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "priceMode": "replace",
+              "price": 90,
+              "description": "Com 900 gramas e serve até 8 fatias."
+            },
+            {
+              "name": "Grande",
+              "imageUrl": null,
+              "priceMode": "replace",
+              "price": 140,
+              "description": "Com 1,3 quilos e serve 8 fatias generosas."
+            }
+          ]
+        },
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Frango",
+              "description": "Cremosidade em dobro. Massa fininha recheada com frango, requeijão e creme de leite. O resultado é um recheio ultra úmido e saboroso que derrete na boca",
+              "imageUrl": null
+            },
+            {
+              "name": "Lorraine",
+              "description": "A autêntica Quiche Lorraine com massa fina e recheio cremoso. Combina bacon crocante, ovos, creme de leite e a riqueza dos quejos prato e parmessão. Um clássico francês irresistível e saboroso!",
+              "imageUrl": null
+            },
+            {
+              "name": "Alho Poró",
+              "description": "Para quem busca leveza, o nosso Quiche de Alho Poró combina massa fina recheada com alho-poró selecionado, requeijão e creme de leite. Um recheio cremoso, aromático e muito saboroso.",
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "priceBySize-multFlavor",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Pizza Pan",
+      "description": "Pizza Pan quadrada de massa alta e fofinha. São 12 fatias e cerca de 2kg de sabor. Perfeita para dividir, escolha até 2 sabores!",
+      "imageUrl": "/images/card-images/pizza-pan.jpg",
+      "imageAlt": "Pizza Pan",
+      "saleUnit": "KG",
+      "basePrice": 59.9,
+      "weightMinKg": 1.9,
+      "weightMaxKg": 2.1,
+      "minQuantity": 1,
+      "position": 18,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 2,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Calabresa",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "4 Queijos",
+              "description": null,
+              "imageUrl": null
+            },
+            {
+              "name": "Frango & Catupiry",
+              "description": null,
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "simpleSizeAndPrice-doubleFlavor",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 1,
+      "name": "Torta Fria",
+      "description": null,
+      "imageUrl": "/images/card-images/torta-fria.jpg",
+      "imageAlt": "Torta Fria",
+      "saleUnit": "KG",
+      "basePrice": null,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 19,
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Inteira",
+              "imageUrl": null,
+              "weightMinKg": 1.425,
+              "weightMaxKg": 1.575
+            },
+            {
+              "name": "Meia",
+              "imageUrl": null,
+              "weightMinKg": 0.665,
+              "weightMaxKg": 0.735
+            }
+          ]
+        },
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Frango",
+              "description": "Pão macio, frango cremoso (maionese e creme de leite), queijo e cenoura. Finalizada com picles, trazendo um toque especial e refrescante.",
+              "imageUrl": null,
+              "priceMode": "replace",
+              "price": 88
+            },
+            {
+              "name": "Frios",
+              "description": "Pão macio, presunto e queijo envolvidos em nosso creme suave (maionese e creme de leite) e cenoura. Finalizada com picles, trazendo um toque especial e marcante.",
+              "imageUrl": null,
+              "priceMode": "replace",
+              "price": 88
+            },
+            {
+              "name": "Atum",
+              "description": "Pão macio, atum e queijo envolvidos em nosso creme suave (maionese e creme de leite) e cenoura. Finalizada com picles, trazendo um toque especial e marcante",
+              "imageUrl": null,
+              "priceMode": "replace",
+              "price": 98
+            }
+          ]
+        }
+      ],
+      "origin": "priceByFlavor-doubleSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 3,
+      "name": "Brigadeiro",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/brigadeiro-preto01.png",
+      "imageAlt": "Brigadeiro Preto",
+      "saleUnit": "UN",
+      "basePrice": 1.7,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 20,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 3,
+      "name": "Branquinho",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/brigadeiro-branco.png",
+      "imageAlt": "Branquinho",
+      "saleUnit": "UN",
+      "basePrice": 1.7,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 21,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 3,
+      "name": "Beijinho",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/beijinho-coco.png",
+      "imageAlt": "Beijinho",
+      "saleUnit": "UN",
+      "basePrice": 1.7,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 22,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 3,
+      "name": "Amendoim",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/docinho-amendoim.png",
+      "imageAlt": "Amendoim",
+      "saleUnit": "UN",
+      "basePrice": 1.7,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 23,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 3,
+      "name": "Doce de Leite",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/doce-de-leite.png",
+      "imageAlt": "Doce de leite",
+      "saleUnit": "UN",
+      "basePrice": 2.2,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 24,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 3,
+      "name": "Nozes",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/brigadeiro-nozes.png",
+      "imageAlt": "NOZES",
+      "saleUnit": "UN",
+      "basePrice": 2,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 25,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 3,
+      "name": "Olho de Sogra",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/olho-de-sogra.jpg",
+      "imageAlt": "OLHO DE SOGRA",
+      "saleUnit": "UN",
+      "basePrice": 2,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 26,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 3,
+      "name": "Ninho & Nutella",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/leite-ninho-nutell.jpg",
+      "imageAlt": "NINHO & NUTELLA",
+      "saleUnit": "UN",
+      "basePrice": 2.2,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 27,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 3,
+      "name": "Camafeu",
+      "description": "Aproximadamente 20 gramas",
+      "imageUrl": "/images/card-images/camafeu-branco.webp",
+      "imageAlt": "CAMAFEU",
+      "saleUnit": "UN",
+      "basePrice": 2.9,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 25,
+      "position": 28,
+      "groups": [],
+      "origin": "staticPriceAndSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 3,
+      "name": "Cupcake",
+      "description": null,
+      "imageUrl": "/images/card-images/cupcake-tradicional.png",
+      "imageAlt": "Cupcake",
+      "saleUnit": "UN",
+      "basePrice": null,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 10,
+      "position": 29,
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": true,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": "/images/card-images/cupcake-mini.webp",
+              "priceMode": "replace",
+              "price": 4.9,
+              "description": "Aproximadamente 50 gramas"
+            },
+            {
+              "name": "Tradicional",
+              "imageUrl": "/images/card-images/cupcake-tradicional.png",
+              "priceMode": "replace",
+              "price": 8,
+              "description": "Aproximadamente 100 gramas"
+            }
+          ]
+        },
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Chocolate",
+              "description": "Massa úmida de chocolate, recheada com creme de leite condensado e coberta por uma camada de ganache de chocolate.",
+              "imageUrl": null
+            },
+            {
+              "name": "Red Velvet",
+              "description": "A clássica massa vermelha aveludada, recheada com creme de leite condensado e finalizada com cobertura suave de ganache branco.",
+              "imageUrl": null
+            },
+            {
+              "name": "Cenoura",
+              "description": "Massa fofinha de cenoura, recheada com creme de leite condensado e finalizada com cobertura de ganache de chocolate.",
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "priceBySize-multFlavor",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 3,
+      "name": "Quindim",
+      "description": null,
+      "imageUrl": "/images/card-images/mini-quindim.png",
+      "imageAlt": "Quindim",
+      "saleUnit": "UN",
+      "basePrice": null,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 10,
+      "position": 30,
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": true,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": "/images/card-images/mini-quindim.png",
+              "priceMode": "replace",
+              "price": 2.9,
+              "description": "Aproximadamente 30 gramas"
+            },
+            {
+              "name": "Tradicional",
+              "imageUrl": "/images/card-images/quindim-tradicional.png",
+              "priceMode": "replace",
+              "price": 4.5,
+              "description": "Aproximadamente 50 gramas"
+            }
+          ]
+        }
+      ],
+      "origin": "priceBySize-simpleFlavor",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta Macron",
+      "description": "Base de bolo macron de coco queimado, recheada com ovos moles e um toque azedo de polpa de ameixa. Uma combinação perfeitamente equilibrada.",
+      "imageUrl": "/images/card-images/bolo-macron.png",
+      "imageAlt": "Torta Macron",
+      "saleUnit": "KG",
+      "basePrice": 79.9,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 31,
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": null,
+              "weightMinKg": 0.95,
+              "weightMaxKg": 1.05
+            },
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "weightMinKg": 1.33,
+              "weightMaxKg": 1.47
+            },
+            {
+              "name": "Médio",
+              "imageUrl": null,
+              "weightMinKg": 1.9,
+              "weightMaxKg": 2.1
+            }
+          ]
+        }
+      ],
+      "origin": "staticStyleAndPrice-multSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta de Cremes",
+      "description": "Uma combinação generosa de sabores sobre um pão de ló mesclado (branco e preto). Desfrute das camadas de ovos moles artesanais, doce de leite, polpa de ameixa e um delicioso creme de leite condensado com coco.",
+      "imageUrl": "/images/card-images/bolo-cremes.png",
+      "imageAlt": "Torta de Cremes",
+      "saleUnit": "KG",
+      "basePrice": 79.9,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 32,
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": null,
+              "weightMinKg": 0.9,
+              "weightMaxKg": 1
+            },
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "weightMinKg": 1.3,
+              "weightMaxKg": 1.5
+            },
+            {
+              "name": "Médio",
+              "imageUrl": null,
+              "weightMinKg": 1.9,
+              "weightMaxKg": 2.1
+            },
+            {
+              "name": "Grande",
+              "imageUrl": null,
+              "weightMinKg": 2.6,
+              "weightMaxKg": 3
+            },
+            {
+              "name": "Familia",
+              "imageUrl": null,
+              "weightMinKg": 3.6,
+              "weightMaxKg": 4
+            }
+          ]
+        }
+      ],
+      "origin": "staticStyleAndPrice-multSize",
+      "pending": [
+        "peso provisório em Mini",
+        "peso provisório em Pequena",
+        "peso provisório em Médio",
+        "peso provisório em Grande",
+        "peso provisório em Familia",
+        "foto não encontrada (/card-images/bolo-cremes.png)"
+      ]
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta Noiva do Mar",
+      "description": "Uma homenagem à nossa praia, esta torta equilibra o doce e o sofisticado. Possui uma base macia de bolo de aveia coberta por camadas de creme de coco, o clássico leite condensado cozido e um toque de polpa de ameixa, finalizada com a crocância de um praline de nozes.",
+      "imageUrl": "/images/card-images/torta-noiva-do-mar-tradicional.png",
+      "imageAlt": "Torta Noiva do Mar",
+      "saleUnit": "KG",
+      "basePrice": 89.9,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 33,
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": null,
+              "weightMinKg": 0.9,
+              "weightMaxKg": 1
+            },
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "weightMinKg": 1.3,
+              "weightMaxKg": 1.5
+            },
+            {
+              "name": "Médio",
+              "imageUrl": null,
+              "weightMinKg": 1.9,
+              "weightMaxKg": 2.1
+            }
+          ]
+        }
+      ],
+      "origin": "staticStyleAndPrice-multSize",
+      "pending": [
+        "peso provisório em Mini",
+        "peso provisório em Pequena",
+        "peso provisório em Médio"
+      ]
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta Morango Bronzeado",
+      "description": "Morangos frescos e o bronze do leite condensado cozido encontram um pão de ló de chocolate macio e nosso chantilly de nata caseiro. Simplesmente irresistível.",
+      "imageUrl": "/images/card-images/bolo-morango-moreno-01.png",
+      "imageAlt": "Torta Morango Bronzeado",
+      "saleUnit": "KG",
+      "basePrice": 79.9,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 34,
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": null,
+              "weightMinKg": 0.9,
+              "weightMaxKg": 1
+            },
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "weightMinKg": 1.3,
+              "weightMaxKg": 1.5
+            },
+            {
+              "name": "Médio",
+              "imageUrl": null,
+              "weightMinKg": 2,
+              "weightMaxKg": 2.2
+            },
+            {
+              "name": "Grande",
+              "imageUrl": null,
+              "weightMinKg": 2.6,
+              "weightMaxKg": 3
+            },
+            {
+              "name": "Familia",
+              "imageUrl": null,
+              "weightMinKg": 3.6,
+              "weightMaxKg": 4
+            }
+          ]
+        }
+      ],
+      "origin": "staticStyleAndPrice-multSize",
+      "pending": [
+        "peso provisório em Mini",
+        "peso provisório em Pequena",
+        "peso provisório em Grande",
+        "peso provisório em Familia"
+      ]
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta Morango Nata",
+      "description": "Uma sobremesa leve e refrescante. Combina morangos frescos, nosso chantilly artesanal de nata e pedaços crocantes de merengão, tudo sobre uma base macia de pão de ló de chocolate branco.",
+      "imageUrl": "/images/card-images/torta-morango-nata-tradicional.png",
+      "imageAlt": "Torta Morango Nata",
+      "saleUnit": "KG",
+      "basePrice": 79.9,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 35,
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": null,
+              "weightMinKg": 0.7,
+              "weightMaxKg": 1
+            },
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "weightMinKg": 1.3,
+              "weightMaxKg": 1.5
+            },
+            {
+              "name": "Médio",
+              "imageUrl": null,
+              "weightMinKg": 1.9,
+              "weightMaxKg": 2.1
+            },
+            {
+              "name": "Grande",
+              "imageUrl": null,
+              "weightMinKg": 2.6,
+              "weightMaxKg": 3
+            },
+            {
+              "name": "Familia",
+              "imageUrl": null,
+              "weightMinKg": 3.6,
+              "weightMaxKg": 4
+            }
+          ]
+        }
+      ],
+      "origin": "staticStyleAndPrice-multSize",
+      "pending": [
+        "peso provisório em Pequena",
+        "peso provisório em Médio",
+        "peso provisório em Grande",
+        "peso provisório em Familia"
+      ]
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta Ouro Branco",
+      "description": "A combinação perfeita de chocolate e cremes brancos. Base de pão de ló preto intenso, recheada em camadas com um suave creme de baunilha, mousse branco aerado e generosos pedaços de bombom Ouro Branco.",
+      "imageUrl": "/images/card-images/torta-bombom-ouro-branco-tradicional.png",
+      "imageAlt": "Torta Ouro Branco",
+      "saleUnit": "KG",
+      "basePrice": 79.9,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 36,
+      "groups": [
+        {
+          "name": "Estilo",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": true,
+          "options": [
+            {
+              "name": "Tradicional",
+              "imageUrl": "/images/card-images/torta-bombom-ouro-branco-tradicional.png"
+            },
+            {
+              "name": "Naked",
+              "imageUrl": null
+            }
+          ]
+        },
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": null,
+              "weightMinKg": 0.9,
+              "weightMaxKg": 1
+            },
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "weightMinKg": 1.3,
+              "weightMaxKg": 1.5
+            },
+            {
+              "name": "Médio",
+              "imageUrl": null,
+              "weightMinKg": 1.9,
+              "weightMaxKg": 2.1
+            },
+            {
+              "name": "Grande",
+              "imageUrl": null,
+              "weightMinKg": 2.6,
+              "weightMaxKg": 3
+            },
+            {
+              "name": "Familia",
+              "imageUrl": null,
+              "weightMinKg": 3.8,
+              "weightMaxKg": 4
+            }
+          ]
+        }
+      ],
+      "origin": "staticPrice-multStyle-multSize",
+      "pending": [
+        "peso provisório em Mini",
+        "peso provisório em Pequena",
+        "peso provisório em Médio",
+        "peso provisório em Grande",
+        "estilo sem foto"
+      ]
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta de Nozes",
+      "description": "Intensidade e crocância. Esta torta une um pão de ló de chocolate preto, o recheio cremoso de leite condensado cozido e a textura única das nozes caramelizadas feitas aqui na casa.",
+      "imageUrl": "/images/card-images/torta-nozes-trad.png",
+      "imageAlt": "Torta de Nozes",
+      "saleUnit": "KG",
+      "basePrice": 98,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 37,
+      "groups": [
+        {
+          "name": "Estilo",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": true,
+          "options": [
+            {
+              "name": "Tradicional",
+              "imageUrl": "/images/card-images/torta-nozes-trad.png"
+            },
+            {
+              "name": "Naked",
+              "imageUrl": "/images/card-images/torta-nozes-naked.png"
+            }
+          ]
+        },
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": null,
+              "weightMinKg": 0.9,
+              "weightMaxKg": 1
+            },
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "weightMinKg": 1.5,
+              "weightMaxKg": 1.7
+            },
+            {
+              "name": "Médio",
+              "imageUrl": null,
+              "weightMinKg": 1.9,
+              "weightMaxKg": 2.1
+            },
+            {
+              "name": "Grande",
+              "imageUrl": null,
+              "weightMinKg": 2.6,
+              "weightMaxKg": 3
+            },
+            {
+              "name": "Familia",
+              "imageUrl": null,
+              "weightMinKg": 3.6,
+              "weightMaxKg": 4
+            }
+          ]
+        }
+      ],
+      "origin": "staticPrice-multStyle-multSize",
+      "pending": [
+        "peso provisório em Médio",
+        "peso provisório em Grande",
+        "peso provisório em Familia"
+      ]
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta Tropicalia",
+      "description": "Leve e refrescante. Pão de ló de chocolate branco recheado com abacaxi fresco, ovos moles artesanais, chantilly de nata, e finalizado com a textura única do merengão e de um macron de coco.",
+      "imageUrl": "/images/card-images/torta-tropicalia-tradicional.png",
+      "imageAlt": "Torta Tropicalia",
+      "saleUnit": "KG",
+      "basePrice": 79.9,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 38,
+      "groups": [
+        {
+          "name": "Estilo",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": true,
+          "options": [
+            {
+              "name": "Tradicional",
+              "imageUrl": "/images/card-images/torta-tropicalia-tradicional.png"
+            },
+            {
+              "name": "Naked",
+              "imageUrl": "/images/card-images/torta-tropicalia-naked.png"
+            }
+          ]
+        },
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": null,
+              "weightMinKg": 0.95,
+              "weightMaxKg": 1.05
+            },
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "weightMinKg": 1.5,
+              "weightMaxKg": 1.7
+            },
+            {
+              "name": "Médio",
+              "imageUrl": null,
+              "weightMinKg": 1.8,
+              "weightMaxKg": 2.1
+            }
+          ]
+        }
+      ],
+      "origin": "staticPrice-multStyle-multSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta Marta Rocha",
+      "description": "Um ícone de confeitaria, essa torta combina os sabores do Pão de ló preto e branco com recheios de ovos moles, chantilly de nata, e os texturizados merengão e praline de nozes.",
+      "imageUrl": "/images/card-images/marta-rocha-tradicional.png",
+      "imageAlt": "Torta Marta Rocha",
+      "saleUnit": "KG",
+      "basePrice": 79.9,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 39,
+      "groups": [
+        {
+          "name": "Estilo",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": true,
+          "options": [
+            {
+              "name": "Tradicional",
+              "imageUrl": "/images/card-images/marta-rocha-tradicional.png"
+            },
+            {
+              "name": "Naked",
+              "imageUrl": "/images/card-images/torta-marta-rocha-naked.png"
+            }
+          ]
+        },
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": null,
+              "weightMinKg": 0.8,
+              "weightMaxKg": 1
+            },
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "weightMinKg": 1,
+              "weightMaxKg": 1.3
+            },
+            {
+              "name": "Médio",
+              "imageUrl": null,
+              "weightMinKg": 1.3,
+              "weightMaxKg": 1.6
+            },
+            {
+              "name": "Grande",
+              "imageUrl": null,
+              "weightMinKg": 2.6,
+              "weightMaxKg": 3
+            },
+            {
+              "name": "Familia",
+              "imageUrl": null,
+              "weightMinKg": 3.6,
+              "weightMaxKg": 4
+            }
+          ]
+        }
+      ],
+      "origin": "staticPrice-multStyle-multSize",
+      "pending": [
+        "peso provisório em Grande",
+        "peso provisório em Familia"
+      ]
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta Brigadeiro",
+      "description": "Uma celebração do chocolate preto. Combina um pão de ló fofinho de chocolate com camadas intercaladas de mousse de chocolate intenso e o nosso clássico brigadeiro caseiro.",
+      "imageUrl": "/images/card-images/torta-brigadeiro-preto-trad.png",
+      "imageAlt": "Torta de Brigadeiro Preto",
+      "saleUnit": "KG",
+      "basePrice": 89.9,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 40,
+      "groups": [
+        {
+          "name": "Estilo",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": true,
+          "options": [
+            {
+              "name": "Tradicional",
+              "imageUrl": "/images/card-images/torta-brigadeiro-preto-trad.png"
+            },
+            {
+              "name": "Naked",
+              "imageUrl": "/images/card-images/torta-brigadeiro-com-morango-naked.png"
+            }
+          ]
+        },
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": null,
+              "weightMinKg": 0.9,
+              "weightMaxKg": 1
+            },
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "weightMinKg": 1.6,
+              "weightMaxKg": 2
+            },
+            {
+              "name": "Médio",
+              "imageUrl": null,
+              "weightMinKg": 2,
+              "weightMaxKg": 2.3
+            },
+            {
+              "name": "Grande",
+              "imageUrl": null,
+              "weightMinKg": 3,
+              "weightMaxKg": 3.5
+            },
+            {
+              "name": "Familia",
+              "imageUrl": null,
+              "weightMinKg": 3.8,
+              "weightMaxKg": 4
+            }
+          ]
+        },
+        {
+          "name": "Adicional",
+          "minSelect": 0,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Morangos",
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "priceByExtra-multStyle-multSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta Dois Amores",
+      "description": "Uma celebração do chocolate preto. Combina um pão de ló fofinho de chocolate com camadas intercaladas de mousse de chocolate intenso e o nosso clássico brigadeiro caseiro.",
+      "imageUrl": "/images/card-images/torta-dois-amores-naked.png",
+      "imageAlt": "Torta Dois Amores",
+      "saleUnit": "KG",
+      "basePrice": 89.9,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 41,
+      "groups": [
+        {
+          "name": "Estilo",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": true,
+          "options": [
+            {
+              "name": "Tradicional",
+              "imageUrl": "/images/card-images/torta-dois-amores-tradicional.jpeg"
+            },
+            {
+              "name": "Naked",
+              "imageUrl": "/images/card-images/torta-dois-amores-naked.png"
+            }
+          ]
+        },
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Mini",
+              "imageUrl": null,
+              "weightMinKg": 0.9,
+              "weightMaxKg": 1
+            },
+            {
+              "name": "Pequena",
+              "imageUrl": null,
+              "weightMinKg": 1.6,
+              "weightMaxKg": 2
+            },
+            {
+              "name": "Médio",
+              "imageUrl": null,
+              "weightMinKg": 2,
+              "weightMaxKg": 2.3
+            },
+            {
+              "name": "Grande",
+              "imageUrl": null,
+              "weightMinKg": 3,
+              "weightMaxKg": 3.5
+            },
+            {
+              "name": "Familia",
+              "imageUrl": null,
+              "weightMinKg": 3.8,
+              "weightMaxKg": 4
+            }
+          ]
+        },
+        {
+          "name": "Adicional",
+          "minSelect": 0,
+          "maxSelect": 1,
+          "controlsImage": false,
+          "options": [
+            {
+              "name": "Morangos",
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "priceByExtra-multStyle-multSize",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Cheesecake",
+      "description": "Perfeito para sua celebração! Com 20cm de diametro foi feito para impressionar, servindo 10 a 12 fatias muito generosas",
+      "imageUrl": "/images/card-images/cheesecake-frutas-vermelhas.png",
+      "imageAlt": "Cheesecake",
+      "saleUnit": "UN",
+      "basePrice": 159,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 42,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": true,
+          "options": [
+            {
+              "name": "Frutas Vermelhas",
+              "description": "Equilíbrio perfeito entre o doce e o cítrico! Base de massa frola, creme suave de cream cheese e uma cobertura vibrante de framboesa, morango e amora.",
+              "imageUrl": "/images/card-images/cheesecake-frutas-vermelhas.png"
+            },
+            {
+              "name": "Goiabada",
+              "description": "O encontro perfeito do queijo com a goiabada. Base de massa frola, creme de cream cheese suave e cobertura generosa de goiabada.",
+              "imageUrl": "/images/card-images/cheesecake-goiabada.jpg"
+            }
+          ]
+        }
+      ],
+      "origin": "staticPriceAndSize-multFlavor",
+      "pending": []
+    },
+    {
+      "categoryProtoId": 2,
+      "name": "Torta Baixa",
+      "description": "Uma sobremesa sofisticada. Nossa torta baixa de 20 cm combina uma base crocante com um recheio rico. Serve 10 a 12 fatias generosas, ideal para um café ou após o jantar.",
+      "imageUrl": "/images/card-images/torta-baixa-3-chocolates.png",
+      "imageAlt": "Torta Baixa",
+      "saleUnit": "UN",
+      "basePrice": 159,
+      "weightMinKg": null,
+      "weightMaxKg": null,
+      "minQuantity": 1,
+      "position": 43,
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "controlsImage": true,
+          "options": [
+            {
+              "name": "Holandesa",
+              "description": "Sofisticação em cada camada: base crocante, biscoitos Calipso na lateral, creme especial de chocolate branco com cream cheese e uma cobertura irresistível de ganache de chocolate.",
+              "imageUrl": "/images/card-images/torta-baixa-holandesa.png"
+            },
+            {
+              "name": "Três Chocolates",
+              "description": "O trio perfeito. Base de bolacha, camadas de mousse de chocolate (meio amargo, ao leite e branco) e finalização com ganache de chocolate.",
+              "imageUrl": "/images/card-images/torta-baixa-3-chocolates.png"
+            },
+            {
+              "name": "Banoffee",
+              "description": "Doce de leite e banana em perfeita harmonia. Base de bolacha, mousse de doce de leite e o toque final tostado e delicioso da cobertura de glacê maçaricado.",
+              "imageUrl": null
+            },
+            {
+              "name": "Limão",
+              "description": "Frescor em cada fatia. Base de bolacha, mousse de limão cremoso e o toque final sofisticado do glacê maçaricado.",
+              "imageUrl": "/images/card-images/torta-baixa-limao.png"
+            },
+            {
+              "name": "Ninho com Morango",
+              "description": "O clássico perfeito. Base crocante, creme de Ninho, mousse de chocolate, morangos frescos e uma finalização deliciosa com ganache de chocolate.",
+              "imageUrl": null
+            },
+            {
+              "name": "Nozes",
+              "description": "O encontro do doce de leite com as nozes. Base de bolacha, recheio de doce de leite e mousse, praline de nozes crocante e cobertura de ganache de chocolate.",
+              "imageUrl": null
+            }
+          ]
+        }
+      ],
+      "origin": "staticPriceAndSize-multFlavor",
+      "pending": []
+    }
+  ],
+  "modelos": [
+    {
+      "name": "Unidade simples",
+      "saleUnit": "UN",
+      "groups": []
+    },
+    {
+      "name": "Unidade com sabor",
+      "saleUnit": "UN",
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": null,
+          "hasWeight": false,
+          "definesPdvCode": true,
+          "controlsImage": false
+        }
+      ]
+    },
+    {
+      "name": "Unidade com preço por sabor",
+      "saleUnit": "UN",
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": "replace",
+          "hasWeight": false,
+          "definesPdvCode": true,
+          "controlsImage": false
+        }
+      ]
+    },
+    {
+      "name": "Unidade com tamanho",
+      "saleUnit": "UN",
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": "replace",
+          "hasWeight": false,
+          "definesPdvCode": true,
+          "controlsImage": true
+        }
+      ]
+    },
+    {
+      "name": "Unidade com tamanho e sabor",
+      "saleUnit": "UN",
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": "replace",
+          "hasWeight": false,
+          "definesPdvCode": true,
+          "controlsImage": true
+        },
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": null,
+          "hasWeight": false,
+          "definesPdvCode": false,
+          "controlsImage": false
+        }
+      ]
+    },
+    {
+      "name": "Quilo com tamanho",
+      "saleUnit": "KG",
+      "groups": [
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": null,
+          "hasWeight": true,
+          "definesPdvCode": false,
+          "controlsImage": false
+        }
+      ]
+    },
+    {
+      "name": "Quilo com estilo e tamanho",
+      "saleUnit": "KG",
+      "groups": [
+        {
+          "name": "Estilo",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": null,
+          "hasWeight": false,
+          "definesPdvCode": false,
+          "controlsImage": true
+        },
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": null,
+          "hasWeight": true,
+          "definesPdvCode": false,
+          "controlsImage": false
+        }
+      ]
+    },
+    {
+      "name": "Quilo com estilo, tamanho e adicional",
+      "saleUnit": "KG",
+      "groups": [
+        {
+          "name": "Estilo",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": null,
+          "hasWeight": false,
+          "definesPdvCode": false,
+          "controlsImage": true
+        },
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": null,
+          "hasWeight": true,
+          "definesPdvCode": false,
+          "controlsImage": false
+        },
+        {
+          "name": "Adicional",
+          "minSelect": 0,
+          "maxSelect": 1,
+          "priceMode": "add",
+          "hasWeight": false,
+          "definesPdvCode": false,
+          "controlsImage": false
+        }
+      ]
+    },
+    {
+      "name": "Quilo com sabor e tamanho",
+      "saleUnit": "KG",
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": "replace",
+          "hasWeight": false,
+          "definesPdvCode": false,
+          "controlsImage": false
+        },
+        {
+          "name": "Tamanho",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "priceMode": null,
+          "hasWeight": true,
+          "definesPdvCode": false,
+          "controlsImage": false
+        }
+      ]
+    },
+    {
+      "name": "Quilo com até 2 sabores",
+      "saleUnit": "KG",
+      "groups": [
+        {
+          "name": "Sabor",
+          "minSelect": 1,
+          "maxSelect": 2,
+          "priceMode": null,
+          "hasWeight": false,
+          "definesPdvCode": false,
+          "controlsImage": false
+        }
+      ]
+    }
+  ]
+}

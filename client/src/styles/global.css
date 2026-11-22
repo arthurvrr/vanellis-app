@@ -1,0 +1,154 @@
+@font-face {
+  font-family: 'LouisGeorgeCafe';
+  src: url('../assets/fonts/LouisGeorgeCafe.ttf') format('truetype');
+  font-weight: normal;
+}
+@font-face {
+  font-family: 'LouisGeorgeCafe';
+  src: url('../assets/fonts/LouisGeorgeCafeBold.ttf') format('truetype');
+  font-weight: bold;
+}
+
+:root {
+  --marrom: #82652f;
+  --dourado: #d9b167;
+  --creme: #fbf6ec;
+  --texto: #3b2f1c;
+  --borda: #e6d9bf;
+  font-family: 'LouisGeorgeCafe', system-ui, sans-serif;
+  color: var(--texto);
+  background: var(--creme);
+}
+
+body {
+  margin: 0;
+}
+
+.status {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.header {
+  background: var(--dourado);
+  padding: 0.75rem 1rem;
+}
+.header h1 {
+  margin: 0;
+  color: var(--marrom);
+  letter-spacing: 0.15em;
+  font-size: 1.5rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+.tab {
+  border: 1px solid var(--marrom);
+  background: none;
+  color: var(--marrom);
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab--active {
+  background: var(--marrom);
+  color: var(--creme);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  padding: 0 1rem 2rem;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.card--off {
+  opacity: 0.6;
+}
+.card__img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.card__body {
+  padding: 0.75rem 1rem 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+.card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+.card__name {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.card__price {
+  margin: 0;
+  font-weight: bold;
+  color: var(--marrom);
+  white-space: nowrap;
+}
+.card__from,
+.card__unit {
+  font-weight: normal;
+  font-size: 0.8rem;
+}
+.card__desc {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.card__off {
+  margin: 0;
+  font-weight: bold;
+}
+
+.group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.group legend {
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+.group__hint {
+  font-weight: normal;
+}
+.group__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.chip {
+  border: 1px solid var(--borda);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  min-height: 2.25rem;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.chip--on {
+  border-color: var(--marrom);
+  background: var(--marrom);
+  color: var(--creme);
+}
