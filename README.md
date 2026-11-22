@@ -74,8 +74,10 @@ cd server && npx tsx scripts/converter-prototipo.ts ../../vanellis-app-pern/data
 ```
 
 São 3 categorias, 44 produtos e os 10 modelos de produto iniciais. O `db:seed` também carrega uma
-agenda de retirada **provisória** (segunda a sábado 8h–12h e 14h–18h em faixas de 2h, domingo 8h–12h,
-antecedência de 2h, 30 dias à frente, 24/12 e 31/12 como datas especiais), até a padaria informar a real.
+agenda de retirada **provisória** até a padaria informar a real: funcionamento de segunda a sábado
+7h30–19h e domingo 7h30–12h; retirada de 30 em 30 minutos a partir das 8h30, sem retirada das 12h às
+14h, até 30 minutos antes do fechamento; antecedência de 2h; agendamento até 4 meses à frente; 24/12 e 31/12 como
+datas especiais.
 
 Pendências da carga, a acertar no painel:
 

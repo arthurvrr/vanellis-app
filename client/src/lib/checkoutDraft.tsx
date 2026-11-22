@@ -6,8 +6,8 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 
 export interface Pickup {
   date: string;
-  /** Início da faixa; `null` enquanto não escolhida, ou em data especial (RN20). */
-  start: string | null;
+  /** Horário 'HH:MM'; `null` enquanto não escolhido, ou em data especial (RN20). */
+  time: string | null;
 }
 
 export type Touched = Partial<Record<keyof CustomerData, boolean>>;

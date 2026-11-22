@@ -15,6 +15,34 @@
       "when": 1795312861792,
       "tag": "0001_agenda",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795354170573,
+      "tag": "0002_remove_faixas",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795354211217,
+      "tag": "0003_horarios_retirada",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795354772422,
+      "tag": "0004_remove_janela_dias",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795354777798,
+      "tag": "0005_janela_meses",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,6 @@ import {
   formatCPF,
   formatDay,
   formatPhone,
-  formatSlot,
   NAME_MAX_LENGTH,
   NOTE_MAX_LENGTH,
   resolveCart,
@@ -58,7 +57,7 @@ export function CheckoutView({
     if (!agenda || !pickup) return;
     const day = agenda.days.find((d) => d.date === pickup.date);
     // Horário ainda não escolhido (`null`) vale; um horário escolhido precisa continuar livre.
-    const stillValid = day && (pickup.start === null || day.slots.some((s) => s.start === pickup.start));
+    const stillValid = day && (pickup.time === null || day.times.includes(pickup.time));
     if (!stillValid) setPickup(null);
   }, [agenda, pickup, setPickup]);
 
@@ -158,9 +157,14 @@ function PickupPicker({
           <PickupCalendar
             days={agenda.days}
             value={value?.date ?? null}
-            onChange={(date) => onChange({ date, start: null })}
+            onChange={(date) => onChange({ date, time: null })}
           />
-          {day && <p className="checkout-chosen">Retirada em {formatDay(day)}</p>}
+          {day && (
+            <p className="checkout-chosen">
+              Retirada em {formatDay(day)}
+              {value?.time && ` às ${value.time}`}
+            </p>
+          )}
 
           {day?.special && (
             <p className="checkout-info">
@@ -171,23 +175,34 @@ function PickupPicker({
           {day && !day.special && (
             <>
               <p className="checkout-label">Horário</p>
-              <div className="group__options" role="radiogroup" aria-label="Horário da retirada">
-                {day.slots.map((s) => {
-                  const on = value?.start === s.start;
-                  return (
-                    <button
-                      key={s.start}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      className={on ? 'chip chip--on' : 'chip'}
-                      onClick={() => onChange({ date: day.date, start: s.start })}
-                    >
-                      {formatSlot(s)}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Horários de 30 em 30 minutos (RN51), separados em manhã e tarde para achar rápido. */}
+              {[
+                { label: 'Manhã', times: day.times.filter((t) => t < '12:00') },
+                { label: 'Tarde', times: day.times.filter((t) => t >= '12:00') },
+              ]
+                .filter((g) => g.times.length)
+                .map((g) => (
+                  <div key={g.label} className="time-group">
+                    <p className="time-group__label">{g.label}</p>
+                    <div className="group__options" role="radiogroup" aria-label={`Horário da retirada, ${g.label.toLowerCase()}`}>
+                      {g.times.map((t) => {
+                        const on = value?.time === t;
+                        return (
+                          <button
+                            key={t}
+                            type="button"
+                            role="radio"
+                            aria-checked={on}
+                            className={on ? 'chip chip--on chip--time' : 'chip chip--time'}
+                            onClick={() => onChange({ date: day.date, time: t })}
+                          >
+                            {t}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
             </>
           )}
         </>

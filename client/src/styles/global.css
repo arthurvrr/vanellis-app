@@ -593,3 +593,18 @@ body {
   border: 1px solid var(--borda);
   border-radius: 12px;
 }
+
+/* Horários de retirada (RN51) */
+.time-group + .time-group {
+  margin-top: 0.6rem;
+}
+.time-group__label {
+  margin: 0 0 0.3rem;
+  font-size: 0.8rem;
+  color: var(--marrom);
+}
+.chip--time {
+  min-width: 4.25rem;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}

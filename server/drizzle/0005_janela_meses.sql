@@ -1,0 +1,2 @@
+ALTER TABLE "agenda_config" ADD COLUMN "window_months" integer DEFAULT 4 NOT NULL;--> statement-breakpoint
+ALTER TABLE "agenda_config" ADD CONSTRAINT "agenda_config_window_check" CHECK ("agenda_config"."window_months" between 1 and 12);
