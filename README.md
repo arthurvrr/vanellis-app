@@ -73,7 +73,11 @@ Requisitos: Node 20.19 ou mais novo e PostgreSQL.
 cd server && npx tsx scripts/converter-prototipo.ts ../../vanellis-app-pern/database.sql
 ```
 
-São 3 categorias, 44 produtos e os 10 modelos de produto iniciais. Pendências da carga, a acertar no painel:
+São 3 categorias, 44 produtos e os 10 modelos de produto iniciais. O `db:seed` também carrega uma
+agenda de retirada **provisória** (segunda a sábado 8h–12h e 14h–18h em faixas de 2h, domingo 8h–12h,
+antecedência de 2h, 30 dias à frente, 24/12 e 31/12 como datas especiais), até a padaria informar a real.
+
+Pendências da carga, a acertar no painel:
 
 - Códigos PDV vazios em todos os produtos e opções (RN41).
 - Pesos provisórios em 7 tortas sem peso no protótipo; a lista sai no fim da conversão.

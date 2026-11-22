@@ -1,4 +1,5 @@
 import {
+  cannotAdd,
   cardImage,
   cardPrice,
   formatBRL,
@@ -7,11 +8,31 @@ import {
   type Selection,
 } from '@vanellis/shared';
 import { useState } from 'react';
+import { useCart } from '../lib/cart';
+import { useToast } from '../lib/toast';
+import { QuantityStepper } from './QuantityStepper';
 
 // Card genérico: desenha os grupos de opção que o produto tiver, sem tipos fixos.
 // Mostra só o essencial (RN49); avisos ficam no checkout (RN48).
 export function ProductCard({ product }: { product: ProductDTO }) {
   const [selection, setSelection] = useState<Selection>({});
+  const [quantity, setQuantity] = useState(product.minQuantity);
+  const { add } = useCart();
+  const toast = useToast();
+
+  const blocked = cannotAdd(product, selection);
+
+  // Depois de adicionar, o card volta ao estado inicial e a confirmação aparece no canto (RF48).
+  const onAdd = () => {
+    const result = add(product.id, selection, quantity);
+    if (result === 'full') {
+      toast('Carrinho cheio: remova um item para adicionar outro.', 'error');
+      return;
+    }
+    toast(result === 'merged' ? `${product.name}: quantidade somada no carrinho` : `${product.name} adicionado ao carrinho`);
+    setSelection({});
+    setQuantity(product.minQuantity);
+  };
 
   const toggle = (group: OptionGroupDTO, optionId: number) => {
     setSelection((prev) => {
@@ -82,7 +103,21 @@ export function ProductCard({ product }: { product: ProductDTO }) {
             {d}
           </p>
         ))}
-        {!product.available && <p className="card__off">Indisponível no momento</p>}
+        <div className="card__actions">
+          <QuantityStepper
+            value={quantity}
+            min={product.minQuantity}
+            onChange={setQuantity}
+            label={`Quantidade de ${product.name}`}
+            disabled={!product.available}
+          />
+          <button type="button" className="add" disabled={blocked !== null} onClick={onAdd}>
+            Adicionar
+          </button>
+        </div>
+        <p className="card__hint">
+          {blocked ?? (product.minQuantity > 1 ? `Mínimo de ${product.minQuantity} unidades` : '')}
+        </p>
       </div>
     </article>
   );
