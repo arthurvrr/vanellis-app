@@ -24,7 +24,7 @@
       "categoryProtoId": 1,
       "name": "Bolinha de Queijo",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/bolinha-queijo.jpg",
+      "imageUrl": "/images/card-images/bolinha-queijo.webp",
       "imageAlt": "Bolinha de queijo",
       "saleUnit": "UN",
       "basePrice": 1.8,
@@ -56,7 +56,7 @@
       "categoryProtoId": 1,
       "name": "Croquete Carne",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/croquete-de-carne.jpg",
+      "imageUrl": "/images/card-images/croquete-de-carne.webp",
       "imageAlt": "Croquete de carne",
       "saleUnit": "UN",
       "basePrice": 1.8,
@@ -72,7 +72,7 @@
       "categoryProtoId": 1,
       "name": "Enroladinho Frito",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/enroladinho-frito.jpg",
+      "imageUrl": "/images/card-images/enroladinho-frito.webp",
       "imageAlt": "Enroladinho Frito",
       "saleUnit": "UN",
       "basePrice": 1.6,
@@ -88,7 +88,7 @@
       "categoryProtoId": 1,
       "name": "Folhadinho de Salsicha",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/folhadinho-salsicha.png",
+      "imageUrl": "/images/card-images/folhadinho-salsicha.webp",
       "imageAlt": "Folhadinho de salsicha",
       "saleUnit": "UN",
       "basePrice": 1.8,
@@ -104,7 +104,7 @@
       "categoryProtoId": 1,
       "name": "Doguinho",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/doguinho-salsicha.png",
+      "imageUrl": "/images/card-images/doguinho-salsicha.webp",
       "imageAlt": "Doguinho",
       "saleUnit": "UN",
       "basePrice": 1.8,
@@ -120,7 +120,7 @@
       "categoryProtoId": 1,
       "name": "Prensadinho",
       "description": "Aproximadamente 40 gramas",
-      "imageUrl": "/images/card-images/sanduiche-prensadinho.png",
+      "imageUrl": "/images/card-images/sanduiche-prensadinho.webp",
       "imageAlt": "Prensadinho",
       "saleUnit": "UN",
       "basePrice": 2.6,
@@ -136,7 +136,7 @@
       "categoryProtoId": 1,
       "name": "Cachorro Quente",
       "description": "Pãozinho fofinho com suculento recheio de salsicha picada ao molho de tomate, temperado com alho, cebola e um toque de salsa. Aprox. 40g por unidade.",
-      "imageUrl": "/images/card-images/cachorro-quente.jpg",
+      "imageUrl": "/images/card-images/cachorro-quente.webp",
       "imageAlt": "Cachorro quente",
       "saleUnit": "UN",
       "basePrice": 2.5,
@@ -152,7 +152,7 @@
       "categoryProtoId": 1,
       "name": "Risoles",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/risoles.png",
+      "imageUrl": "/images/card-images/risoles.webp",
       "imageAlt": "Risoles",
       "saleUnit": "UN",
       "basePrice": 1.6,
@@ -207,7 +207,7 @@
       "categoryProtoId": 1,
       "name": "Pastel de Pastelina",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/pastel-pastelina.jpg",
+      "imageUrl": "/images/card-images/pastel-pastelina.webp",
       "imageAlt": "Pastel de Pastelina",
       "saleUnit": "UN",
       "basePrice": 2,
@@ -242,7 +242,7 @@
       "categoryProtoId": 1,
       "name": "Empadinha",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/empada-assada.png",
+      "imageUrl": "/images/card-images/empada-assada.webp",
       "imageAlt": "Empadinha Assada",
       "saleUnit": "UN",
       "basePrice": 2.3,
@@ -277,7 +277,7 @@
       "categoryProtoId": 1,
       "name": "Pastel de Forno",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/pastelzinho-forno.jpg",
+      "imageUrl": "/images/card-images/pastelzinho-forno.webp",
       "imageAlt": "Pastel de Forno",
       "saleUnit": "UN",
       "basePrice": 1.8,
@@ -322,7 +322,7 @@
       "categoryProtoId": 1,
       "name": "Canapé",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/canape.jpg",
+      "imageUrl": "/images/card-images/canape.webp",
       "imageAlt": "Canapé",
       "saleUnit": "UN",
       "basePrice": 2.8,
@@ -362,7 +362,7 @@
       "categoryProtoId": 1,
       "name": "Mini Quiche",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/mini-quiche.jpg",
+      "imageUrl": "/images/card-images/mini-quiche.webp",
       "imageAlt": "Mini Quiche",
       "saleUnit": "UN",
       "basePrice": 2.8,
@@ -412,7 +412,7 @@
       "categoryProtoId": 1,
       "name": "Mini Pizza",
       "description": "Aproximadamente 50 gramas",
-      "imageUrl": "/images/card-images/mini-pizza.png",
+      "imageUrl": "/images/card-images/mini-pizza.webp",
       "imageAlt": "Mini pizza",
       "saleUnit": "UN",
       "basePrice": 2.8,
@@ -452,7 +452,7 @@
       "categoryProtoId": 1,
       "name": "Barquete",
       "description": "Aproximadamente 50 gramas",
-      "imageUrl": "/images/card-images/barquete.png",
+      "imageUrl": "/images/card-images/barquete.webp",
       "imageAlt": "Barquete",
       "saleUnit": "UN",
       "basePrice": 2.8,
@@ -533,7 +533,7 @@
       "categoryProtoId": 1,
       "name": "Torta Quiche",
       "description": "Uma deliciosa torta salgada, perfeita para qualquer ocasião.",
-      "imageUrl": "/images/card-images/quiche-pequeno.jpg",
+      "imageUrl": "/images/card-images/quiche-pequeno.webp",
       "imageAlt": "Torta Quiche",
       "saleUnit": "UN",
       "basePrice": null,
@@ -595,7 +595,7 @@
       "categoryProtoId": 1,
       "name": "Pizza Pan",
       "description": "Pizza Pan quadrada de massa alta e fofinha. São 12 fatias e cerca de 2kg de sabor. Perfeita para dividir, escolha até 2 sabores!",
-      "imageUrl": "/images/card-images/pizza-pan.jpg",
+      "imageUrl": "/images/card-images/pizza-pan.webp",
       "imageAlt": "Pizza Pan",
       "saleUnit": "KG",
       "basePrice": 59.9,
@@ -635,7 +635,7 @@
       "categoryProtoId": 1,
       "name": "Torta Fria",
       "description": null,
-      "imageUrl": "/images/card-images/torta-fria.jpg",
+      "imageUrl": "/images/card-images/torta-fria.webp",
       "imageAlt": "Torta Fria",
       "saleUnit": "KG",
       "basePrice": null,
@@ -701,7 +701,7 @@
       "categoryProtoId": 3,
       "name": "Brigadeiro",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/brigadeiro-preto01.png",
+      "imageUrl": "/images/card-images/brigadeiro-preto01.webp",
       "imageAlt": "Brigadeiro Preto",
       "saleUnit": "UN",
       "basePrice": 1.7,
@@ -717,7 +717,7 @@
       "categoryProtoId": 3,
       "name": "Branquinho",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/brigadeiro-branco.png",
+      "imageUrl": "/images/card-images/brigadeiro-branco.webp",
       "imageAlt": "Branquinho",
       "saleUnit": "UN",
       "basePrice": 1.7,
@@ -733,7 +733,7 @@
       "categoryProtoId": 3,
       "name": "Beijinho",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/beijinho-coco.png",
+      "imageUrl": "/images/card-images/beijinho-coco.webp",
       "imageAlt": "Beijinho",
       "saleUnit": "UN",
       "basePrice": 1.7,
@@ -749,7 +749,7 @@
       "categoryProtoId": 3,
       "name": "Amendoim",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/docinho-amendoim.png",
+      "imageUrl": "/images/card-images/docinho-amendoim.webp",
       "imageAlt": "Amendoim",
       "saleUnit": "UN",
       "basePrice": 1.7,
@@ -765,7 +765,7 @@
       "categoryProtoId": 3,
       "name": "Doce de Leite",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/doce-de-leite.png",
+      "imageUrl": "/images/card-images/doce-de-leite.webp",
       "imageAlt": "Doce de leite",
       "saleUnit": "UN",
       "basePrice": 2.2,
@@ -781,7 +781,7 @@
       "categoryProtoId": 3,
       "name": "Nozes",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/brigadeiro-nozes.png",
+      "imageUrl": "/images/card-images/brigadeiro-nozes.webp",
       "imageAlt": "NOZES",
       "saleUnit": "UN",
       "basePrice": 2,
@@ -797,7 +797,7 @@
       "categoryProtoId": 3,
       "name": "Olho de Sogra",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/olho-de-sogra.jpg",
+      "imageUrl": "/images/card-images/olho-de-sogra.webp",
       "imageAlt": "OLHO DE SOGRA",
       "saleUnit": "UN",
       "basePrice": 2,
@@ -813,7 +813,7 @@
       "categoryProtoId": 3,
       "name": "Ninho & Nutella",
       "description": "Aproximadamente 20 gramas",
-      "imageUrl": "/images/card-images/leite-ninho-nutell.jpg",
+      "imageUrl": "/images/card-images/leite-ninho-nutell.webp",
       "imageAlt": "NINHO & NUTELLA",
       "saleUnit": "UN",
       "basePrice": 2.2,
@@ -845,7 +845,7 @@
       "categoryProtoId": 3,
       "name": "Cupcake",
       "description": null,
-      "imageUrl": "/images/card-images/cupcake-tradicional.png",
+      "imageUrl": "/images/card-images/cupcake-tradicional.webp",
       "imageAlt": "Cupcake",
       "saleUnit": "UN",
       "basePrice": null,
@@ -869,7 +869,7 @@
             },
             {
               "name": "Tradicional",
-              "imageUrl": "/images/card-images/cupcake-tradicional.png",
+              "imageUrl": "/images/card-images/cupcake-tradicional.webp",
               "priceMode": "replace",
               "price": 8,
               "description": "Aproximadamente 100 gramas"
@@ -907,7 +907,7 @@
       "categoryProtoId": 3,
       "name": "Quindim",
       "description": null,
-      "imageUrl": "/images/card-images/mini-quindim.png",
+      "imageUrl": "/images/card-images/mini-quindim.webp",
       "imageAlt": "Quindim",
       "saleUnit": "UN",
       "basePrice": null,
@@ -924,14 +924,14 @@
           "options": [
             {
               "name": "Mini",
-              "imageUrl": "/images/card-images/mini-quindim.png",
+              "imageUrl": "/images/card-images/mini-quindim.webp",
               "priceMode": "replace",
               "price": 2.9,
               "description": "Aproximadamente 30 gramas"
             },
             {
               "name": "Tradicional",
-              "imageUrl": "/images/card-images/quindim-tradicional.png",
+              "imageUrl": "/images/card-images/quindim-tradicional.webp",
               "priceMode": "replace",
               "price": 4.5,
               "description": "Aproximadamente 50 gramas"
@@ -946,7 +946,7 @@
       "categoryProtoId": 2,
       "name": "Torta Macron",
       "description": "Base de bolo macron de coco queimado, recheada com ovos moles e um toque azedo de polpa de ameixa. Uma combinação perfeitamente equilibrada.",
-      "imageUrl": "/images/card-images/bolo-macron.png",
+      "imageUrl": "/images/card-images/bolo-macron.webp",
       "imageAlt": "Torta Macron",
       "saleUnit": "KG",
       "basePrice": 79.9,
@@ -989,7 +989,7 @@
       "categoryProtoId": 2,
       "name": "Torta de Cremes",
       "description": "Uma combinação generosa de sabores sobre um pão de ló mesclado (branco e preto). Desfrute das camadas de ovos moles artesanais, doce de leite, polpa de ameixa e um delicioso creme de leite condensado com coco.",
-      "imageUrl": "/images/card-images/bolo-cremes.png",
+      "imageUrl": "/images/card-images/bolo-cremes.webp",
       "imageAlt": "Torta de Cremes",
       "saleUnit": "KG",
       "basePrice": 79.9,
@@ -1051,7 +1051,7 @@
       "categoryProtoId": 2,
       "name": "Torta Noiva do Mar",
       "description": "Uma homenagem à nossa praia, esta torta equilibra o doce e o sofisticado. Possui uma base macia de bolo de aveia coberta por camadas de creme de coco, o clássico leite condensado cozido e um toque de polpa de ameixa, finalizada com a crocância de um praline de nozes.",
-      "imageUrl": "/images/card-images/torta-noiva-do-mar-tradicional.png",
+      "imageUrl": "/images/card-images/torta-noiva-do-mar-tradicional.webp",
       "imageAlt": "Torta Noiva do Mar",
       "saleUnit": "KG",
       "basePrice": 89.9,
@@ -1098,7 +1098,7 @@
       "categoryProtoId": 2,
       "name": "Torta Morango Bronzeado",
       "description": "Morangos frescos e o bronze do leite condensado cozido encontram um pão de ló de chocolate macio e nosso chantilly de nata caseiro. Simplesmente irresistível.",
-      "imageUrl": "/images/card-images/bolo-morango-moreno-01.png",
+      "imageUrl": "/images/card-images/bolo-morango-moreno-01.webp",
       "imageAlt": "Torta Morango Bronzeado",
       "saleUnit": "KG",
       "basePrice": 79.9,
@@ -1158,7 +1158,7 @@
       "categoryProtoId": 2,
       "name": "Torta Morango Nata",
       "description": "Uma sobremesa leve e refrescante. Combina morangos frescos, nosso chantilly artesanal de nata e pedaços crocantes de merengão, tudo sobre uma base macia de pão de ló de chocolate branco.",
-      "imageUrl": "/images/card-images/torta-morango-nata-tradicional.png",
+      "imageUrl": "/images/card-images/torta-morango-nata-tradicional.webp",
       "imageAlt": "Torta Morango Nata",
       "saleUnit": "KG",
       "basePrice": 79.9,
@@ -1218,7 +1218,7 @@
       "categoryProtoId": 2,
       "name": "Torta Ouro Branco",
       "description": "A combinação perfeita de chocolate e cremes brancos. Base de pão de ló preto intenso, recheada em camadas com um suave creme de baunilha, mousse branco aerado e generosos pedaços de bombom Ouro Branco.",
-      "imageUrl": "/images/card-images/torta-bombom-ouro-branco-tradicional.png",
+      "imageUrl": "/images/card-images/torta-bombom-ouro-branco-tradicional.webp",
       "imageAlt": "Torta Ouro Branco",
       "saleUnit": "KG",
       "basePrice": 79.9,
@@ -1235,7 +1235,7 @@
           "options": [
             {
               "name": "Tradicional",
-              "imageUrl": "/images/card-images/torta-bombom-ouro-branco-tradicional.png"
+              "imageUrl": "/images/card-images/torta-bombom-ouro-branco-tradicional.webp"
             },
             {
               "name": "Naked",
@@ -1295,7 +1295,7 @@
       "categoryProtoId": 2,
       "name": "Torta de Nozes",
       "description": "Intensidade e crocância. Esta torta une um pão de ló de chocolate preto, o recheio cremoso de leite condensado cozido e a textura única das nozes caramelizadas feitas aqui na casa.",
-      "imageUrl": "/images/card-images/torta-nozes-trad.png",
+      "imageUrl": "/images/card-images/torta-nozes-trad.webp",
       "imageAlt": "Torta de Nozes",
       "saleUnit": "KG",
       "basePrice": 98,
@@ -1312,11 +1312,11 @@
           "options": [
             {
               "name": "Tradicional",
-              "imageUrl": "/images/card-images/torta-nozes-trad.png"
+              "imageUrl": "/images/card-images/torta-nozes-trad.webp"
             },
             {
               "name": "Naked",
-              "imageUrl": "/images/card-images/torta-nozes-naked.png"
+              "imageUrl": "/images/card-images/torta-nozes-naked.webp"
             }
           ]
         },
@@ -1370,7 +1370,7 @@
       "categoryProtoId": 2,
       "name": "Torta Tropicalia",
       "description": "Leve e refrescante. Pão de ló de chocolate branco recheado com abacaxi fresco, ovos moles artesanais, chantilly de nata, e finalizado com a textura única do merengão e de um macron de coco.",
-      "imageUrl": "/images/card-images/torta-tropicalia-tradicional.png",
+      "imageUrl": "/images/card-images/torta-tropicalia-tradicional.webp",
       "imageAlt": "Torta Tropicalia",
       "saleUnit": "KG",
       "basePrice": 79.9,
@@ -1387,11 +1387,11 @@
           "options": [
             {
               "name": "Tradicional",
-              "imageUrl": "/images/card-images/torta-tropicalia-tradicional.png"
+              "imageUrl": "/images/card-images/torta-tropicalia-tradicional.webp"
             },
             {
               "name": "Naked",
-              "imageUrl": "/images/card-images/torta-tropicalia-naked.png"
+              "imageUrl": "/images/card-images/torta-tropicalia-naked.webp"
             }
           ]
         },
@@ -1429,7 +1429,7 @@
       "categoryProtoId": 2,
       "name": "Torta Marta Rocha",
       "description": "Um ícone de confeitaria, essa torta combina os sabores do Pão de ló preto e branco com recheios de ovos moles, chantilly de nata, e os texturizados merengão e praline de nozes.",
-      "imageUrl": "/images/card-images/marta-rocha-tradicional.png",
+      "imageUrl": "/images/card-images/marta-rocha-tradicional.webp",
       "imageAlt": "Torta Marta Rocha",
       "saleUnit": "KG",
       "basePrice": 79.9,
@@ -1446,11 +1446,11 @@
           "options": [
             {
               "name": "Tradicional",
-              "imageUrl": "/images/card-images/marta-rocha-tradicional.png"
+              "imageUrl": "/images/card-images/marta-rocha-tradicional.webp"
             },
             {
               "name": "Naked",
-              "imageUrl": "/images/card-images/torta-marta-rocha-naked.png"
+              "imageUrl": "/images/card-images/torta-marta-rocha-naked.webp"
             }
           ]
         },
@@ -1503,7 +1503,7 @@
       "categoryProtoId": 2,
       "name": "Torta Brigadeiro",
       "description": "Uma celebração do chocolate preto. Combina um pão de ló fofinho de chocolate com camadas intercaladas de mousse de chocolate intenso e o nosso clássico brigadeiro caseiro.",
-      "imageUrl": "/images/card-images/torta-brigadeiro-preto-trad.png",
+      "imageUrl": "/images/card-images/torta-brigadeiro-preto-trad.webp",
       "imageAlt": "Torta de Brigadeiro Preto",
       "saleUnit": "KG",
       "basePrice": 89.9,
@@ -1520,11 +1520,11 @@
           "options": [
             {
               "name": "Tradicional",
-              "imageUrl": "/images/card-images/torta-brigadeiro-preto-trad.png"
+              "imageUrl": "/images/card-images/torta-brigadeiro-preto-trad.webp"
             },
             {
               "name": "Naked",
-              "imageUrl": "/images/card-images/torta-brigadeiro-com-morango-naked.png"
+              "imageUrl": "/images/card-images/torta-brigadeiro-com-morango-naked.webp"
             }
           ]
         },
@@ -1586,7 +1586,7 @@
       "categoryProtoId": 2,
       "name": "Torta Dois Amores",
       "description": "Uma celebração do chocolate preto. Combina um pão de ló fofinho de chocolate com camadas intercaladas de mousse de chocolate intenso e o nosso clássico brigadeiro caseiro.",
-      "imageUrl": "/images/card-images/torta-dois-amores-naked.png",
+      "imageUrl": "/images/card-images/torta-dois-amores-naked.webp",
       "imageAlt": "Torta Dois Amores",
       "saleUnit": "KG",
       "basePrice": 89.9,
@@ -1603,11 +1603,11 @@
           "options": [
             {
               "name": "Tradicional",
-              "imageUrl": "/images/card-images/torta-dois-amores-tradicional.jpeg"
+              "imageUrl": "/images/card-images/torta-dois-amores-tradicional.webp"
             },
             {
               "name": "Naked",
-              "imageUrl": "/images/card-images/torta-dois-amores-naked.png"
+              "imageUrl": "/images/card-images/torta-dois-amores-naked.webp"
             }
           ]
         },
@@ -1669,7 +1669,7 @@
       "categoryProtoId": 2,
       "name": "Cheesecake",
       "description": "Perfeito para sua celebração! Com 20cm de diametro foi feito para impressionar, servindo 10 a 12 fatias muito generosas",
-      "imageUrl": "/images/card-images/cheesecake-frutas-vermelhas.png",
+      "imageUrl": "/images/card-images/cheesecake-frutas-vermelhas.webp",
       "imageAlt": "Cheesecake",
       "saleUnit": "UN",
       "basePrice": 159,
@@ -1687,12 +1687,12 @@
             {
               "name": "Frutas Vermelhas",
               "description": "Equilíbrio perfeito entre o doce e o cítrico! Base de massa frola, creme suave de cream cheese e uma cobertura vibrante de framboesa, morango e amora.",
-              "imageUrl": "/images/card-images/cheesecake-frutas-vermelhas.png"
+              "imageUrl": "/images/card-images/cheesecake-frutas-vermelhas.webp"
             },
             {
               "name": "Goiabada",
               "description": "O encontro perfeito do queijo com a goiabada. Base de massa frola, creme de cream cheese suave e cobertura generosa de goiabada.",
-              "imageUrl": "/images/card-images/cheesecake-goiabada.jpg"
+              "imageUrl": "/images/card-images/cheesecake-goiabada.webp"
             }
           ]
         }
@@ -1704,7 +1704,7 @@
       "categoryProtoId": 2,
       "name": "Torta Baixa",
       "description": "Uma sobremesa sofisticada. Nossa torta baixa de 20 cm combina uma base crocante com um recheio rico. Serve 10 a 12 fatias generosas, ideal para um café ou após o jantar.",
-      "imageUrl": "/images/card-images/torta-baixa-3-chocolates.png",
+      "imageUrl": "/images/card-images/torta-baixa-3-chocolates.webp",
       "imageAlt": "Torta Baixa",
       "saleUnit": "UN",
       "basePrice": 159,
@@ -1722,12 +1722,12 @@
             {
               "name": "Holandesa",
               "description": "Sofisticação em cada camada: base crocante, biscoitos Calipso na lateral, creme especial de chocolate branco com cream cheese e uma cobertura irresistível de ganache de chocolate.",
-              "imageUrl": "/images/card-images/torta-baixa-holandesa.png"
+              "imageUrl": "/images/card-images/torta-baixa-holandesa.webp"
             },
             {
               "name": "Três Chocolates",
               "description": "O trio perfeito. Base de bolacha, camadas de mousse de chocolate (meio amargo, ao leite e branco) e finalização com ganache de chocolate.",
-              "imageUrl": "/images/card-images/torta-baixa-3-chocolates.png"
+              "imageUrl": "/images/card-images/torta-baixa-3-chocolates.webp"
             },
             {
               "name": "Banoffee",
@@ -1737,7 +1737,7 @@
             {
               "name": "Limão",
               "description": "Frescor em cada fatia. Base de bolacha, mousse de limão cremoso e o toque final sofisticado do glacê maçaricado.",
-              "imageUrl": "/images/card-images/torta-baixa-limao.png"
+              "imageUrl": "/images/card-images/torta-baixa-limao.webp"
             },
             {
               "name": "Ninho com Morango",

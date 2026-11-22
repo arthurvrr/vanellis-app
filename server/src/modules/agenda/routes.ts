@@ -1,24 +1,10 @@
-import { availableDays, type AgendaDTO } from '@vanellis/shared';
+import { availableDays, nowInBrasilia, type AgendaDTO } from '@vanellis/shared';
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../../db/client';
 import { getAgendaInput, itemsLeadHours } from './repository';
 
 export const agendaRouter = Router();
-
-/** Data e hora de agora no horário de Brasília, como 'AAAA-MM-DDTHH:MM'. */
-export function nowInBrasilia(date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date);
-  return parts.replace(' ', 'T');
-}
 
 const query = z.object({
   produtos: z

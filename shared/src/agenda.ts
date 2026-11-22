@@ -162,3 +162,17 @@ export function formatDay(day: Pick<AvailableDay, 'date' | 'weekday'>): string {
   const [, m, d] = day.date.split('-');
   return `${WEEKDAYS[day.weekday]} ${d}/${m}`;
 }
+
+/** Data e hora de agora no horário de Brasília, como 'AAAA-MM-DDTHH:MM'. */
+export function nowInBrasilia(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+  return parts.replace(' ', 'T');
+}

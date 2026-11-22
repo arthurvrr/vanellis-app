@@ -1,10 +1,15 @@
 import {
+  describeSelection,
   formatBRL,
   formatCPF,
   formatDay,
   formatPhone,
+  formatRange,
+  generateOrderCode,
   NAME_MAX_LENGTH,
   NOTE_MAX_LENGTH,
+  buildOrderMessage,
+  orderWhatsAppUrl,
   resolveCart,
   sumRanges,
   validateCustomer,
@@ -12,32 +17,49 @@ import {
   type CustomerData,
   type CustomerErrors,
   type ProductDTO,
+  type PublicSettingsDTO,
 } from '@vanellis/shared';
 import { useEffect, useId, useState } from 'react';
-import { fetchDisponibilidade } from '../lib/api';
+import { fetchConfiguracoes, fetchDisponibilidade } from '../lib/api';
+import { IS_DEMO } from '../lib/demo';
 import { useCart } from '../lib/cart';
 import { useCheckoutDraft, type Pickup, type Touched } from '../lib/checkoutDraft';
 import { PickupCalendar } from './PickupCalendar';
 
-// Tela 3 do cliente: retirada, dados do cliente e avisos (RF05–RF07, RN48), depois de o cliente
-// confirmar o carrinho. Os dados ficam só na memória da página (RN02).
-// O envio pelo WhatsApp (RF08, RF45) entra na próxima etapa.
+// Tela 3 do cliente: retirada, dados do cliente, avisos e envio pelo WhatsApp
+// (RF05–RF08, RF45, RN48). Os dados ficam só na memória da página (RN02).
+
+/** Sorteio do código do pedido com o gerador criptográfico do navegador. */
+const cryptoRandom = () => crypto.getRandomValues(new Uint32Array(1))[0]! / 2 ** 32;
 
 export function CheckoutView({
   produtos,
   onBack,
   onMenu,
+  onSent,
 }: {
   produtos: ProductDTO[];
   onBack: () => void;
   onMenu: () => void;
+  onSent: () => void;
 }) {
-  const { lines: cartLines } = useCart();
+  const { lines: cartLines, clear } = useCart();
   const { valid: lines } = resolveCart(cartLines, produtos);
-  const { pickup, setPickup, customer, setField, touched, touch } = useCheckoutDraft();
+  const { pickup, setPickup, customer, setField, touched, touch, touchAll, agreed, setAgreed, finish } =
+    useCheckoutDraft();
   const productKey = [...new Set(lines.map((l) => l.product.id))].sort((a, b) => a - b).join(',');
   const [agenda, setAgenda] = useState<AgendaDTO | null>(null);
   const [agendaError, setAgendaError] = useState<string | null>(null);
+  const [settings, setSettings] = useState<PublicSettingsDTO | null>(null);
+  const [triedToSend, setTriedToSend] = useState(false);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetchConfiguracoes(ctrl.signal)
+      .then(setSettings)
+      .catch(() => undefined);
+    return () => ctrl.abort();
+  }, []);
 
   // A disponibilidade depende dos produtos (antecedência, RN14): recarrega quando eles mudam.
   useEffect(() => {
@@ -52,7 +74,7 @@ export function CheckoutView({
     return () => ctrl.abort();
   }, [productKey]);
 
-  // Se a escolha deixou de valer (carrinho mudou, faixa lotou), o cliente escolhe de novo.
+  // Se a escolha deixou de valer (carrinho mudou, horário lotou), o cliente escolhe de novo.
   useEffect(() => {
     if (!agenda || !pickup) return;
     const day = agenda.days.find((d) => d.date === pickup.date);
@@ -76,6 +98,57 @@ export function CheckoutView({
   const estimated = lines.some((l) => l.product.saleUnit === 'KG');
   const total = sumRanges(lines.map((l) => l.estimate));
   const itemCount = lines.length === 1 ? '1 item' : `${lines.length} itens`;
+  const day = agenda?.days.find((d) => d.date === pickup?.date);
+
+  // O que ainda falta para enviar (RN48: "Li e concordo" por último).
+  const missing: string[] = [];
+  if (!day) missing.push('escolha o dia da retirada');
+  else if (!day.special && !pickup?.time) missing.push('escolha o horário da retirada');
+  if (Object.keys(errors).length) missing.push('confira seus dados');
+  if (!agreed) missing.push('marque "Li e concordo"');
+
+  const order =
+    day && pickup && settings
+      ? {
+          code: '',
+          lines,
+          pickup: {
+            date: day.date,
+            weekday: day.weekday,
+            time: day.special ? null : pickup.time,
+            special: day.special,
+          },
+          customer,
+        }
+      : null;
+  const tooLong =
+    order !== null && orderWhatsAppUrl(settings!.whatsappNumber, { ...order, code: 'VNL-XXXXX' }) === null;
+
+  const send = () => {
+    setTriedToSend(true);
+    touchAll();
+    if (missing.length || !order || !settings || tooLong) return;
+    const code = generateOrderCode(cryptoRandom);
+    const link = orderWhatsAppUrl(settings.whatsappNumber, { ...order, code });
+    if (!link) return;
+    // Na versão de teste o pedido só aparece na tela, para não chegar ao WhatsApp da padaria.
+    if (!IS_DEMO) window.open(link.url, '_blank');
+    finish({
+      code,
+      url: link.url,
+      message: buildOrderMessage({ ...order, code }, link.compact),
+      pickup: day!.special
+        ? `${formatDay(day!)} (${day!.special}), horário a combinar`
+        : `${formatDay(day!)} às ${pickup!.time}`,
+      items: lines.map(({ line, product }) => {
+        const choices = describeSelection(product, line.selection);
+        return `${line.quantity}x ${product.name}${choices ? ` (${choices})` : ''}`;
+      }),
+      total: total ? `${estimated ? 'Total estimado' : 'Total'}: ${formatRange(total)}` : null,
+    });
+    clear(); // RN50: o carrinho esvazia ao enviar
+    onSent();
+  };
 
   return (
     <section className="cart" aria-labelledby="checkout-title">
@@ -118,12 +191,35 @@ export function CheckoutView({
               )}
               {estimated && (
                 <li>
-                  Os produtos vendidos por quilo têm valor estimado. O preço final só é conhecido quando o produto
-                  fica pronto e é pesado.
+                  Os produtos vendidos por quilo têm valor estimado. O preço final só é conhecido quando o produto fica
+                  pronto e é pesado.
                 </li>
               )}
             </ul>
+            <label className="agree">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              Li e concordo
+            </label>
           </aside>
+
+          {tooLong && (
+            <p className="cart__notice" role="alert">
+              O pedido ficou grande demais para uma mensagem de WhatsApp. Divida em dois pedidos.
+            </p>
+          )}
+          {triedToSend && missing.length > 0 && (
+            <p className="field__error" role="alert">
+              Para enviar: {missing.join(', ')}.
+            </p>
+          )}
+          <button type="button" className="primary primary--whatsapp" disabled={!settings || tooLong} onClick={send}>
+            {IS_DEMO ? 'Enviar pedido (teste)' : 'Enviar pedido pelo WhatsApp'}
+          </button>
+          <p className="field__help send-help">
+            {IS_DEMO
+              ? 'Versão de teste: a mensagem aparece na tela e não é enviada para a padaria.'
+              : 'O WhatsApp abre com a mensagem pronta: é só apertar enviar. O pedido vale depois que a padaria confirmar.'}
+          </p>
         </>
       )}
     </section>
@@ -184,7 +280,11 @@ function PickupPicker({
                 .map((g) => (
                   <div key={g.label} className="time-group">
                     <p className="time-group__label">{g.label}</p>
-                    <div className="group__options" role="radiogroup" aria-label={`Horário da retirada, ${g.label.toLowerCase()}`}>
+                    <div
+                      className="group__options"
+                      role="radiogroup"
+                      aria-label={`Horário da retirada, ${g.label.toLowerCase()}`}
+                    >
                       {g.times.map((t) => {
                         const on = value?.time === t;
                         return (

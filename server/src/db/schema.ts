@@ -2,3 +2,4 @@
 // para o Drizzle (consultas e geração de migrações).
 export * from '../modules/catalogo/schema';
 export * from '../modules/agenda/schema';
+export * from '../modules/configuracoes/schema';

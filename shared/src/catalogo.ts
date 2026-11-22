@@ -1,6 +1,8 @@
 // Tipos do catálogo trafegados entre servidor e site.
 // Espelham o esquema proposto no doc de requisitos (Modelo de produtos e banco de dados).
 
+import type { AgendaInput } from './agenda';
+
 export type SaleUnit = 'UN' | 'KG';
 export type PriceMode = 'replace' | 'add';
 
@@ -62,3 +64,17 @@ export interface CatalogoDTO {
 
 /** Opções escolhidas pelo cliente, por id de grupo. */
 export type Selection = Record<number, number[]>;
+
+/** Configurações da loja usadas pelo site público (RF23, RF34). */
+export interface PublicSettingsDTO {
+  whatsappNumber: string;
+  instagramUrl: string | null;
+  contactPhone: string | null;
+}
+
+/** Dados da versão de teste estática (GitHub Pages), exportados do banco. */
+export interface DemoData {
+  catalogo: CatalogoDTO;
+  agenda: { input: AgendaInput; paused: boolean };
+  configuracoes: PublicSettingsDTO;
+}

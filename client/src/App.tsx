@@ -2,17 +2,24 @@ import type { CatalogoDTO } from '@vanellis/shared';
 import { useEffect, useState } from 'react';
 import { CartView } from './components/CartView';
 import { CheckoutView } from './components/Checkout';
+import { ConfirmationView } from './components/ConfirmationView';
 import { ProductCard } from './components/ProductCard';
 import { fetchCatalogo } from './lib/api';
 import { useCart } from './lib/cart';
+import { IS_DEMO } from './lib/demo';
 
-type View = 'cardapio' | 'carrinho' | 'dados';
-const HASHES: Record<View, string> = { cardapio: '', carrinho: '#carrinho', dados: '#dados' };
+type View = 'cardapio' | 'carrinho' | 'dados' | 'confirmacao';
+const HASHES: Record<View, string> = {
+  cardapio: '',
+  carrinho: '#carrinho',
+  dados: '#dados',
+  confirmacao: '#confirmacao',
+};
 const viewFromHash = (): View =>
   (Object.keys(HASHES) as View[]).find((v) => HASHES[v] && HASHES[v] === window.location.hash) ?? 'cardapio';
 
-// Telas do cliente (RNF02): Cardápio, Carrinho, Retirada e dados; a Confirmação vem com o envio.
-// A tela fica no endereço (#carrinho, #dados) para o botão "voltar" do celular funcionar.
+// Telas do cliente (RNF02): Cardápio, Carrinho, Retirada e dados, Confirmação.
+// A tela fica no endereço (#carrinho, #dados, #confirmacao) para o botão "voltar" do celular funcionar.
 export function App() {
   const [catalogo, setCatalogo] = useState<CatalogoDTO | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -43,17 +50,24 @@ export function App() {
   };
 
   const header = (
-    <header className="header">
-      <h1>
-        <button type="button" className="header__logo" onClick={() => go('cardapio')}>
-          VANELLIS
+    <>
+      {IS_DEMO && (
+        <p className="demo-banner" role="note">
+          <strong>Versão de teste.</strong> Os pedidos não são enviados para a padaria. Use dados fictícios.
+        </p>
+      )}
+      <header className="header">
+        <h1>
+          <button type="button" className="header__logo" onClick={() => go('cardapio')}>
+            VANELLIS
+          </button>
+        </h1>
+        <button type="button" className="header__cart" onClick={() => go('carrinho')}>
+          Carrinho
+          {lines.length > 0 && <span className="header__count">{lines.length}</span>}
         </button>
-      </h1>
-      <button type="button" className="header__cart" onClick={() => go('carrinho')}>
-        Carrinho
-        {lines.length > 0 && <span className="header__count">{lines.length}</span>}
-      </button>
-    </header>
+      </header>
+    </>
   );
 
   if (erro) return <p className="status">{erro}</p>;
@@ -68,11 +82,25 @@ export function App() {
     );
   }
 
+  if (view === 'confirmacao') {
+    return (
+      <>
+        {header}
+        <ConfirmationView onMenu={() => go('cardapio')} />
+      </>
+    );
+  }
+
   if (view === 'dados') {
     return (
       <>
         {header}
-        <CheckoutView produtos={catalogo.produtos} onBack={() => go('carrinho')} onMenu={() => go('cardapio')} />
+        <CheckoutView
+          produtos={catalogo.produtos}
+          onBack={() => go('carrinho')}
+          onMenu={() => go('cardapio')}
+          onSent={() => go('confirmacao')}
+        />
       </>
     );
   }

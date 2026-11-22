@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { db, pool } from '../client';
 import { loadAgenda } from './agenda';
+import { loadConfiguracoes } from './configuracoes';
 import { loadCatalogo } from './load';
 import type { SeedCatalogo } from './types';
 
@@ -14,10 +15,11 @@ const seed = JSON.parse(
 
 await loadCatalogo(db, seed);
 await loadAgenda(db);
+await loadConfiguracoes(db);
 
 const pendentes = seed.produtos.filter((p) => p.pending.length).length;
 console.log(
-  `Carga concluída: ${seed.categorias.length} categorias, ${seed.produtos.length} produtos, ${seed.modelos.length} modelos e agenda provisória.`,
+  `Carga concluída: ${seed.categorias.length} categorias, ${seed.produtos.length} produtos, ${seed.modelos.length} modelos, agenda e configurações provisórias.`,
 );
 console.log(`${pendentes} produtos com pendências (pesos provisórios ou fotos). Códigos PDV ainda vazios.`);
 await pool.end();

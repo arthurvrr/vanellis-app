@@ -8,6 +8,7 @@ import {
   type Selection,
 } from '@vanellis/shared';
 import { useState } from 'react';
+import { asset } from '../lib/demo';
 import { useCart } from '../lib/cart';
 import { useToast } from '../lib/toast';
 import { QuantityStepper } from './QuantityStepper';
@@ -55,7 +56,7 @@ export function ProductCard({ product }: { product: ProductDTO }) {
 
   return (
     <article className={product.available ? 'card' : 'card card--off'}>
-      {image && <img className="card__img" src={image} alt={product.imageAlt ?? product.name} loading="lazy" />}
+      {image && <img className="card__img" src={asset(image)} alt={product.imageAlt ?? product.name} loading="lazy" />}
       <div className="card__body">
         <div className="card__head">
           <h2 className="card__name">{product.name}</h2>

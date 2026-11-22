@@ -608,3 +608,74 @@ body {
   justify-content: center;
   font-variant-numeric: tabular-nums;
 }
+
+/* Envio e confirmação */
+.agree {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--dourado);
+  font-weight: bold;
+  cursor: pointer;
+}
+.agree input {
+  width: 1.3rem;
+  height: 1.3rem;
+  accent-color: var(--marrom);
+}
+.primary--whatsapp {
+  background: #1f8f4e;
+  color: #fff;
+  text-align: center;
+  text-decoration: none;
+  line-height: 3rem;
+}
+.send-help {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+.confirmation__code {
+  font-size: 1.1rem;
+}
+.confirmation__code strong {
+  font-size: 1.3rem;
+  letter-spacing: 0.05em;
+  color: var(--marrom);
+}
+.confirmation__summary {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+}
+.confirmation__summary p {
+  margin: 0.25rem 0;
+}
+.confirmation__summary ul {
+  margin: 0.5rem 0;
+  padding-left: 1.2rem;
+}
+
+/* Versão de teste (GitHub Pages) */
+.demo-banner {
+  margin: 0;
+  padding: 0.4rem 1rem;
+  background: var(--texto);
+  color: var(--creme);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.confirmation__message {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

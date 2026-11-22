@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { agendaRouter } from './modules/agenda/routes';
 import { catalogoRouter } from './modules/catalogo/routes';
+import { configuracoesRouter } from './modules/configuracoes/routes';
 
 export function createApp() {
   const app = express();
@@ -12,10 +13,11 @@ export function createApp() {
     res.json({ ok: true });
   });
 
-  // Um router por módulo de domínio (RNF14). Entrega, configurações e acesso
+  // Um router por módulo de domínio (RNF14). Entrega e acesso
   // entram aqui conforme forem implementados.
   app.use('/api/catalogo', catalogoRouter);
   app.use('/api/agenda', agendaRouter);
+  app.use('/api/configuracoes', configuracoesRouter);
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'Rota não encontrada' });

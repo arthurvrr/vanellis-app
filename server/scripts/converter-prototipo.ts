@@ -53,7 +53,8 @@ function titleCase(s: string): string {
     .map((w, i) => (i > 0 && lowerWords.has(w) ? w : w.charAt(0).toLocaleUpperCase('pt-BR') + w.slice(1)))
     .join(' ');
 }
-const img = (p: string | null) => (p ? `/images${p}` : null);
+// As fotos ficam em client/public como WebP reduzido (RNF03); o protótipo tem PNG/JPG.
+const img = (p: string | null) => (p ? `/images${p}`.replace(/\.(png|jpe?g)$/i, '.webp') : null);
 const num = (v: string | number | null) => (v === null ? null : Number(v));
 const clean = (s: string | null) => (s && s.trim() ? s.trim() : null);
 
