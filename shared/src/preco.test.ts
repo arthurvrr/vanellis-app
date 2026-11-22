@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardImage, cardPrice, itemEstimate, missingGroups, pricePerUnit } from './preco';
+import { cardEstimate, cardImage, cardPrice, itemEstimate, missingGroups, pricePerUnit, withoutPrices } from './preco';
 import { group, option, product } from './test-utils';
 
 
@@ -84,5 +84,36 @@ describe('adicional sem custo não muda o preço (Torta Brigadeiro)', () => {
     expect(pricePerUnit(torta, {})).toBe(89.9);
     expect(pricePerUnit(torta, { 30: [300] })).toBe(89.9);
     expect(missingGroups(torta, {})).toEqual([]);
+  });
+});
+
+describe('estimativa no card do produto por quilo (RN49)', () => {
+  const tamanho = group({
+    id: 30,
+    name: 'Tamanho',
+    options: [
+      option({ id: 300, name: 'Pequena', weightMinKg: 1.2, weightMaxKg: 1.5 }),
+      option({ id: 301, name: 'Grande', weightMinKg: 2.5, weightMaxKg: 3 }),
+    ],
+  });
+  const torta = product({ saleUnit: 'KG', basePrice: 80, groups: [tamanho] });
+  const coxinha = product({ basePrice: 1.6, minQuantity: 25 });
+
+  it('não aparece antes de escolher o tamanho', () => {
+    expect(cardEstimate(torta, {}, 1)).toBeNull();
+  });
+
+  it('aparece com o tamanho escolhido, multiplicada pela quantidade do card', () => {
+    expect(cardEstimate(torta, { 30: [300] }, 1)).toEqual({ min: 96, max: 120 });
+    expect(cardEstimate(torta, { 30: [301] }, 2)).toEqual({ min: 400, max: 480 });
+  });
+
+  it('não aparece em produto por unidade', () => {
+    expect(cardEstimate(coxinha, {}, 25)).toBeNull();
+  });
+
+  it('com preços ocultos não é calculada (nada de NaN): o card não mostra a linha', () => {
+    const [semPreco] = withoutPrices({ produtos: [torta] }).produtos;
+    expect(cardEstimate(semPreco!, { 30: [300] }, 1)).toBeNull();
   });
 });

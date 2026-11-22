@@ -51,6 +51,16 @@ Requisitos: Node 20.19 ou mais novo e PostgreSQL.
    npm run db:seed
    ```
 
+4. Criar as contas do painel (RN54): o superusuário e o operador. A senha é pedida no
+   terminal e não aparece na tela.
+
+   ```bash
+   npm run usuario:senha -- <seu-usuário> --papel admin
+   npm run usuario:senha -- <usuário-da-padaria> --papel operador
+   ```
+
+O site fica em http://localhost:5173 e o painel em http://localhost:5173/painel/.
+
 ## Comandos
 
 | Comando | O que faz |
@@ -58,11 +68,12 @@ Requisitos: Node 20.19 ou mais novo e PostgreSQL.
 | `npm run dev` | Servidor (porta 3000) e site (porta 5173) com recarga automática |
 | `npm run build` | Compila site e servidor |
 | `npm start` | Roda o servidor compilado, servindo API e site |
-| `npm test` | Testes das regras de preço |
+| `npm test` | Testes das regras (shared) e dos cenários do servidor |
 | `npm run typecheck` | Verificação de tipos dos três pacotes |
 | `npm run db:generate` | Gera uma migração a partir das mudanças no esquema |
 | `npm run db:migrate` | Aplica as migrações pendentes |
 | `npm run db:seed` | Apaga e recarrega o catálogo a partir de `server/src/db/seed/catalogo.json` |
+| `npm run usuario:senha -- <usuário>` | Troca a senha de uma conta do painel e encerra as sessões dela (com `--papel`, cria a conta) |
 | `npm run demo:export` | Exporta catálogo, agenda e configurações do banco para a versão de teste |
 | `npm run demo:build` | Compila a versão de teste em `client/dist` |
 

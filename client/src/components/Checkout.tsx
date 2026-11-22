@@ -34,11 +34,14 @@ const cryptoRandom = () => crypto.getRandomValues(new Uint32Array(1))[0]! / 2 **
 
 export function CheckoutView({
   produtos,
+  pricesHidden,
   onBack,
   onMenu,
   onSent,
 }: {
   produtos: ProductDTO[];
+  /** Preços ocultos pelo operador (RF39, RN38). */
+  pricesHidden: boolean;
   onBack: () => void;
   onMenu: () => void;
   onSent: () => void;
@@ -189,7 +192,10 @@ export function CheckoutView({
                   outro horário conforme a disponibilidade.
                 </li>
               )}
-              {estimated && (
+              {pricesHidden && (
+                <li>Os preços estão sendo atualizados: a padaria informa os valores na confirmação do pedido.</li>
+              )}
+              {estimated && !pricesHidden && (
                 <li>
                   Os produtos vendidos por quilo têm valor estimado. O preço final só é conhecido quando o produto fica
                   pronto e é pesado.

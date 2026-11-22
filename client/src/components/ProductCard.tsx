@@ -1,8 +1,10 @@
 import {
   cannotAdd,
+  cardEstimate,
   cardImage,
   cardPrice,
   formatBRL,
+  formatRange,
   type OptionGroupDTO,
   type ProductDTO,
   type Selection,
@@ -14,7 +16,8 @@ import { useToast } from '../lib/toast';
 import { QuantityStepper } from './QuantityStepper';
 
 // Card genérico: desenha os grupos de opção que o produto tiver, sem tipos fixos.
-// Mostra só o essencial (RN49); avisos ficam no checkout (RN48).
+// Mostra só o essencial (RN49): preço do kg no topo e, com o tamanho escolhido, a
+// estimativa no fim; avisos ficam no checkout (RN48).
 export function ProductCard({ product }: { product: ProductDTO }) {
   const [selection, setSelection] = useState<Selection>({});
   const [quantity, setQuantity] = useState(product.minQuantity);
@@ -49,6 +52,7 @@ export function ProductCard({ product }: { product: ProductDTO }) {
 
   const price = cardPrice(product, selection);
   const image = cardImage(product, selection);
+  const estimate = cardEstimate(product, selection, quantity);
   const chosenDescriptions = product.groups
     .flatMap((g) => g.options.filter((o) => selection[g.id]?.includes(o.id)))
     .map((o) => o.description)
@@ -119,6 +123,12 @@ export function ProductCard({ product }: { product: ProductDTO }) {
         <p className="card__hint">
           {blocked ?? (product.minQuantity > 1 ? `Mínimo de ${product.minQuantity} unidades` : '')}
         </p>
+        {/* Por quilo: com o tamanho escolhido, a estimativa aparece no fim do card (RN49). */}
+        {estimate && (
+          <p className="card__estimate">
+            Estimativa{quantity > 1 ? ` para ${quantity}` : ''}: <strong>{formatRange(estimate)}</strong>
+          </p>
+        )}
       </div>
     </article>
   );

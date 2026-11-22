@@ -1,9 +1,11 @@
 import type { CatalogoDTO } from '@vanellis/shared';
 import { useEffect, useState } from 'react';
 import { CartView } from './components/CartView';
+import { ContactIcons } from './components/ContactIcons';
 import { CheckoutView } from './components/Checkout';
 import { ConfirmationView } from './components/ConfirmationView';
 import { ProductCard } from './components/ProductCard';
+import { SiteFooter } from './components/SiteFooter';
 import { fetchCatalogo } from './lib/api';
 import { useCart } from './lib/cart';
 import { IS_DEMO } from './lib/demo';
@@ -62,10 +64,39 @@ export function App() {
             VANELLIS
           </button>
         </h1>
-        <button type="button" className="header__cart" onClick={() => go('carrinho')}>
-          Carrinho
-          {lines.length > 0 && <span className="header__count">{lines.length}</span>}
-        </button>
+        <div className="header__actions">
+          <ContactIcons />
+          {/* Carrinho sempre visível, só o ícone, com a quantidade de itens no selo. */}
+          <button
+            type="button"
+            className="header__icon header__cart-btn"
+            onClick={() => go('carrinho')}
+            aria-label={
+              lines.length === 0
+                ? 'Carrinho vazio'
+                : `Carrinho, ${lines.length} ${lines.length === 1 ? 'item' : 'itens'}`
+            }
+            title="Carrinho"
+          >
+            <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" focusable="false">
+              <path
+                d="M2.5 3.5h2.2l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1l1.8-7.3H6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="9.5" cy="19.6" r="1.5" fill="currentColor" />
+              <circle cx="17" cy="19.6" r="1.5" fill="currentColor" />
+            </svg>
+            {lines.length > 0 && (
+              <span className="header__badge" aria-hidden="true">
+                {lines.length > 99 ? '99+' : lines.length}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
     </>
   );
@@ -77,7 +108,13 @@ export function App() {
     return (
       <>
         {header}
-        <CartView produtos={catalogo.produtos} onBack={() => go('cardapio')} onContinue={() => go('dados')} />
+        <CartView
+          produtos={catalogo.produtos}
+          pricesHidden={catalogo.pricesHidden}
+          onBack={() => go('cardapio')}
+          onContinue={() => go('dados')}
+        />
+        <SiteFooter />
       </>
     );
   }
@@ -87,6 +124,7 @@ export function App() {
       <>
         {header}
         <ConfirmationView onMenu={() => go('cardapio')} />
+        <SiteFooter />
       </>
     );
   }
@@ -97,10 +135,12 @@ export function App() {
         {header}
         <CheckoutView
           produtos={catalogo.produtos}
+          pricesHidden={catalogo.pricesHidden}
           onBack={() => go('carrinho')}
           onMenu={() => go('cardapio')}
           onSent={() => go('confirmacao')}
         />
+        <SiteFooter />
       </>
     );
   }
@@ -122,11 +162,17 @@ export function App() {
           </button>
         ))}
       </nav>
+      {catalogo.pricesHidden && (
+        <p className="menu-notice" role="note">
+          Os preços estão sendo atualizados. A padaria informa os valores na confirmação do pedido.
+        </p>
+      )}
       <main className="grid">
         {produtos.map((p) => (
           <ProductCard key={p.id} product={p} />
         ))}
       </main>
+      <SiteFooter />
     </>
   );
 }

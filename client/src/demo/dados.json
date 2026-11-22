@@ -2587,7 +2587,8 @@
           }
         ]
       }
-    ]
+    ],
+    "pricesHidden": false
   },
   "agenda": {
     "input": {
@@ -2669,6 +2670,8 @@
   "configuracoes": {
     "whatsappNumber": "5551995284226",
     "instagramUrl": "https://www.instagram.com/padariaeconfeitariavanellis/",
-    "contactPhone": null
+    "contactPhone": "5551995284226",
+    "address": "Av. Paraguassu, 557 - Noiva do Mar, Xangri-lá - RS, 95588-000",
+    "mapsUrl": "https://maps.google.com/?cid=12232299815005214583"
   }
 }

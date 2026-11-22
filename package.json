@@ -17,7 +17,8 @@
     "db:migrate": "npm run db:migrate -w server",
     "db:seed": "npm run db:seed -w server",
     "demo:export": "npm run demo:export -w server",
-    "demo:build": "npm run build:demo -w client"
+    "demo:build": "npm run build:demo -w client",
+    "usuario:senha": "npm run usuario:senha -w server --"
   },
   "devDependencies": {
     "concurrently": "^10.0.7",

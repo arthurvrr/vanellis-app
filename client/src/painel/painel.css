@@ -1,0 +1,134 @@
+/* Painel do operador: reaproveita as cores e componentes do site (global.css). */
+
+.painel__header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.painel__user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+.painel__menu .tab {
+  text-decoration: none;
+}
+.painel__page {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+.painel__page h2 {
+  margin: 0.5rem 0 1rem;
+}
+
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+.login__box {
+  width: 100%;
+  max-width: 22rem;
+  background: #fff;
+  border: 1px solid rgba(230, 217, 191, 0.7);
+  border-radius: 20px;
+  box-shadow: var(--sombra-3);
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+.login__box h1 {
+  margin: 0;
+  color: var(--marrom);
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+.login__sub {
+  margin: 0.25rem 0 0.5rem;
+  text-align: center;
+}
+.login__error {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.alerts {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.alert {
+  box-shadow: var(--sombra-1);
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: #fde8e4;
+  border: 1px solid #e0a093;
+  color: #7a2617;
+}
+
+.switches {
+  display: grid;
+  gap: 1rem;
+}
+.switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #fff;
+  border: 1px solid rgba(230, 217, 191, 0.7);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  box-shadow: var(--sombra-2);
+}
+.switch > div {
+  flex: 1 1 16rem;
+}
+.switch h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.switch__state {
+  margin: 0.25rem 0 0.5rem;
+  font-weight: bold;
+  color: #1f6f3e;
+}
+.switch__state--off {
+  color: #a3361f;
+}
+.switch__btn {
+  box-shadow: var(--sombra-1);
+  min-height: 2.75rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--marrom);
+  background: var(--creme);
+  color: var(--marrom);
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+.switch__btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.card-form {
+  background: #fff;
+  border: 1px solid rgba(230, 217, 191, 0.7);
+  border-radius: 16px;
+  box-shadow: var(--sombra-2);
+  padding: 1rem 1.25rem;
+}
+.card-form h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+.form-ok {
+  margin: 0.75rem 0 0;
+  color: #1f6f3e;
+}

@@ -27,10 +27,13 @@ function describe(product: ProductDTO, selection: Selection): string {
 // segue para a tela de retirada e dados.
 export function CartView({
   produtos,
+  pricesHidden,
   onBack,
   onContinue,
 }: {
   produtos: ProductDTO[];
+  /** Preços ocultos pelo operador (RF39, RN38). */
+  pricesHidden: boolean;
   onBack: () => void;
   onContinue: () => void;
 }) {
@@ -107,6 +110,12 @@ export function CartView({
               <strong>{formatRange(total)}</strong>
             </p>
           )}
+          {/* RN07: preço de referência; RN38: com preços ocultos, valores vêm na confirmação. */}
+          <p className="cart__ref">
+            {pricesHidden
+              ? 'Os preços estão sendo atualizados: a padaria informa os valores na confirmação do pedido.'
+              : 'Os preços do site são uma referência. O valor final é o registrado pela padaria no caixa.'}
+          </p>
 
           <button type="button" className="primary" onClick={onContinue}>
             Continuar

@@ -43,6 +43,16 @@ export async function fetchDisponibilidade(productIds: number[], signal?: AbortS
   return getJSON(`/api/agenda/disponibilidade?produtos=${ids}`, 'os horários de retirada', signal);
 }
 
+/** Configurações carregadas uma vez por visita: cabeçalho, rodapé e envio usam as mesmas. */
+let settingsOnce: Promise<PublicSettingsDTO> | null = null;
+export function loadSettings(): Promise<PublicSettingsDTO> {
+  settingsOnce ??= fetchConfiguracoes().catch((e: unknown) => {
+    settingsOnce = null; // tenta de novo na próxima vez
+    throw e;
+  });
+  return settingsOnce;
+}
+
 /** WhatsApp que recebe os pedidos e atalhos de contato (RF23, RF34). */
 export function fetchConfiguracoes(signal?: AbortSignal): Promise<PublicSettingsDTO> {
   if (IS_DEMO) return demo().then((d) => d.configuracoes);

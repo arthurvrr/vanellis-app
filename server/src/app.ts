@@ -1,23 +1,29 @@
 import express, { type ErrorRequestHandler } from 'express';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { db as defaultDb, type DB } from './db/client';
+import { acessoRouter } from './modules/acesso/routes';
 import { agendaRouter } from './modules/agenda/routes';
 import { catalogoRouter } from './modules/catalogo/routes';
-import { configuracoesRouter } from './modules/configuracoes/routes';
+import { configuracoesPainelRouter, configuracoesRouter } from './modules/configuracoes/routes';
+import { painelRouter } from './modules/painel/routes';
 
-export function createApp() {
+export function createApp(db: DB = defaultDb) {
   const app = express();
-  app.use(express.json());
+  app.disable('x-powered-by');
+  app.use(express.json({ limit: '100kb' }));
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true });
   });
 
-  // Um router por módulo de domínio (RNF14). Entrega e acesso
-  // entram aqui conforme forem implementados.
+  // Um router por módulo de domínio (RNF14). Entrega entra aqui quando for implementada.
   app.use('/api/catalogo', catalogoRouter);
   app.use('/api/agenda', agendaRouter);
-  app.use('/api/configuracoes', configuracoesRouter);
+  app.use('/api/configuracoes', configuracoesRouter(db));
+  app.use('/api/auth', acessoRouter(db));
+  app.use('/api/painel/configuracoes', configuracoesPainelRouter(db));
+  app.use('/api/painel', painelRouter(db));
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'Rota não encontrada' });
@@ -27,6 +33,9 @@ export function createApp() {
   const clientDist = fileURLToPath(new URL('../../client/dist', import.meta.url));
   if (existsSync(clientDist)) {
     app.use(express.static(clientDist));
+    app.get('/painel{/*path}', (_req, res) => {
+      res.sendFile('painel/index.html', { root: clientDist });
+    });
     app.get('/{*path}', (_req, res) => {
       res.sendFile('index.html', { root: clientDist });
     });

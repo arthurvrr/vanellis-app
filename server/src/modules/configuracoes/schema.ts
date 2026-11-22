@@ -1,8 +1,8 @@
 // Configurações da loja, linha única (id = 1): WhatsApp que recebe os pedidos (RF23)
-// e atalhos de contato do site (RF34).
+// e atalhos de contato e localização do site (RF34).
 
 import { sql } from 'drizzle-orm';
-import { check, integer, pgTable, varchar } from 'drizzle-orm/pg-core';
+import { boolean, check, integer, pgTable, varchar } from 'drizzle-orm/pg-core';
 
 export const storeSettings = pgTable(
   'store_settings',
@@ -12,6 +12,12 @@ export const storeSettings = pgTable(
     whatsappNumber: varchar('whatsapp_number', { length: 15 }).notNull(),
     instagramUrl: varchar('instagram_url', { length: 200 }),
     contactPhone: varchar('contact_phone', { length: 15 }),
+    /** Endereço da loja, mostrado no atalho de localização (RF34). */
+    address: varchar('address', { length: 200 }),
+    /** Link do Google Maps aberto pelo pin de localização; sem ele, busca pelo endereço. */
+    mapsUrl: varchar('maps_url', { length: 500 }),
+    /** Oculta todos os preços do site (RF39). */
+    pricesHidden: boolean('prices_hidden').notNull().default(false),
   },
   (t) => [
     check('store_settings_single_row', sql`${t.id} = 1`),

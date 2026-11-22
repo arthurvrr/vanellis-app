@@ -11,10 +11,17 @@
 
 :root {
   --marrom: #82652f;
+  --marrom-forte: #4a3212;
   --dourado: #d9b167;
   --creme: #fbf6ec;
   --texto: #3b2f1c;
   --borda: #e6d9bf;
+  /* Sombras em tom marrom, do mais sutil ao mais alto. */
+  --sombra-1: 0 1px 2px rgba(59, 47, 28, 0.06), 0 2px 6px rgba(59, 47, 28, 0.06);
+  --sombra-2: 0 2px 4px rgba(59, 47, 28, 0.05), 0 8px 22px rgba(59, 47, 28, 0.1);
+  --sombra-3: 0 6px 12px rgba(59, 47, 28, 0.08), 0 18px 36px rgba(59, 47, 28, 0.16);
+  --sombra-botao: 0 2px 6px rgba(130, 101, 47, 0.35);
+  --anel-foco: 0 0 0 3px rgba(217, 177, 103, 0.45);
   font-family: 'LouisGeorgeCafe', system-ui, sans-serif;
   color: var(--texto);
   background: var(--creme);
@@ -30,7 +37,8 @@ body {
 }
 
 .header {
-  background: var(--dourado);
+  background: linear-gradient(180deg, #e2bd78 0%, var(--dourado) 100%);
+  box-shadow: 0 2px 12px rgba(59, 47, 28, 0.2);
   padding: 0.5rem 1rem;
   display: flex;
   align-items: center;
@@ -84,7 +92,9 @@ body {
 }
 .tab {
   border: 1px solid var(--marrom);
-  background: none;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: var(--sombra-1);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
   color: var(--marrom);
   border-radius: 999px;
   padding: 0.4rem 1rem;
@@ -95,6 +105,10 @@ body {
 .tab--active {
   background: var(--marrom);
   color: var(--creme);
+  box-shadow: var(--sombra-botao);
+}
+.tab:not(.tab--active):hover {
+  background: #fff;
 }
 
 .grid {
@@ -106,11 +120,19 @@ body {
 
 .card {
   background: #fff;
-  border: 1px solid var(--borda);
-  border-radius: 12px;
+  border: 1px solid rgba(230, 217, 191, 0.7);
+  border-radius: 16px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--sombra-2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-3);
+  }
 }
 .card--off {
   opacity: 0.6;
@@ -187,6 +209,10 @@ body {
   border-color: var(--marrom);
   background: var(--marrom);
   color: var(--creme);
+  box-shadow: var(--sombra-botao);
+}
+.chip:not(.chip--on):hover {
+  border-color: var(--marrom);
 }
 
 /* Quantidade e adicionar */
@@ -209,6 +235,7 @@ body {
   border-radius: 999px;
   overflow: hidden;
   background: #fff;
+  box-shadow: var(--sombra-1);
 }
 .stepper__btn {
   border: 0;
@@ -240,11 +267,23 @@ body {
   font: inherit;
   font-weight: bold;
   cursor: pointer;
+  box-shadow: var(--sombra-botao);
+  transition: transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.add:not(:disabled):hover,
+.primary:not(:disabled):hover {
+  background: #6f5527;
+}
+.add:not(:disabled):active,
+.primary:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: none;
 }
 .add:disabled {
   background: var(--borda);
   color: var(--texto);
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* Carrinho */
@@ -288,9 +327,10 @@ body {
   gap: 0.75rem;
   align-items: start;
   background: #fff;
-  border: 1px solid var(--borda);
-  border-radius: 12px;
+  border: 1px solid rgba(230, 217, 191, 0.7);
+  border-radius: 16px;
   padding: 0.75rem;
+  box-shadow: var(--sombra-1);
 }
 .cart__img {
   width: 64px;
@@ -356,7 +396,8 @@ body {
   margin-top: 1rem;
   background: #fff4d6;
   border: 1px solid var(--dourado);
-  border-radius: 12px;
+  border-radius: 16px;
+  box-shadow: var(--sombra-1);
   padding: 0.75rem 1rem;
 }
 .notices h3 {
@@ -453,9 +494,17 @@ body {
   font: inherit;
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--borda);
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fff;
   min-height: 2.75rem;
+  box-shadow: inset 0 1px 2px rgba(59, 47, 28, 0.05);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--dourado);
+  box-shadow: var(--anel-foco);
 }
 .field input[aria-invalid='true'],
 .field textarea[aria-invalid='true'] {
@@ -474,8 +523,9 @@ body {
 .calendar {
   max-width: 22rem;
   background: #fff;
-  border: 1px solid var(--borda);
-  border-radius: 12px;
+  border: 1px solid rgba(230, 217, 191, 0.7);
+  border-radius: 16px;
+  box-shadow: var(--sombra-2);
   padding: 0.75rem;
 }
 .calendar__head {
@@ -570,6 +620,8 @@ body {
   min-height: 3rem;
   border: 0;
   border-radius: 999px;
+  box-shadow: var(--sombra-botao);
+  transition: transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease;
   background: var(--marrom);
   color: var(--creme);
   font: inherit;
@@ -625,7 +677,8 @@ body {
   height: 1.3rem;
   accent-color: var(--marrom);
 }
-.primary--whatsapp {
+.primary--whatsapp,
+.primary--whatsapp:not(:disabled):hover {
   background: #1f8f4e;
   color: #fff;
   text-align: center;
@@ -649,7 +702,8 @@ body {
   padding: 0.75rem 1rem;
   background: #fff;
   border: 1px solid var(--borda);
-  border-radius: 12px;
+  border-radius: 16px;
+  box-shadow: var(--sombra-1);
 }
 .confirmation__summary p {
   margin: 0.25rem 0;
@@ -673,9 +727,184 @@ body {
   padding: 0.75rem 1rem;
   background: #fff;
   border: 1px solid var(--borda);
-  border-radius: 12px;
+  border-radius: 16px;
+  box-shadow: var(--sombra-1);
   font-family: inherit;
   font-size: 0.9rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* Estimativa do produto por quilo no fim do card (RN49) */
+.card__estimate {
+  margin: 0;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--borda);
+  font-size: 0.9rem;
+}
+.card__estimate strong {
+  color: var(--marrom);
+}
+
+/* Avisos de preço (RN07, RN38) */
+.cart__ref {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  text-align: right;
+}
+.menu-notice {
+  box-shadow: var(--sombra-1);
+  margin: 0 1rem 1rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff4d6;
+  border: 1px solid var(--dourado);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+/* Rodapé: telefone (RF33) e acesso da equipe (RF49), em marrom forte como os ícones */
+.footer {
+  margin-top: 2rem;
+  padding: 1.5rem 1rem 1.75rem;
+  background: var(--marrom-forte);
+  color: var(--creme);
+  box-shadow: 0 -4px 14px rgba(59, 47, 28, 0.18);
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+.footer a {
+  color: var(--creme);
+}
+.footer a:hover,
+.footer a:focus-visible {
+  color: #fff;
+}
+.footer__team {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+/* Atalhos de contato no cabeçalho (RF33) */
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.header__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  background: none;
+  color: var(--marrom-forte);
+}
+/* Ícones soltos na barra, em marrom forte, com sombra (sem o círculo em volta). */
+.header__icon svg {
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 1.5px 1.5px rgba(59, 47, 28, 0.45));
+  transition: transform 0.15s ease;
+}
+.header__icon:hover svg,
+.header__icon:focus-visible svg {
+  transform: translateY(-1px) scale(1.08);
+}
+.header__icon:focus-visible {
+  outline: 2px solid var(--marrom-forte);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.header__cart-btn {
+  position: relative;
+  padding: 0;
+  cursor: pointer;
+}
+.header__badge {
+  position: absolute;
+  top: 0;
+  right: -0.1rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--marrom-forte);
+  color: var(--creme);
+  border: 2px solid var(--dourado);
+  font-size: 0.7rem;
+  font-weight: bold;
+  line-height: 1rem;
+  text-align: center;
+}
+.header__contacts {
+  display: flex;
+  gap: 0.5rem;
+}
+.header__menu {
+  display: none;
+  position: relative;
+}
+.header__menu-btn {
+  cursor: pointer;
+  padding: 0;
+}
+.header__dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  min-width: 11rem;
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  box-shadow: var(--sombra-3);
+  z-index: 2;
+}
+.header__dropdown a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  color: var(--marrom);
+  text-decoration: none;
+}
+.header__dropdown a:hover,
+.header__dropdown a:focus-visible {
+  background: var(--creme);
+}
+
+/* Celular: nome, menu de contatos e carrinho na mesma linha */
+@media (max-width: 600px) {
+  .header {
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .header h1 {
+    font-size: 1.15rem;
+  }
+  .header__logo {
+    letter-spacing: 0.08em;
+  }
+  .header__actions {
+    gap: 0.35rem;
+  }
+  .header__icon {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+  /* Celular: contatos no menu hambúrguer, Carrinho sempre visível. */
+  .header__contacts {
+    display: none;
+  }
+  .header__menu {
+    display: block;
+  }
 }

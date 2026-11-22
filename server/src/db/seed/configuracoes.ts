@@ -12,7 +12,10 @@ export async function loadConfiguracoes(db: DB): Promise<void> {
       id: 1,
       whatsappNumber: '5551995284226',
       instagramUrl: 'https://www.instagram.com/padariaeconfeitariavanellis/',
-      contactPhone: null,
+      // Telefone e endereço da ficha da padaria no Google Maps (provisórios, editáveis no painel).
+      contactPhone: '5551995284226',
+      address: 'Av. Paraguassu, 557 - Noiva do Mar, Xangri-lá - RS, 95588-000',
+      mapsUrl: 'https://maps.google.com/?cid=12232299815005214583',
     });
   });
 }

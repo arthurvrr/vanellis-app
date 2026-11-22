@@ -60,6 +60,8 @@ export interface ProductDTO {
 export interface CatalogoDTO {
   categorias: CategoryDTO[];
   produtos: ProductDTO[];
+  /** Preços ocultos pelo operador (RF39): o site não mostra valores. */
+  pricesHidden: boolean;
 }
 
 /** Opções escolhidas pelo cliente, por id de grupo. */
@@ -70,6 +72,17 @@ export interface PublicSettingsDTO {
   whatsappNumber: string;
   instagramUrl: string | null;
   contactPhone: string | null;
+  /** Endereço da loja (atalho de localização). */
+  address: string | null;
+  /** Link do Google Maps; `null` = buscar pelo endereço. */
+  mapsUrl: string | null;
+}
+
+/** Link do pin de localização (RF34): o link cadastrado, senão uma busca pelo endereço. */
+export function mapsLink(s: Pick<PublicSettingsDTO, 'address' | 'mapsUrl'>): string | null {
+  if (s.mapsUrl) return s.mapsUrl;
+  if (s.address) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address)}`;
+  return null;
 }
 
 /** Dados da versão de teste estática (GitHub Pages), exportados do banco. */

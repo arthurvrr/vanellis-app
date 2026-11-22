@@ -8,20 +8,16 @@ import type { DemoData } from '@vanellis/shared';
 import { db, pool } from '../src/db/client';
 import { getAgendaInput } from '../src/modules/agenda/repository';
 import { getCatalogo } from '../src/modules/catalogo/repository';
-import { storeSettings } from '../src/modules/configuracoes/schema';
+import { getSettings, toPublicSettings } from '../src/modules/configuracoes/repository';
 
-const [settings] = await db.select().from(storeSettings).limit(1);
+const settings = await getSettings(db);
 if (!settings) throw new Error('Configurações da loja não cadastradas (rode npm run db:seed)');
 const { input, paused } = await getAgendaInput(db);
 
 const data: DemoData = {
   catalogo: await getCatalogo(db),
   agenda: { input, paused },
-  configuracoes: {
-    whatsappNumber: settings.whatsappNumber,
-    instagramUrl: settings.instagramUrl,
-    contactPhone: settings.contactPhone,
-  },
+  configuracoes: toPublicSettings(settings),
 };
 
 const out = new URL('../../client/src/demo/dados.json', import.meta.url);

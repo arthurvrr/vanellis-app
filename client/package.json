@@ -13,7 +13,8 @@
   "dependencies": {
     "@vanellis/shared": "*",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "simple-icons": "^16.38.1"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

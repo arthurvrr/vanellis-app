@@ -9,6 +9,7 @@ import {
   whatsappUrl,
   type OrderMessageInput,
 } from './mensagem';
+import { cardPrice, withoutPrices } from './preco';
 import { group, option, product } from './test-utils';
 
 const coxinha = product({ id: 1, name: 'Coxinha', basePrice: 1.6, minQuantity: 25, pdvCode: '1001' });
@@ -135,5 +136,30 @@ describe('orderWhatsAppUrl', () => {
     expect(medio?.compact).toBe(true);
     expect(medio!.url.length).toBeLessThanOrEqual(MAX_WHATSAPP_URL_LENGTH);
     expect(orderWhatsAppUrl('5551995284226', build(100))).toBeNull();
+  });
+});
+
+describe('preços ocultos (RF39, cenário C13)', () => {
+  const { produtos } = withoutPrices({ produtos: [coxinha, cupcake, torta] });
+  const hidden = (lines: CartLine[]): OrderMessageInput => ({ ...input(lines), lines: resolveCart(lines, produtos).valid });
+  const lines = [line(1, {}, 25), line(2, { 10: [101], 11: [110] }, 10), line(3, { 20: [200] }, 1)];
+
+  it('o card não mostra preço, nem "a partir de"', () => {
+    for (const p of produtos) expect(cardPrice(p, {}).value).toBeNull();
+  });
+
+  it('o carrinho fica sem valores e continua válido', () => {
+    const { valid, invalid } = resolveCart(lines, produtos);
+    expect(invalid).toEqual([]);
+    expect(valid.map((v) => v.estimate)).toEqual([null, null, null]);
+  });
+
+  it('a mensagem sai sem nenhum valor, com itens, códigos e retirada', () => {
+    const msg = buildOrderMessage(hidden(lines));
+    expect(msg).not.toContain('R$');
+    expect(msg).not.toContain('Total');
+    expect(msg).toContain('• 25x Coxinha [cód. 1001]');
+    expect(msg).toContain('• 10x Cupcake (Tradicional · Chocolate) [cód. 2002]');
+    expect(msg).toContain('*Retirada:* Seg 23/11 às 14:30');
   });
 });

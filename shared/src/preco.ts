@@ -116,3 +116,30 @@ export function cardImage(product: ProductDTO, selection: Selection): string | n
 export function formatBRL(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
+
+/**
+ * Cardápio sem nenhum valor, para quando o operador oculta os preços (RF39). Sem preço, o
+ * card, o carrinho, a tela de retirada e a mensagem do pedido deixam de mostrar valores
+ * (cenário C13); faixas de peso e o resto continuam.
+ */
+export function withoutPrices<T extends { produtos: ProductDTO[] }>(catalogo: T): T {
+  return {
+    ...catalogo,
+    produtos: catalogo.produtos.map((p) => ({
+      ...p,
+      basePrice: null,
+      groups: p.groups.map((g) => ({ ...g, options: g.options.map((o) => ({ ...o, price: null })) })),
+    })),
+  };
+}
+
+/**
+ * Estimativa no card de produto por quilo (RN49): aparece quando o peso já está definido
+ * (tamanho escolhido, ou peso do próprio produto), para a quantidade do card. `null` em
+ * produto por unidade, sem tamanho escolhido ou com preços ocultos (RF39), e o card não
+ * mostra nada.
+ */
+export function cardEstimate(product: ProductDTO, selection: Selection, quantity: number): Range | null {
+  if (product.saleUnit !== 'KG') return null;
+  return itemEstimate(product, selection, quantity);
+}

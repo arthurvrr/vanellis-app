@@ -1,6 +1,7 @@
-import type { CatalogoDTO, PriceMode, ProductDTO, SaleUnit } from '@vanellis/shared';
+import { withoutPrices, type CatalogoDTO, type PriceMode, type ProductDTO, type SaleUnit } from '@vanellis/shared';
 import { asc } from 'drizzle-orm';
 import type { DB } from '../../db/client';
+import { storeSettings } from '../configuracoes/schema';
 import { category, option, optionGroup, product } from './schema';
 
 // O PostgreSQL devolve `numeric` como texto para não perder precisão.
@@ -58,5 +59,9 @@ export async function getCatalogo(db: DB): Promise<CatalogoDTO> {
     })),
   }));
 
-  return { categorias, produtos };
+  const [settings] = await db.select({ pricesHidden: storeSettings.pricesHidden }).from(storeSettings).limit(1);
+  const pricesHidden = settings?.pricesHidden ?? false;
+  // Preços ocultos (RF39): os valores nem saem do servidor.
+  const catalogo: CatalogoDTO = { categorias, produtos, pricesHidden };
+  return pricesHidden ? withoutPrices(catalogo) : catalogo;
 }
