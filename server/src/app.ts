@@ -34,7 +34,7 @@ export function createApp(db: DB = defaultDb, { now = () => nowInBrasilia() }: A
   app.use('/api/agenda', agendaRouter(db, now));
   app.use('/api/configuracoes', configuracoesRouter(db));
   app.use('/api/auth', acessoRouter(db));
-  app.use('/api/painel/configuracoes', configuracoesPainelRouter(db));
+  app.use('/api/painel/configuracoes', configuracoesPainelRouter(db, () => now().slice(0, 10)));
   app.use('/api/imagens', imagensRouter(db));
   app.use('/api/painel/imagens', imagensPainelRouter(db));
   app.use('/api/painel/catalogo', catalogoPainelRouter(db, () => now().slice(0, 10)));

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, ApiError, type Sessao } from './api';
 import { Agenda } from './Agenda';
+import { BuscaPainel } from './BuscaPainel';
 import { Configuracoes } from './Configuracoes';
 import { Contas } from './Contas';
 import { Inicio } from './Inicio';
@@ -172,6 +173,7 @@ export function PainelApp() {
           </svg>
         </button>
         <h1 className="header__logo">VANELLIS</h1>
+        <BuscaPainel admin={admin} />
         <div className="painel__user">
           <span>
             {sessao.usuario}

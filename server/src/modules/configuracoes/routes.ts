@@ -1,4 +1,4 @@
-import { REMINDERS, type ReminderDTO, type ReminderKind } from '@vanellis/shared';
+import { REMINDERS, reminderStatus, type ReminderKind, type ReminderWithStatus } from '@vanellis/shared';
 import { eq } from 'drizzle-orm';
 import { Router } from 'express';
 import type { DB } from '../../db/client';
@@ -21,18 +21,20 @@ export function configuracoesRouter(db: DB) {
   return router;
 }
 
-/** Os três lembretes, na ordem da tela; um que falte no banco vem com o padrão. */
-async function listReminders(db: DB): Promise<ReminderDTO[]> {
+/** Os três lembretes, na ordem da tela, com a situação de hoje; um que falte no banco vem com o padrão. */
+async function listReminders(db: DB, today: string): Promise<ReminderWithStatus[]> {
   const rows = await db.select().from(reviewReminder);
   return REMINDERS.map((r) => {
     const row = rows.find((x) => x.kind === r.kind);
-    return { kind: r.kind, everyDays: row?.everyDays ?? r.defaultDays, lastReviewed: row?.lastReviewed ?? null };
+    const dto = { kind: r.kind, everyDays: row?.everyDays ?? r.defaultDays, lastReviewed: row?.lastReviewed ?? null };
+    return { ...dto, status: reminderStatus(dto, today) };
   });
 }
 
 // Tela Configurações do painel (RF23, RF34, RF37). O operador muda contatos e localização; o
 // número que recebe os pedidos só o superusuário muda (RN54).
-export function configuracoesPainelRouter(db: DB) {
+/** `today` devolve 'AAAA-MM-DD' no horário de Brasília (fixo nos testes). */
+export function configuracoesPainelRouter(db: DB, today: () => string) {
   const router = Router();
   router.use(requireUser(db));
 
@@ -63,7 +65,23 @@ export function configuracoesPainelRouter(db: DB) {
 
   // Frequência dos lembretes de revisão (RF37, C88).
   router.get('/lembretes', async (_req, res) => {
-    res.json(await listReminders(db));
+    res.json(await listReminders(db, today()));
+  });
+  // Marcar como revisado: o prazo recomeça hoje (RN35, RF36, C90).
+  router.post('/lembretes/:kind/revisado', async (req, res) => {
+    const kind = req.params.kind as ReminderKind;
+    const def = REMINDERS.find((r) => r.kind === kind);
+    if (!def) {
+      res.status(404).json({ error: 'Lembrete não encontrado' });
+      return;
+    }
+    const done = await db
+      .update(reviewReminder)
+      .set({ lastReviewed: today() })
+      .where(eq(reviewReminder.kind, kind))
+      .returning();
+    if (!done.length) await db.insert(reviewReminder).values({ kind, everyDays: def.defaultDays, lastReviewed: today() });
+    res.json(await listReminders(db, today()));
   });
   router.put('/lembretes', async (req, res) => {
     const parsed = remindersPatch.safeParse(req.body);
@@ -75,7 +93,7 @@ export function configuracoesPainelRouter(db: DB) {
       const done = await db.update(reviewReminder).set({ everyDays }).where(eq(reviewReminder.kind, kind)).returning();
       if (!done.length) await db.insert(reviewReminder).values({ kind, everyDays });
     }
-    res.json(await listReminders(db));
+    res.json(await listReminders(db, today()));
   });
 
   return router;

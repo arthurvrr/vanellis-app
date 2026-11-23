@@ -1224,3 +1224,157 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---------- Lembretes no Início (etapa 7: RF36, C89–C91) ---------- */
+.lembretes-inicio {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(230, 217, 191, 0.7);
+  box-shadow: var(--sombra-2);
+}
+.lembretes-inicio h3 {
+  margin: 0 0 0.4rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.lembretes-inicio__config {
+  font-size: 0.8rem;
+  font-weight: normal;
+  color: #8a7a5c;
+}
+.lembretes-inicio__ok {
+  margin: 0;
+  color: #1f6f3e;
+}
+.lembretes-inicio__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.lembrete-vencido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  background: #fff4d6;
+  border: 1px solid var(--dourado);
+}
+.lembrete-vencido .field__help {
+  margin: 0.15rem 0 0;
+}
+.lembrete-vencido__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.lembrete-vencido__acoes .switch__btn,
+.lembrete-vencido__acoes .add {
+  width: auto;
+  min-height: 2.4rem;
+  padding: 0 1rem;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+/* ---------- Busca no topo do painel (etapa 7: RF42, C92, C93) ---------- */
+.busca {
+  position: relative;
+  flex: 0 1 24rem;
+  min-width: 0;
+}
+.busca__icone {
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8a7a5c;
+  pointer-events: none;
+}
+.busca__input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.75rem 0.45rem 2rem;
+  min-height: 2.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--marrom-forte);
+}
+.busca__input:focus {
+  outline: none;
+  background: #fff;
+  border-color: var(--marrom);
+  box-shadow: var(--anel-foco);
+}
+.busca__lista {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  box-shadow: var(--sombra-3);
+  max-height: 22rem;
+  overflow-y: auto;
+}
+.busca__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.busca__item--ativo {
+  background: #fdf3df;
+}
+.busca__titulo {
+  color: var(--marrom-forte);
+  font-weight: bold;
+  font-size: 0.92rem;
+}
+.busca__secao {
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  color: #8a7a5c;
+}
+.busca__vazio {
+  padding: 0.5rem 0.65rem;
+  font-size: 0.9rem;
+  color: #8a7a5c;
+}
+@media (max-width: 600px) {
+  .busca {
+    flex: 1 1 auto;
+  }
+  .busca__input {
+    font-size: 16px; /* evita o zoom automático do iPhone ao tocar no campo */
+  }
+  .busca__input::placeholder {
+    color: transparent;
+  }
+  .busca__lista {
+    position: fixed;
+    top: 3.6rem;
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+}
