@@ -17,5 +17,6 @@ export function toPublicSettings(row: StoreSettingsRow): PublicSettingsDTO {
     contactPhone: row.contactPhone,
     address: row.address,
     mapsUrl: row.mapsUrl,
+    messageTemplate: row.messageTemplate,
   };
 }

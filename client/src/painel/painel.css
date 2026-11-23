@@ -1126,3 +1126,101 @@
 .entrega__datas {
   margin-bottom: 0.75rem;
 }
+
+/* ---------- Configurações: mensagem do pedido e lembretes (etapa 5: RF23, RF37) ---------- */
+.config__bloco {
+  margin-bottom: 1rem;
+}
+/* Ao chegar pela barra lateral, o bloco não fica escondido sob o cabeçalho fixo. */
+.config__bloco,
+.agenda__block {
+  scroll-margin-top: 4.5rem;
+}
+.modelo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+.modelo__label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+.modelo textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  resize: vertical;
+}
+.modelo textarea[aria-invalid] {
+  border-color: #a3361f;
+}
+.modelo__campos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.modelo__campo {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.55rem;
+  min-height: 2rem;
+}
+.modelo__campo--usado {
+  opacity: 0.6;
+}
+.whats {
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: #e9e2d5;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+.whats__balao {
+  margin: 0 0 0 auto;
+  max-width: 95%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px 10px 2px 10px;
+  background: #d9fdd3;
+  color: #111b21;
+  font-family: inherit;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.12);
+}
+.modelo__salvar {
+  width: auto;
+  padding: 0 1.5rem;
+}
+.lembretes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0 1rem;
+}
+.lembrete__linha {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.lembrete__linha input {
+  width: 5rem;
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  min-height: 2.5rem;
+}
+@media (max-width: 760px) {
+  .modelo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

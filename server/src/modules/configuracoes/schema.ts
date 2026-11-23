@@ -1,8 +1,8 @@
-// Configurações da loja, linha única (id = 1): WhatsApp que recebe os pedidos (RF23)
-// e atalhos de contato e localização do site (RF34).
+// Configurações da loja, linha única (id = 1): WhatsApp que recebe os pedidos e modelo da
+// mensagem (RF23), atalhos de contato e localização do site (RF34) e lembretes (RF37).
 
 import { sql } from 'drizzle-orm';
-import { boolean, check, integer, pgTable, varchar } from 'drizzle-orm/pg-core';
+import { boolean, check, date, integer, pgTable, text, varchar } from 'drizzle-orm/pg-core';
 
 export const storeSettings = pgTable(
   'store_settings',
@@ -18,9 +18,25 @@ export const storeSettings = pgTable(
     mapsUrl: varchar('maps_url', { length: 500 }),
     /** Oculta todos os preços do site (RF39). */
     pricesHidden: boolean('prices_hidden').notNull().default(false),
+    /** Modelo da mensagem do pedido (RF23); `null` = o padrão. */
+    messageTemplate: text('message_template'),
   },
   (t) => [
     check('store_settings_single_row', sql`${t.id} = 1`),
     check('store_settings_whatsapp_check', sql`${t.whatsappNumber} ~ '^[0-9]{12,15}$'`),
   ],
+);
+
+/**
+ * Lembretes de revisão (RN34, RN35): cada um com a sua frequência (RF37). A data da última
+ * revisão é usada pelos lembretes do painel (etapa 7, RF36).
+ */
+export const reviewReminder = pgTable(
+  'review_reminder',
+  {
+    kind: varchar('kind', { length: 20 }).primaryKey(),
+    everyDays: integer('every_days').notNull(),
+    lastReviewed: date('last_reviewed', { mode: 'string' }),
+  },
+  (t) => [check('review_reminder_days_check', sql`${t.everyDays} between 1 and 365`)],
 );

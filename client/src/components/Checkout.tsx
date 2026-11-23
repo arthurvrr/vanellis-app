@@ -159,6 +159,7 @@ export function CheckoutView({
           },
           customer,
           delivery: entrega ? address : null,
+          template: settings.messageTemplate,
         }
       : null;
   const tooLong =

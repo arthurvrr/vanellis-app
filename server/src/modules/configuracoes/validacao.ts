@@ -1,6 +1,7 @@
 // Validação e normalização das configurações editadas no painel (RF23, RF34).
 // Campos vazios viram `null` (o atalho some do site).
 
+import { DEFAULT_MESSAGE_TEMPLATE, messageTemplateProblem, REMINDERS, reminderDaysProblem } from '@vanellis/shared';
 import { z } from 'zod';
 
 const blankToNull = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? null : v);
@@ -55,7 +56,32 @@ export const settingsPatch = z
         'https://maps.app.goo.gl/...',
       ).nullable(),
     ),
+    // Modelo da mensagem (RF23, C84–C87): vazio ou igual ao padrão = `null` (usa o padrão).
+    messageTemplate: z
+      .string()
+      .nullable()
+      .transform((v) => (v === null || !v.trim() || v.trim() === DEFAULT_MESSAGE_TEMPLATE ? null : v.replace(/\r\n/g, '\n').trimEnd()))
+      .superRefine((v, ctx) => {
+        const problem = v === null ? null : messageTemplateProblem(v);
+        if (problem) ctx.addIssue({ code: 'custom', message: problem });
+      }),
   })
+  .partial()
+  .strict();
+
+/** Frequência de cada lembrete de revisão (RF37, C88). */
+export const remindersPatch = z
+  .object(
+    Object.fromEntries(
+      REMINDERS.map((r) => [
+        r.kind,
+        z.number().superRefine((d, ctx) => {
+          const problem = reminderDaysProblem(d);
+          if (problem) ctx.addIssue({ code: 'custom', message: `${r.label}: ${problem.toLowerCase()}` });
+        }),
+      ]),
+    ),
+  )
   .partial()
   .strict();
 

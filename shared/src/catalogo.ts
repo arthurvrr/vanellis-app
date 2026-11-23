@@ -83,6 +83,8 @@ export interface PublicSettingsDTO {
   address: string | null;
   /** Link do Google Maps; `null` = buscar pelo endereço. */
   mapsUrl: string | null;
+  /** Modelo da mensagem do pedido (RF23); `null` = o padrão. */
+  messageTemplate: string | null;
 }
 
 /** Link do pin de localização (RF34): o link cadastrado, senão uma busca pelo endereço. */

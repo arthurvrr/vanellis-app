@@ -7,3 +7,4 @@ export * from './mensagem';
 export * from './produtoForm';
 export * from './precos';
 export * from './cardapioEspecial';
+export * from './lembretes';

@@ -76,6 +76,8 @@ const SECOES: Secao[] = [
     ),
     itens: [
       { nome: 'Contatos e localização', href: '#configuracoes' },
+      { nome: 'Mensagem do pedido', href: '#configuracoes/mensagem' },
+      { nome: 'Lembretes de revisão', href: '#configuracoes/lembretes' },
       { nome: 'Contas', href: '#contas', soAdmin: true },
     ],
   },

@@ -2,6 +2,8 @@ import type {
   PrecoCategoriaDTO,
   PrecosPatch,
   ProductForm,
+  ReminderDTO,
+  ReminderKind,
   SpecialMenu,
   SpecialMenuState,
   TemplateDTO,
@@ -20,6 +22,8 @@ export interface Configuracoes {
   contactPhone: string | null;
   address: string | null;
   mapsUrl: string | null;
+  /** Modelo da mensagem do pedido (RF23); `null` = o padrão. */
+  messageTemplate: string | null;
 }
 export interface Horario {
   weekday: number;
@@ -111,8 +115,11 @@ export const api = {
   status: () => call<Status>('GET', '/painel/status'),
   setStatus: (patch: Partial<Status>) => call<Status>('PUT', '/painel/status', patch),
   configuracoes: () => call<Configuracoes>('GET', '/painel/configuracoes'),
-  setConfiguracoes: (patch: Partial<Record<keyof Configuracoes, string>>) =>
+  setConfiguracoes: (patch: Partial<Record<keyof Configuracoes, string | null>>) =>
     call<Configuracoes>('PUT', '/painel/configuracoes', patch),
+  lembretes: () => call<ReminderDTO[]>('GET', '/painel/configuracoes/lembretes'),
+  setLembretes: (patch: Partial<Record<ReminderKind, number>>) =>
+    call<ReminderDTO[]>('PUT', '/painel/configuracoes/lembretes', patch),
   agenda: () => call<AgendaPainel>('GET', '/painel/agenda'),
   /** Qualquer mudança na agenda; a resposta é a agenda inteira atualizada. */
   agendaMuda: (method: 'POST' | 'PUT' | 'DELETE', path: string, body: unknown = {}) =>
