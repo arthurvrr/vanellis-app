@@ -64,6 +64,13 @@
       "when": 1795371281255,
       "tag": "0008_localizacao",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795398252252,
+      "tag": "0009_categoria_descricao",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { availableDays, type AgendaDTO } from '@vanellis/shared';
+import { availableDays, storeInfo, type AgendaDTO } from '@vanellis/shared';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
@@ -32,5 +32,11 @@ export function agendaRouter(db: DB, now: () => string) {
     };
     res.json(body);
   });
+  // Situação da loja e horário da semana, para a entrada e o rodapé do site.
+  router.get('/loja', async (_req, res) => {
+    const { input, paused } = await getAgendaInput(db);
+    res.json(storeInfo(input, paused, now()));
+  });
+
   return router;
 }

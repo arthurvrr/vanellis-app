@@ -10,6 +10,8 @@ export interface CategoryDTO {
   id: number;
   name: string;
   slug: string;
+  /** Frase curta da categoria (RF52); `null` = sem frase. */
+  description: string | null;
 }
 
 export interface OptionDTO {
@@ -90,4 +92,13 @@ export interface DemoData {
   catalogo: CatalogoDTO;
   agenda: { input: AgendaInput; paused: boolean };
   configuracoes: PublicSettingsDTO;
+}
+
+/**
+ * Categorias que o cliente vê nas abas e na entrada: só as que têm ao menos um produto
+ * cadastrado (mesmo indisponível). Uma categoria nova aparece quando ganha o primeiro produto.
+ */
+export function visibleCategories(catalogo: Pick<CatalogoDTO, 'categorias' | 'produtos'>): CategoryDTO[] {
+  const used = new Set(catalogo.produtos.map((p) => p.categoryId));
+  return catalogo.categorias.filter((c) => used.has(c.id));
 }

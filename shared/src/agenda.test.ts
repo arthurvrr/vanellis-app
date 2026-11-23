@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   availableDays,
+  statusLabel,
+  storeStatus,
+  weekSummary,
   lastBookableDate,
   formatDay,
   pickupTimes,
@@ -141,5 +144,44 @@ describe('lastBookableDate', () => {
 describe('formatDay', () => {
   it('mostra dia da semana e data', () => {
     expect(formatDay({ date: '2026-11-28', weekday: 6 })).toBe('Sáb 28/11');
+  });
+});
+
+describe('situação da loja na entrada', () => {
+  const semana = {
+    validFrom: '2026-01-01',
+    validUntil: null,
+    hours: [
+      { weekday: 0, open: '07:30', close: '12:00' },
+      ...[1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, open: '07:30', close: '19:00' })),
+    ],
+  };
+  const input = { schedules: [semana], blockedDates: ['2026-11-25'] };
+
+  it('aberta: mostra até quando', () => {
+    const s = storeStatus(input, '2026-11-23T10:00');
+    expect(s).toEqual({ open: true, closesAt: '19:00', nextOpen: null });
+    expect(statusLabel(s, '2026-11-23')).toBe('Aberto agora · fecha às 19h');
+  });
+
+  it('antes de abrir: abre hoje', () => {
+    expect(statusLabel(storeStatus(input, '2026-11-23T06:00'), '2026-11-23')).toBe('Fechado · abre hoje às 7h30');
+  });
+
+  it('depois de fechar: abre amanhã', () => {
+    expect(statusLabel(storeStatus(input, '2026-11-23T19:00'), '2026-11-23')).toBe('Fechado · abre amanhã às 7h30');
+  });
+
+  it('pula data bloqueada', () => {
+    // Terça 24 à noite: quarta 25 está bloqueada, abre quinta.
+    expect(statusLabel(storeStatus(input, '2026-11-24T20:00'), '2026-11-24')).toBe('Fechado · abre qui às 7h30');
+  });
+
+  it('resume a semana juntando dias iguais', () => {
+    expect(weekSummary(semana.hours)).toBe('Seg a sáb 7h30–19h · Dom 7h30–12h');
+    expect(weekSummary(semana.hours.filter((h) => h.weekday !== 0))).toBe('Seg a sáb 7h30–19h');
+    expect(weekSummary([{ weekday: 6, open: '08:00', close: '13:00' }, { weekday: 0, open: '08:00', close: '13:00' }])).toBe(
+      'Sáb e dom 8h–13h',
+    );
   });
 });

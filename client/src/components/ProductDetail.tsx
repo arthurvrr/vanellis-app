@@ -10,15 +10,15 @@ import {
   type Selection,
 } from '@vanellis/shared';
 import { useState } from 'react';
-import { asset } from '../lib/demo';
+import { Photo } from './Photo';
 import { useCart } from '../lib/cart';
 import { useToast } from '../lib/toast';
 import { QuantityStepper } from './QuantityStepper';
 
-// Card genérico: desenha os grupos de opção que o produto tiver, sem tipos fixos.
-// Mostra só o essencial (RN49): preço do kg no topo e, com o tamanho escolhido, a
-// estimativa no fim; avisos ficam no checkout (RN48).
-export function ProductCard({ product }: { product: ProductDTO }) {
+// Detalhe do produto, aberto ao tocar no card do cardápio (RF28): desenha os grupos de opção
+// que o produto tiver, sem tipos fixos. Preço do kg no topo e, com o tamanho escolhido, a
+// estimativa antes do botão (RN49); avisos ficam no checkout (RN48).
+export function ProductDetail({ product, onAdded }: { product: ProductDTO; onAdded: () => void }) {
   const [selection, setSelection] = useState<Selection>({});
   const [quantity, setQuantity] = useState(product.minQuantity);
   const { add } = useCart();
@@ -26,16 +26,17 @@ export function ProductCard({ product }: { product: ProductDTO }) {
 
   const blocked = cannotAdd(product, selection);
 
-  // Depois de adicionar, o card volta ao estado inicial e a confirmação aparece no canto (RF48).
+  // Depois de adicionar, o detalhe fecha e a confirmação aparece no canto (RF48).
   const onAdd = () => {
     const result = add(product.id, selection, quantity);
     if (result === 'full') {
       toast('Carrinho cheio: remova um item para adicionar outro.', 'error');
       return;
     }
-    toast(result === 'merged' ? `${product.name}: quantidade somada no carrinho` : `${product.name} adicionado ao carrinho`);
-    setSelection({});
-    setQuantity(product.minQuantity);
+    toast(
+      result === 'merged' ? `${product.name}: quantidade somada no carrinho` : `${product.name} adicionado ao carrinho`,
+    );
+    onAdded();
   };
 
   const toggle = (group: OptionGroupDTO, optionId: number) => {
@@ -59,11 +60,13 @@ export function ProductCard({ product }: { product: ProductDTO }) {
     .filter(Boolean);
 
   return (
-    <article className={product.available ? 'card' : 'card card--off'}>
-      {image && <img className="card__img" src={asset(image)} alt={product.imageAlt ?? product.name} loading="lazy" />}
-      <div className="card__body">
+    <article className="detail">
+      <Photo src={image} className="detail__img" alt={product.imageAlt ?? product.name} />
+      <div className="card__body detail__body">
         <div className="card__head">
-          <h2 className="card__name">{product.name}</h2>
+          <h2 className="card__name detail__name" id="detail-title">
+            {product.name}
+          </h2>
           {price.value !== null && (
             <p className="card__price">
               {price.fromPrice && <span className="card__from">a partir de </span>}
@@ -108,6 +111,12 @@ export function ProductCard({ product }: { product: ProductDTO }) {
             {d}
           </p>
         ))}
+        {/* Por quilo: com o tamanho escolhido, a estimativa aparece antes do botão (RN49). */}
+        {estimate && (
+          <p className="card__estimate">
+            Estimativa{quantity > 1 ? ` para ${quantity}` : ''}: <strong>{formatRange(estimate)}</strong>
+          </p>
+        )}
         <div className="card__actions">
           <QuantityStepper
             value={quantity}
@@ -123,12 +132,6 @@ export function ProductCard({ product }: { product: ProductDTO }) {
         <p className="card__hint">
           {blocked ?? (product.minQuantity > 1 ? `Mínimo de ${product.minQuantity} unidades` : '')}
         </p>
-        {/* Por quilo: com o tamanho escolhido, a estimativa aparece no fim do card (RN49). */}
-        {estimate && (
-          <p className="card__estimate">
-            Estimativa{quantity > 1 ? ` para ${quantity}` : ''}: <strong>{formatRange(estimate)}</strong>
-          </p>
-        )}
       </div>
     </article>
   );

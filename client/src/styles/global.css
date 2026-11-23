@@ -12,6 +12,8 @@
 :root {
   --marrom: #82652f;
   --marrom-forte: #4a3212;
+  /* Títulos e nomes de produto: serifada calorosa; texto corrido segue na LouisGeorgeCafe. */
+  --fonte-titulo: 'Fraunces Variable', Georgia, serif;
   --dourado: #d9b167;
   --creme: #fbf6ec;
   --texto: #3b2f1c;
@@ -31,6 +33,15 @@ body {
   margin: 0;
 }
 
+/* A página ocupa ao menos a altura da tela e o rodapé fica sempre no fim, mesmo em telas
+   com pouco conteúdo (carrinho, confirmação). */
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
 .status {
   padding: 2rem 1rem;
   text-align: center;
@@ -45,7 +56,7 @@ body {
   justify-content: space-between;
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 10;
 }
 .header h1 {
   margin: 0;
@@ -113,7 +124,7 @@ body {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 1rem;
   padding: 0 1rem 2rem;
 }
@@ -288,6 +299,8 @@ body {
 
 /* Carrinho */
 .cart {
+  width: 100%;
+  box-sizing: border-box;
   max-width: 720px;
   margin: 0 auto;
   padding: 1rem;
@@ -764,12 +777,13 @@ body {
 
 /* Rodapé: telefone (RF33) e acesso da equipe (RF49), em marrom forte como os ícones */
 .footer {
-  margin-top: 2rem;
+  margin-top: auto;
   padding: 1.5rem 1rem 1.75rem;
   background: var(--marrom-forte);
   color: var(--creme);
   box-shadow: 0 -4px 14px rgba(59, 47, 28, 0.18);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   gap: 0.75rem;
   text-align: center;
@@ -907,4 +921,605 @@ body {
   .header__menu {
     display: block;
   }
+}
+
+/* ---------- Entrada (tela inicial) ---------- */
+.announce {
+  margin: 0;
+  padding: 0.45rem 1rem;
+  background: var(--marrom-forte);
+  color: var(--creme);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.announce--paused {
+  background: #8a2f1c;
+}
+.home {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 1rem 1rem 2.5rem;
+  box-sizing: border-box;
+}
+.hero {
+  position: relative;
+  min-height: 15rem;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  background: var(--marrom);
+  box-shadow: var(--sombra-2);
+}
+.hero__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(43, 32, 22, 0) 25%, rgba(43, 32, 22, 0.78) 100%);
+}
+.hero__content {
+  position: relative;
+  z-index: 1;
+  padding: 1.25rem 1.25rem 1.5rem;
+  color: var(--creme);
+}
+.hero__status {
+  display: inline-block;
+  margin: 0 0 0.6rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: #e5f4e4;
+  color: #1f6f3e;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+.hero__status--closed {
+  background: #fbebeb;
+  color: #8a2f1c;
+}
+.hero__title {
+  margin: 0;
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: clamp(1.9rem, 6vw, 3rem);
+  line-height: 1.05;
+}
+.hero__sub {
+  margin: 0.5rem 0 0;
+  max-width: 28rem;
+  font-size: 0.95rem;
+  opacity: 0.92;
+}
+.home__section {
+  margin-top: 2rem;
+}
+.home__title {
+  margin: 0 0 0.85rem;
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: var(--marrom-forte);
+}
+.cats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+.cat {
+  display: flex;
+  text-align: left;
+  padding: 0;
+  border: 1px solid rgba(230, 217, 191, 0.7);
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  box-shadow: var(--sombra-2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+@media (hover: hover) {
+  .cat:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-3);
+  }
+}
+.cat__img {
+  width: 7rem;
+  min-height: 7rem;
+  flex: 0 0 auto;
+  object-fit: cover;
+  background: var(--borda);
+}
+.cat__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+}
+.cat__name {
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 1.3rem;
+  color: var(--marrom-forte);
+}
+.cat__text {
+  font-size: 0.85rem;
+  color: #6d5c3d;
+}
+.cat__cta {
+  margin-top: auto;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--marrom);
+}
+/* Como funciona, compacto, entre o destaque e as categorias */
+.steps {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  gap: 0.6rem 1.25rem;
+  background: #fff;
+  border: 1px solid rgba(230, 217, 191, 0.7);
+  border-radius: 16px;
+  box-shadow: var(--sombra-1);
+  font-size: 0.9rem;
+  color: #6d5c3d;
+}
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.steps strong {
+  color: var(--marrom-forte);
+}
+.steps__n {
+  flex: 0 0 auto;
+  width: 1.7rem;
+  height: 1.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--marrom);
+  color: var(--creme);
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+@media (max-width: 600px) {
+  .steps {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Destaque no computador: texto e foto lado a lado, foto sem esticar */
+@media (min-width: 900px) {
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 1.25fr;
+    align-items: stretch;
+    min-height: 22rem;
+    background: #fff;
+    border: 1px solid rgba(230, 217, 191, 0.7);
+  }
+  .hero::after {
+    content: none;
+  }
+  .hero__img {
+    position: static;
+    order: 2;
+    height: 100%;
+    min-height: 22rem;
+    border-radius: 0 20px 20px 0;
+  }
+  .hero__content {
+    order: 1;
+    align-self: center;
+    padding: 2.5rem;
+    color: var(--texto);
+  }
+  .hero__title {
+    color: var(--marrom-forte);
+    font-size: 3.2rem;
+  }
+  .hero__sub {
+    color: #6d5c3d;
+    font-size: 1.05rem;
+    opacity: 1;
+  }
+}
+
+/* ---------- Cardápio: título da categoria e cards leves ---------- */
+.menu-intro {
+  padding: 0.25rem 1rem 0.75rem;
+}
+.menu-intro__title {
+  margin: 0;
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 1.6rem;
+  color: var(--marrom-forte);
+}
+.menu-intro__text {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+  color: #6d5c3d;
+}
+.mcard {
+  background: #fff;
+  border: 1px solid rgba(230, 217, 191, 0.7);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--sombra-2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+@media (hover: hover) {
+  .mcard:not(.mcard--off):hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-3);
+  }
+}
+.mcard--off {
+  opacity: 0.6;
+}
+.mcard__hit {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mcard__hit:disabled {
+  cursor: default;
+}
+.mcard__img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--borda);
+}
+.mcard__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  padding: 0.7rem 0.85rem 0.85rem;
+}
+.mcard__name {
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  color: var(--marrom-forte);
+}
+.mcard__price {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--marrom);
+  margin-bottom: 0.6rem;
+}
+.mcard__cta {
+  display: block;
+  text-align: center;
+  margin-top: auto;
+  padding: 0.45rem;
+  border-radius: 999px;
+  background: var(--marrom);
+  color: var(--creme);
+  font-size: 0.85rem;
+  font-weight: bold;
+  box-shadow: var(--sombra-botao);
+}
+.mcard--off .mcard__cta {
+  background: var(--borda);
+  color: var(--texto);
+  box-shadow: none;
+}
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    padding: 0 0.75rem 2rem;
+  }
+  .mcard__name {
+    font-size: 0.95rem;
+  }
+}
+
+/* ---------- Detalhe do produto (painel por cima) ---------- */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(43, 32, 22, 0.5);
+  animation: sheet-fade 0.2s ease-out;
+}
+.sheet__panel {
+  position: relative;
+  width: 100%;
+  max-width: 30rem;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: var(--sombra-3);
+  animation: sheet-up 0.25s ease-out;
+}
+.sheet__close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 1;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--marrom-forte);
+  box-shadow: var(--sombra-1);
+  cursor: pointer;
+}
+.detail__img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.detail__body {
+  padding: 1rem 1.25rem 1.25rem;
+}
+.detail__name {
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 1.4rem;
+  color: var(--marrom-forte);
+}
+@media (max-width: 600px) {
+  .sheet {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .sheet__panel {
+    max-width: none;
+    max-height: 92dvh;
+    border-radius: 20px 20px 0 0;
+  }
+}
+@keyframes sheet-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(1.5rem);
+    opacity: 0;
+  }
+}
+
+/* ---------- Rodapé em colunas ---------- */
+.footer__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: 1rem 2rem;
+  width: 100%;
+  max-width: 1080px;
+  text-align: left;
+}
+.footer__col p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.footer__title {
+  margin: 0 0 0.3rem;
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: #f3e3c3;
+}
+
+/* Foto ausente: fundo neutro com o tom da padaria */
+.photo--empty {
+  display: block;
+  background: linear-gradient(135deg, #efe3c9 0%, #e2cfa8 100%);
+}
+
+/* ---------- Computador: 2 colunas de cards compactos e painel do produto maior ---------- */
+.mcard__media {
+  position: relative;
+  display: block;
+}
+.mcard__badge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--marrom-forte);
+  color: var(--creme);
+  font-size: 0.75rem;
+  font-weight: bold;
+  box-shadow: var(--sombra-1);
+}
+.mcard--selected {
+  background: #fdf5e4;
+  border-color: var(--marrom-forte);
+  box-shadow: 0 0 0 3px var(--marrom-forte), var(--sombra-2);
+}
+.mcard--selected .mcard__cta {
+  background: var(--marrom-forte);
+}
+.menu-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
+  gap: 1.5rem;
+  align-items: start;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+  box-sizing: border-box;
+}
+.grid--side {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 0.25rem;
+}
+/* Card compacto: foto quadrada à esquerda, nome, preço e botão à direita */
+.mcard--compact .mcard__hit {
+  flex-direction: row;
+  align-items: stretch;
+}
+.mcard--compact .mcard__media {
+  flex: 0 0 38%;
+}
+.mcard--compact .mcard__img {
+  height: 100%;
+  aspect-ratio: 1;
+}
+.mcard--compact .mcard__body {
+  padding: 0.65rem 0.75rem;
+}
+.mcard--compact .mcard__name {
+  font-size: 1rem;
+}
+.mcard--compact .mcard__cta {
+  padding: 0.35rem;
+  font-size: 0.8rem;
+}
+.side {
+  position: sticky;
+  top: 4.75rem;
+  max-height: calc(100vh - 5.75rem);
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid rgba(230, 217, 191, 0.7);
+  border-radius: 20px;
+  box-shadow: var(--sombra-2);
+}
+.side .detail__name {
+  font-size: 1.7rem;
+}
+.side .chip {
+  min-height: 2.6rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.95rem;
+}
+.side .add {
+  min-height: 3rem;
+  font-size: 1rem;
+}
+.side--empty {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background: linear-gradient(160deg, #fffaf0 0%, #f6ead2 100%);
+}
+.side__hint-title {
+  margin: 0 0 0.4rem;
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 1.3rem;
+  color: var(--marrom-forte);
+}
+.side__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6d5c3d;
+}
+@media (min-width: 1024px) {
+  .menu-intro {
+    max-width: 1280px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* ---------- Abas das categorias: divisórias de cardápio de papel ---------- */
+.folder-tabs {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0.85rem 1rem 0;
+  box-sizing: border-box;
+}
+.folder-tabs__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  border-bottom: 3px solid var(--marrom);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+/* Abas que não cabem: rolam para o lado e a borda esmaece indicando que há mais. */
+.folder-tabs__row--overflow {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent);
+  padding-right: 2.5rem;
+}
+.folder-tabs__row::-webkit-scrollbar {
+  display: none;
+}
+.folder-tab {
+  flex: 0 0 auto;
+  padding: 0.5rem 1.2rem 0.45rem;
+  border: 1px solid var(--borda);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: #fff;
+  color: var(--marrom-forte);
+  font: inherit;
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 1rem;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 -1px 4px rgba(59, 47, 28, 0.06);
+  transition: background 0.15s ease, padding 0.15s ease;
+}
+.folder-tab:hover {
+  background: #fdf5e4;
+}
+.folder-tab--active,
+.folder-tab--active:hover {
+  padding-top: 0.75rem;
+  background: var(--marrom);
+  border-color: var(--marrom);
+  color: var(--creme);
+  box-shadow: 0 -3px 10px rgba(59, 47, 28, 0.18);
+}
+.folder-tab:focus-visible {
+  outline: 2px solid var(--marrom-forte);
+  outline-offset: -4px;
+}
+.menu-intro {
+  padding-top: 0.9rem;
 }

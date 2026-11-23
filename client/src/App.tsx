@@ -1,55 +1,75 @@
-import type { CatalogoDTO } from '@vanellis/shared';
-import { useEffect, useState } from 'react';
+import { visibleCategories, type CatalogoDTO, type ProductDTO } from '@vanellis/shared';
+import { useCallback, useEffect, useState } from 'react';
+import { AnnouncementBar } from './components/AnnouncementBar';
 import { CartView } from './components/CartView';
 import { ContactIcons } from './components/ContactIcons';
 import { CheckoutView } from './components/Checkout';
 import { ConfirmationView } from './components/ConfirmationView';
-import { ProductCard } from './components/ProductCard';
+import { FolderTabs } from './components/FolderTabs';
+import { HomeView } from './components/HomeView';
+import { MenuCard } from './components/MenuCard';
+import { ProductSheet } from './components/ProductSheet';
+import { SidePanel } from './components/SidePanel';
 import { SiteFooter } from './components/SiteFooter';
 import { fetchCatalogo } from './lib/api';
 import { useCart } from './lib/cart';
+import { useMediaQuery } from './lib/useMediaQuery';
 import { IS_DEMO } from './lib/demo';
 
-type View = 'cardapio' | 'carrinho' | 'dados' | 'confirmacao';
-const HASHES: Record<View, string> = {
-  cardapio: '',
-  carrinho: '#carrinho',
-  dados: '#dados',
-  confirmacao: '#confirmacao',
-};
-const viewFromHash = (): View =>
-  (Object.keys(HASHES) as View[]).find((v) => HASHES[v] && HASHES[v] === window.location.hash) ?? 'cardapio';
+type View = 'inicio' | 'cardapio' | 'carrinho' | 'dados' | 'confirmacao';
+const FIXED: Record<string, View> = { '#carrinho': 'carrinho', '#dados': 'dados', '#confirmacao': 'confirmacao' };
 
-// Telas do cliente (RNF02): Cardápio, Carrinho, Retirada e dados, Confirmação.
-// A tela fica no endereço (#carrinho, #dados, #confirmacao) para o botão "voltar" do celular funcionar.
+/** Tela pelo endereço: '' = entrada, '#cardapio' ou '#<categoria>' = cardápio, demais fixas. */
+function routeFromHash(slugs: string[]): { view: View; slug: string | null } {
+  const h = window.location.hash;
+  if (FIXED[h]) return { view: FIXED[h]!, slug: null };
+  const slug = h.slice(1);
+  if (h === '#cardapio') return { view: 'cardapio', slug: null };
+  if (slugs.includes(slug)) return { view: 'cardapio', slug };
+  return { view: 'inicio', slug: null };
+}
+
+// Telas do cliente (RNF02): Entrada, Cardápio, Carrinho, Retirada e dados, Confirmação.
+// A tela fica no endereço (#tortas, #carrinho...) para o botão "voltar" do celular funcionar e
+// para a padaria poder divulgar o link de uma categoria.
 export function App() {
   const [catalogo, setCatalogo] = useState<CatalogoDTO | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [categoriaId, setCategoriaId] = useState<number | null>(null);
-  const [view, setView] = useState<View>(viewFromHash);
+  const [route, setRoute] = useState<{ view: View; slug: string | null }>({ view: 'inicio', slug: null });
+  const [aberto, setAberto] = useState<ProductDTO | null>(null);
   const { lines } = useCart();
+  const desktop = useMediaQuery('(min-width: 1024px)');
 
   useEffect(() => {
     fetchCatalogo()
-      .then((c) => {
+      .then((dados) => {
+        // O cliente só vê categorias com produtos (uma categoria nova aparece com o 1º produto).
+        const c = { ...dados, categorias: visibleCategories(dados) };
         setCatalogo(c);
-        setCategoriaId(c.categorias[0]?.id ?? null);
+        setRoute(routeFromHash(c.categorias.map((x) => x.slug)));
       })
       .catch((e: unknown) => setErro(e instanceof Error ? e.message : String(e)));
   }, []);
 
   useEffect(() => {
+    if (!catalogo) return;
     const onHash = () => {
-      setView(viewFromHash());
+      setRoute(routeFromHash(catalogo.categorias.map((x) => x.slug)));
+      setAberto(null);
       window.scrollTo(0, 0);
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
-  }, []);
+  }, [catalogo]);
 
-  const go = (v: View) => {
-    window.location.hash = HASHES[v];
+  const go = (v: Exclude<View, 'cardapio'>) => {
+    window.location.hash = v === 'inicio' ? '' : `#${v}`;
   };
+  const goMenu = (slug?: string | null) => {
+    window.location.hash = `#${slug ?? catalogo?.categorias[0]?.slug ?? 'cardapio'}`;
+  };
+  const closeSheet = useCallback(() => setAberto(null), []);
+  const view = route.view;
 
   const header = (
     <>
@@ -60,7 +80,7 @@ export function App() {
       )}
       <header className="header">
         <h1>
-          <button type="button" className="header__logo" onClick={() => go('cardapio')}>
+          <button type="button" className="header__logo" onClick={() => go('inicio')}>
             VANELLIS
           </button>
         </h1>
@@ -111,7 +131,7 @@ export function App() {
         <CartView
           produtos={catalogo.produtos}
           pricesHidden={catalogo.pricesHidden}
-          onBack={() => go('cardapio')}
+          onBack={() => goMenu(route.slug)}
           onContinue={() => go('dados')}
         />
         <SiteFooter />
@@ -123,7 +143,7 @@ export function App() {
     return (
       <>
         {header}
-        <ConfirmationView onMenu={() => go('cardapio')} />
+        <ConfirmationView onMenu={() => goMenu()} />
         <SiteFooter />
       </>
     );
@@ -137,7 +157,7 @@ export function App() {
           produtos={catalogo.produtos}
           pricesHidden={catalogo.pricesHidden}
           onBack={() => go('carrinho')}
-          onMenu={() => go('cardapio')}
+          onMenu={() => goMenu()}
           onSent={() => go('confirmacao')}
         />
         <SiteFooter />
@@ -145,33 +165,60 @@ export function App() {
     );
   }
 
-  const produtos = catalogo.produtos.filter((p) => p.categoryId === categoriaId);
+  if (view === 'inicio') {
+    return (
+      <>
+        <AnnouncementBar />
+        {header}
+        <HomeView catalogo={catalogo} onCategory={goMenu} />
+        <SiteFooter />
+      </>
+    );
+  }
+
+  const categoria = catalogo.categorias.find((c) => c.slug === route.slug) ?? catalogo.categorias[0];
+  const produtos = catalogo.produtos.filter((p) => p.categoryId === categoria?.id);
+  // Computador: ao abrir a categoria, o primeiro produto disponível já aparece no painel.
+  const selecionado =
+    (aberto && produtos.some((p) => p.id === aberto.id) ? aberto : null) ?? produtos.find((p) => p.available) ?? null;
   return (
     <>
       {header}
-      <nav className="tabs" aria-label="Categorias">
-        {catalogo.categorias.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            className={c.id === categoriaId ? 'tab tab--active' : 'tab'}
-            aria-pressed={c.id === categoriaId}
-            onClick={() => setCategoriaId(c.id)}
-          >
-            {c.name}
-          </button>
-        ))}
-      </nav>
+      <FolderTabs categorias={catalogo.categorias} activeId={categoria?.id ?? null} onSelect={goMenu} />
       {catalogo.pricesHidden && (
         <p className="menu-notice" role="note">
           Os preços estão sendo atualizados. A padaria informa os valores na confirmação do pedido.
         </p>
       )}
-      <main className="grid">
-        {produtos.map((p) => (
-          <ProductCard key={p.id} product={p} />
-        ))}
-      </main>
+      {categoria && (
+        <div className="menu-intro">
+          <h2 className="menu-intro__title">{categoria.name}</h2>
+          {categoria.description && <p className="menu-intro__text">{categoria.description}</p>}
+        </div>
+      )}
+      {desktop ? (
+        <div className="menu-layout">
+          <main className="grid grid--side">
+            {produtos.map((p) => (
+              <MenuCard
+                key={p.id}
+                product={p}
+                compact
+                selected={selecionado?.id === p.id}
+                onOpen={() => setAberto(p)}
+              />
+            ))}
+          </main>
+          <SidePanel product={selecionado} />
+        </div>
+      ) : (
+        <main className="grid">
+          {produtos.map((p) => (
+            <MenuCard key={p.id} product={p} onOpen={() => setAberto(p)} />
+          ))}
+        </main>
+      )}
+      {aberto && !desktop && <ProductSheet product={aberto} onClose={closeSheet} />}
       <SiteFooter />
     </>
   );

@@ -17,7 +17,7 @@ export async function loadCatalogo(db: DB, seed: SeedCatalogo): Promise<void> {
     for (const c of seed.categorias) {
       const [row] = await tx
         .insert(category)
-        .values({ name: c.name, slug: c.slug, position: c.position })
+        .values({ name: c.name, slug: c.slug, description: c.description ?? null, position: c.position })
         .returning({ id: category.id });
       categoryIds.set(c.protoId, row!.id);
     }

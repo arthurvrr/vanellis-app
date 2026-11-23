@@ -1,6 +1,8 @@
 import {
   availableDays,
   nowInBrasilia,
+  storeInfo,
+  type StoreInfoDTO,
   type AgendaDTO,
   type CatalogoDTO,
   type DemoData,
@@ -57,4 +59,13 @@ export function loadSettings(): Promise<PublicSettingsDTO> {
 export function fetchConfiguracoes(signal?: AbortSignal): Promise<PublicSettingsDTO> {
   if (IS_DEMO) return demo().then((d) => d.configuracoes);
   return getJSON('/api/configuracoes/publicas', 'as configurações da loja', signal);
+}
+
+/** Situação da loja e horário da semana (entrada e rodapé). */
+export async function fetchLoja(): Promise<StoreInfoDTO> {
+  if (IS_DEMO) {
+    const { agenda } = await demo();
+    return storeInfo(agenda.input, agenda.paused, nowInBrasilia());
+  }
+  return getJSON('/api/agenda/loja', 'o horário da loja');
 }

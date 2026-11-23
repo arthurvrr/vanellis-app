@@ -9,7 +9,7 @@ const num = (v: string | null): number | null => (v === null ? null : Number(v))
 
 export async function getCatalogo(db: DB): Promise<CatalogoDTO> {
   const categorias = await db
-    .select({ id: category.id, name: category.name, slug: category.slug })
+    .select({ id: category.id, name: category.name, slug: category.slug, description: category.description })
     .from(category)
     .orderBy(asc(category.position), asc(category.id));
 

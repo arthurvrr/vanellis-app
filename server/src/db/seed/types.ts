@@ -59,7 +59,7 @@ export interface SeedTemplate {
 }
 
 export interface SeedCatalogo {
-  categorias: { protoId: number; name: string; slug: string; position: number }[];
+  categorias: { protoId: number; name: string; slug: string; description?: string; position: number }[];
   produtos: SeedProduct[];
   modelos: SeedTemplate[];
 }

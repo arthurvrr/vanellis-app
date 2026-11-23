@@ -4,17 +4,20 @@
       {
         "id": 1,
         "name": "Salgados",
-        "slug": "salgados"
+        "slug": "salgados",
+        "description": "Fritos e assados no dia, para festas e reuniões. Mínimo de 25 unidades por sabor."
       },
       {
         "id": 2,
         "name": "Tortas",
-        "slug": "tortas"
+        "slug": "tortas",
+        "description": "Vendidas por quilo, em vários tamanhos. Escolha o tamanho e veja a estimativa de preço."
       },
       {
         "id": 3,
         "name": "Doces",
-        "slug": "doces"
+        "slug": "doces",
+        "description": "Docinhos de festa e cupcakes feitos na casa."
       }
     ],
     "produtos": [
@@ -2592,7 +2595,7 @@
   },
   "agenda": {
     "input": {
-      "minLeadHours": 2,
+      "minLeadHours": 72,
       "windowMonths": 4,
       "schedules": [
         {
@@ -2649,11 +2652,14 @@
           "end": "14:00"
         }
       ],
-      "blockedDates": [
-        "2026-12-25",
-        "2027-01-01"
+      "blockedDates": [],
+      "closedPeriods": [
+        {
+          "date": "2026-12-12",
+          "start": "09:00",
+          "end": "11:00"
+        }
       ],
-      "closedPeriods": [],
       "specialDates": [
         {
           "date": "2026-12-24",

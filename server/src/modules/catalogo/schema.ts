@@ -19,6 +19,8 @@ export const category = pgTable('category', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 50 }).notNull().unique(),
   slug: varchar('slug', { length: 50 }).notNull().unique(),
+  /** Frase curta da categoria, na entrada e no topo do cardápio (RF52). */
+  description: varchar('description', { length: 160 }),
   position: integer('position').notNull().default(0),
 });
 

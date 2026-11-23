@@ -5,11 +5,29 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 // escolhidos. Navega por mês dentro da janela de agendamento.
 
 const MONTHS = [
-  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
 ];
 const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-const WEEKDAY_NAMES = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+const WEEKDAY_NAMES = [
+  'domingo',
+  'segunda-feira',
+  'terça-feira',
+  'quarta-feira',
+  'quinta-feira',
+  'sexta-feira',
+  'sábado',
+];
 
 const monthKey = (date: string) => date.slice(0, 7); // 'AAAA-MM'
 
@@ -137,7 +155,11 @@ export function PickupCalendar({ days, value, onChange }: Props) {
                     onClick={() => onChange(date)}
                   >
                     {n}
-                    {day.special && <span className="calendar__star" aria-hidden="true">★</span>}
+                    {day.special && (
+                      <span className="calendar__star" aria-hidden="true">
+                        ★
+                      </span>
+                    )}
                   </button>
                 </span>
               );

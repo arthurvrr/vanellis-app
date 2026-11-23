@@ -176,3 +176,112 @@ export function nowInBrasilia(date = new Date()): string {
   }).format(date);
   return parts.replace(' ', 'T');
 }
+
+// ---------- Situação da loja (tela de entrada) ----------
+
+export interface StoreStatus {
+  open: boolean;
+  /** 'HH:MM' de fechamento hoje, quando aberta. */
+  closesAt: string | null;
+  /** Próxima abertura, quando fechada (até 14 dias à frente). */
+  nextOpen: { date: string; weekday: number; time: string } | null;
+}
+
+/**
+ * Se a loja está aberta agora ('AAAA-MM-DDTHH:MM', Brasília), pelo horário semanal em vigor e
+ * pelas datas bloqueadas. É informação de vitrine: o que vale para pedido é `availableDays`.
+ */
+export function storeStatus(
+  input: Pick<AgendaInput, 'schedules' | 'blockedDates'>,
+  now: string,
+): StoreStatus {
+  const [today, time] = now.split('T') as [string, string];
+  const minutes = toMinutes(time);
+  const blocked = new Set(input.blockedDates);
+  const hoursOn = (dayMs: number) => {
+    const date = new Date(dayMs).toISOString().slice(0, 10);
+    const weekday = new Date(dayMs).getUTCDay();
+    if (blocked.has(date)) return { date, weekday, hours: undefined };
+    return { date, weekday, hours: scheduleFor(input.schedules, date)?.hours.find((h) => h.weekday === weekday) };
+  };
+
+  const todayMs = wallMs(today);
+  const t = hoursOn(todayMs);
+  if (t.hours && minutes >= toMinutes(t.hours.open) && minutes < toMinutes(t.hours.close)) {
+    return { open: true, closesAt: t.hours.close, nextOpen: null };
+  }
+  if (t.hours && minutes < toMinutes(t.hours.open)) {
+    return { open: false, closesAt: null, nextOpen: { date: t.date, weekday: t.weekday, time: t.hours.open } };
+  }
+  for (let i = 1; i <= 14; i++) {
+    const d = hoursOn(todayMs + i * DAY);
+    if (d.hours) return { open: false, closesAt: null, nextOpen: { date: d.date, weekday: d.weekday, time: d.hours.open } };
+  }
+  return { open: false, closesAt: null, nextOpen: null };
+}
+
+const WEEKDAYS_LOWER = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+
+/** '07:30' → '7h30'; '19:00' → '19h'. */
+export function formatHour(time: string): string {
+  const [h, m] = time.split(':');
+  return `${Number(h)}h${m === '00' ? '' : m}`;
+}
+
+/**
+ * Horário da semana em uma linha, juntando dias seguidos com o mesmo horário, de segunda a
+ * domingo: "Seg a sáb 7h30–19h · Dom 7h30–12h". Dias fechados não aparecem.
+ */
+export function weekSummary(hours: OpeningHours[]): string {
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  const groups: { days: number[]; open: string; close: string }[] = [];
+  for (const wd of order) {
+    const h = hours.find((x) => x.weekday === wd);
+    const last = groups.at(-1);
+    const prevDay = last?.days.at(-1);
+    const consecutive = prevDay !== undefined && order.indexOf(wd) === order.indexOf(prevDay) + 1;
+    if (h && last && consecutive && last.open === h.open && last.close === h.close) last.days.push(wd);
+    else if (h) groups.push({ days: [wd], open: h.open, close: h.close });
+  }
+  const parts = groups.map((g) => {
+    const first = WEEKDAYS_LOWER[g.days[0]!]!;
+    const lastDay = WEEKDAYS_LOWER[g.days.at(-1)!]!;
+    const days = g.days.length === 1 ? first : g.days.length === 2 ? `${first} e ${lastDay}` : `${first} a ${lastDay}`;
+    return `${days} ${formatHour(g.open)}–${formatHour(g.close)}`;
+  });
+  return parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' · ');
+}
+
+/** Texto do selo da entrada: "Aberto agora · fecha às 19h" ou "Fechado · abre amanhã às 7h30". */
+export function statusLabel(s: StoreStatus, today: string): string {
+  if (s.open) return `Aberto agora · fecha às ${formatHour(s.closesAt!)}`;
+  if (!s.nextOpen) return 'Fechado';
+  const when =
+    s.nextOpen.date === today
+      ? 'hoje'
+      : s.nextOpen.date === new Date(wallMs(today) + DAY).toISOString().slice(0, 10)
+        ? 'amanhã'
+        : WEEKDAYS_LOWER[s.nextOpen.weekday];
+  return `Fechado · abre ${when} às ${formatHour(s.nextOpen.time)}`;
+}
+
+/** Dados da loja para a entrada e o rodapé do site. */
+export interface StoreInfoDTO {
+  today: string;
+  paused: boolean;
+  minLeadHours: number;
+  status: StoreStatus;
+  /** Horário semanal em vigor hoje. */
+  week: OpeningHours[];
+}
+
+export function storeInfo(input: AgendaInput, paused: boolean, now: string): StoreInfoDTO {
+  const today = now.slice(0, 10);
+  return {
+    today,
+    paused,
+    minLeadHours: input.minLeadHours,
+    status: storeStatus(input, now),
+    week: scheduleFor(input.schedules, today)?.hours ?? [],
+  };
+}

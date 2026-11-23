@@ -167,3 +167,15 @@ describe('Regras gerais', () => {
     expect((await op('PUT', '/api/painel/agenda/regras', { windowMonths: 13 })).status).toBe(400);
   });
 });
+
+describe('Situação da loja no site', () => {
+  it('mostra aberta e o horário em vigor, e reflete mudanças do painel', async () => {
+    const info = (await app.browser()('GET', '/api/agenda/loja')).body;
+    expect(info.status).toEqual({ open: true, closesAt: '12:00', nextOpen: null }); // domingo 10h
+    expect(info.week).toHaveLength(7);
+    await op('POST', '/api/painel/agenda/datas-bloqueadas', { date: '2026-11-22', reason: 'Folga' });
+    const fechado = (await app.browser()('GET', '/api/agenda/loja')).body;
+    expect(fechado.status.open).toBe(false);
+    expect(fechado.status.nextOpen).toMatchObject({ date: '2026-11-23', time: '07:30' });
+  });
+});
