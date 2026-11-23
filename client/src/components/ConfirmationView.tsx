@@ -51,8 +51,13 @@ export function ConfirmationView({ onMenu }: { onMenu: () => void }) {
       {!IS_DEMO && (
         <div className="confirmation__summary">
           <p>
-            <strong>Retirada:</strong> {sent.pickup}
+            <strong>{sent.modo}:</strong> {sent.pickup}
           </p>
+          {sent.address && (
+            <p>
+              <strong>Endereço:</strong> {sent.address}
+            </p>
+          )}
           <ul>
             {sent.items.map((item) => (
               <li key={item}>{item}</li>

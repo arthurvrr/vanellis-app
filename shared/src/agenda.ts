@@ -70,7 +70,28 @@ export interface AgendaInput {
   minLeadHours: number;
   /** Até quantos meses à frente o cliente pode agendar (RN53). */
   windowMonths: number;
+  /** Tele-entrega (RN43, RN44); ausente = desligada. */
+  delivery?: DeliveryConfig;
 }
+
+/** Tele-entrega: ligada ou não, e se vale em todos os dias com retirada ou só em datas. */
+export interface DeliveryConfig {
+  enabled: boolean;
+  allDays: boolean;
+  /** Datas com entrega, quando `allDays` é falso. */
+  dates: string[];
+}
+
+/** Problema na configuração da entrega, ou null (C83). */
+export function deliveryProblem(d: DeliveryConfig): string | null {
+  if (d.enabled && !d.allDays && !d.dates.length) return 'Marque ao menos uma data com entrega';
+  if (d.dates.some((x) => !/^\d{4}-\d{2}-\d{2}$/.test(x))) return 'Data inválida';
+  return null;
+}
+
+/** Se a entrega vale numa data (RN43, RN44). */
+export const deliveryOn = (d: DeliveryConfig | undefined, date: string) =>
+  !!d?.enabled && (d.allDays || d.dates.includes(date));
 
 export interface AvailableDay {
   date: string;
@@ -79,6 +100,8 @@ export interface AvailableDay {
   special: string | null;
   /** Horários de retirada livres, 'HH:MM', de 30 em 30 minutos. */
   times: string[];
+  /** Tele-entrega vale nesta data, nos mesmos horários (RN44). */
+  delivery: boolean;
 }
 
 export interface AgendaDTO {
@@ -183,7 +206,8 @@ export function availableDays(
 
     const special = input.specialDates.find((s) => s.date === date);
     if (special) {
-      if (dayMs >= earliest) days.push({ date, weekday, special: special.name, times: [] });
+      if (dayMs >= earliest)
+        days.push({ date, weekday, special: special.name, times: [], delivery: deliveryOn(input.delivery, date) });
       continue;
     }
 
@@ -193,7 +217,7 @@ export function availableDays(
     const times = pickupTimes(periods, input.restrictions, closed).filter(
       (t) => wallMs(date, toMinutes(t)) >= earliest,
     );
-    if (times.length) days.push({ date, weekday, special: null, times });
+    if (times.length) days.push({ date, weekday, special: null, times, delivery: deliveryOn(input.delivery, date) });
   }
   return days;
 }

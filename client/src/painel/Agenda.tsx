@@ -1,4 +1,4 @@
-import { dayPeriods, formatPeriods, weekHoursProblem } from '@vanellis/shared';
+import { dayPeriods, deliveryProblem, formatDates, formatPeriods, weekHoursProblem } from '@vanellis/shared';
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { api, type AgendaPainel, type Horario } from './api';
 
@@ -190,11 +190,14 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
     label: '',
   });
   const [regras, setRegras] = useState({ minLeadHours: '2', windowMonths: '4' });
+  const [entrega, setEntrega] = useState({ enabled: false, allDays: true, dates: [] as string[] });
+  const [novaData, setNovaData] = useState('');
 
   const aplicar = useCallback((a: AgendaPainel) => {
     setAgenda(a);
     setSemana(toSemana(a.current?.hours ?? []));
     setRegras({ minLeadHours: String(a.config.minLeadHours), windowMonths: String(a.config.windowMonths) });
+    setEntrega(a.delivery);
   }, []);
 
   useEffect(() => {
@@ -662,6 +665,119 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
         </form>
         <p className="field__help">
           Produtos com antecedência própria (ex: bolos de 48h) continuam valendo quando são maiores.
+        </p>
+      </Bloco>
+
+      {/* Tele-entrega (RF44, RN43, RN44; C77–C79, C83) */}
+      <Bloco
+        id="entrega"
+        titulo="Tele-entrega"
+        ajuda="Desligada, o site só oferece retirada no balcão. Ligada, o cliente escolhe entre retirar e receber em casa, nos mesmos dias e horários da agenda. A taxa é combinada pelo WhatsApp."
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void muda(
+              'PUT',
+              '/entrega',
+              entrega,
+              entrega.enabled
+                ? entrega.allDays
+                  ? 'Tele-entrega ligada para todos os dias.'
+                  : `Tele-entrega ligada para ${formatDates(entrega.dates)}.`
+                : 'Tele-entrega desligada: o site só oferece retirada.',
+            );
+          }}
+        >
+          <label className="check entrega__toggle">
+            <input
+              type="checkbox"
+              checked={entrega.enabled}
+              onChange={(e) => setEntrega({ ...entrega, enabled: e.target.checked })}
+            />
+            Oferecer tele-entrega no site
+          </label>
+          {entrega.enabled && (
+            <div className="radios entrega__modo" role="radiogroup" aria-label="Em quais dias vale a entrega">
+              <label className={entrega.allDays ? 'radio radio--on' : 'radio'}>
+                <input
+                  type="radio"
+                  name="entrega-modo"
+                  checked={entrega.allDays}
+                  onChange={() => setEntrega({ ...entrega, allDays: true })}
+                />
+                Todos os dias com retirada
+              </label>
+              <label className={!entrega.allDays ? 'radio radio--on' : 'radio'}>
+                <input
+                  type="radio"
+                  name="entrega-modo"
+                  checked={!entrega.allDays}
+                  onChange={() => setEntrega({ ...entrega, allDays: false })}
+                />
+                Só nas datas marcadas
+              </label>
+            </div>
+          )}
+          {entrega.enabled && !entrega.allDays && (
+            <div className="entrega__datas">
+              <div className="agenda__inline">
+                <div className="field">
+                  <label htmlFor="ent-data">Data com entrega</label>
+                  <input
+                    id="ent-data"
+                    type="date"
+                    min={agenda.today}
+                    value={novaData}
+                    onChange={(e) => setNovaData(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="switch__btn agenda__btn"
+                  disabled={!novaData || entrega.dates.includes(novaData)}
+                  onClick={() => {
+                    setEntrega({ ...entrega, dates: [...entrega.dates, novaData].sort() });
+                    setNovaData('');
+                  }}
+                >
+                  Incluir data
+                </button>
+              </div>
+              {entrega.dates.length > 0 && (
+                <ul className="especial__datas">
+                  {entrega.dates.map((d) => (
+                    <li key={d}>
+                      {br(d)}
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        aria-label={`Tirar a data ${br(d)}`}
+                        onClick={() => setEntrega({ ...entrega, dates: entrega.dates.filter((x) => x !== d) })}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {deliveryProblem(entrega) && (
+            <p className="field__error" role="alert">
+              {deliveryProblem(entrega)}
+            </p>
+          )}
+          <button type="submit" className="primary" disabled={ocupado || deliveryProblem(entrega) !== null}>
+            Salvar tele-entrega
+          </button>
+        </form>
+        <p className="field__help">
+          {agenda.delivery.enabled
+            ? agenda.delivery.allDays
+              ? 'Agora: ligada para todos os dias com retirada.'
+              : `Agora: ligada só para ${formatDates(agenda.delivery.dates) || 'nenhuma data futura'}.`
+            : 'Agora: desligada.'}
         </p>
       </Bloco>
     </section>

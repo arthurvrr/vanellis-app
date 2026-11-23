@@ -1,7 +1,14 @@
 // Tela Agenda do painel (RF20, RF21, RF22, RF35; cenários C24–C35).
 // Toda mudança responde com a agenda inteira, para a tela redesenhar de uma vez.
 
-import { scheduleFor, weekHoursProblem, type OpeningHours, type WeeklySchedule } from '@vanellis/shared';
+import {
+  deliveryProblem,
+  scheduleFor,
+  weekHoursProblem,
+  type DeliveryConfig,
+  type OpeningHours,
+  type WeeklySchedule,
+} from '@vanellis/shared';
 import { and, asc, eq, gt, gte } from 'drizzle-orm';
 import { Router, type Response } from 'express';
 import { z } from 'zod';
@@ -34,6 +41,8 @@ export interface AgendaPainelDTO {
   specialDates: { date: string; name: string }[];
   closedPeriods: { id: number; date: string; start: string; end: string }[];
   config: { minLeadHours: number; windowMonths: number };
+  /** Tele-entrega (RF44, RN43, RN44). */
+  delivery: DeliveryConfig;
 }
 
 // ---------- validação ----------
@@ -77,6 +86,7 @@ const bodies = {
     })
     .partial()
     .strict(),
+  delivery: z.object({ enabled: z.boolean(), allDays: z.boolean(), dates: z.array(date).max(60, 'No máximo 60 datas') }),
 };
 
 // ---------- leitura ----------
@@ -117,6 +127,12 @@ async function readAgenda(db: DB, today: string): Promise<AgendaPainelDTO> {
         .orderBy(asc(closedPeriod.date), asc(closedPeriod.startTime))
     ).map((c) => ({ id: c.id, date: c.date, start: hm(c.startTime), end: hm(c.endTime) })),
     config: { minLeadHours: config?.minLeadHours ?? 2, windowMonths: config?.windowMonths ?? 4 },
+    delivery: {
+      enabled: config?.deliveryEnabled ?? false,
+      allDays: config?.deliveryAllDays ?? true,
+      // Datas que já passaram não interessam mais ao painel.
+      dates: (config?.deliveryDates ?? []).filter((d) => d >= today).sort(),
+    },
   };
 }
 
@@ -250,6 +266,21 @@ export function agendaPainelRouter(db: DB, today: () => string) {
         .values({ id: 1, ...parsed.data })
         .onConflictDoUpdate({ target: agendaConfig.id, set: parsed.data });
     }
+    return respond(res);
+  });
+
+  // Tele-entrega: ligar, desligar e em quais datas vale (RF44, RN43, RN44; C77–C79, C83).
+  router.put('/entrega', async (req, res) => {
+    const parsed = bodies.delivery.safeParse(req.body);
+    if (!parsed.success) return fail(res, 400, firstIssue(parsed.error));
+    const d = { ...parsed.data, dates: [...new Set(parsed.data.dates)].sort() };
+    const problem = deliveryProblem(d);
+    if (problem) return fail(res, 400, problem);
+    const set = { deliveryEnabled: d.enabled, deliveryAllDays: d.allDays, deliveryDates: d.dates };
+    await db
+      .insert(agendaConfig)
+      .values({ id: 1, ...set })
+      .onConflictDoUpdate({ target: agendaConfig.id, set });
     return respond(res);
   });
 

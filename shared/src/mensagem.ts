@@ -2,7 +2,7 @@
 // O site só monta o texto e o link wa.me; o pedido passa a existir quando o cliente envia (RN04).
 
 import type { ProductDTO, Selection } from './catalogo';
-import type { CustomerData } from './cliente';
+import { formatAddress, type Address, type CustomerData } from './cliente';
 import type { ResolvedLine } from './carrinho';
 import { sumRanges } from './carrinho';
 import { formatBRL, type Range } from './preco';
@@ -53,6 +53,8 @@ export interface OrderMessageInput {
   lines: ResolvedLine[];
   pickup: OrderPickup;
   customer: CustomerData;
+  /** Endereço da tele-entrega; `null` ou ausente = retirada no balcão (RN05, RN45). */
+  delivery?: Address | null;
 }
 
 function pickupText(p: OrderPickup): string {
@@ -65,7 +67,7 @@ function pickupText(p: OrderPickup): string {
  * para pedidos grandes caberem no link (RNF07).
  */
 export function buildOrderMessage(input: OrderMessageInput, compact = false): string {
-  const { code, lines, pickup, customer } = input;
+  const { code, lines, pickup, customer, delivery } = input;
   const estimated = lines.some((l) => l.product.saleUnit === 'KG');
   const total = sumRanges(lines.map((l) => l.estimate));
 
@@ -86,7 +88,8 @@ export function buildOrderMessage(input: OrderMessageInput, compact = false): st
     ...items,
     total ? `${estimated ? 'Total estimado' : 'Total'}: ${formatRange(total)}` : '',
     '',
-    `*Retirada:* ${pickupText(pickup)}`,
+    delivery ? `*Entrega:* ${pickupText(pickup)}` : `*Retirada:* ${pickupText(pickup)}`,
+    ...(delivery ? [`*Endereço:* ${formatAddress(delivery)}`] : []),
     `*Nome:* ${customer.name.trim()}`,
     `*CPF:* ${customer.cpf}`,
     `*Telefone:* ${customer.phone}`,

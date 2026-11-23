@@ -41,6 +41,8 @@ export interface AgendaPainel {
   specialDates: { date: string; name: string }[];
   closedPeriods: { id: number; date: string; start: string; end: string }[];
   config: { minLeadHours: number; windowMonths: number };
+  /** Tele-entrega (RF44). */
+  delivery: { enabled: boolean; allDays: boolean; dates: string[] };
 }
 export interface Status {
   ordersPaused: boolean;

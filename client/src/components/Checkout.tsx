@@ -1,5 +1,10 @@
 import {
+  ADDRESS_MAX_LENGTH,
   describeSelection,
+  formatAddress,
+  validateAddress,
+  type Address,
+  type AddressErrors,
   formatBRL,
   formatCPF,
   formatDates,
@@ -24,7 +29,7 @@ import { useEffect, useId, useState } from 'react';
 import { fetchConfiguracoes, fetchDisponibilidade } from '../lib/api';
 import { IS_DEMO } from '../lib/demo';
 import { useCart } from '../lib/cart';
-import { useCheckoutDraft, type Pickup, type Touched } from '../lib/checkoutDraft';
+import { useCheckoutDraft, type AddressTouched, type Modo, type Pickup, type Touched } from '../lib/checkoutDraft';
 import { PickupCalendar } from './PickupCalendar';
 
 // Tela 3 do cliente: retirada, dados do cliente, avisos e envio pelo WhatsApp
@@ -49,8 +54,24 @@ export function CheckoutView({
 }) {
   const { lines: cartLines, clear } = useCart();
   const { valid: lines } = resolveCart(cartLines, produtos);
-  const { pickup, setPickup, customer, setField, touched, touch, touchAll, agreed, setAgreed, finish } =
-    useCheckoutDraft();
+  const {
+    pickup,
+    setPickup,
+    modo,
+    setModo,
+    address,
+    setAddressField,
+    addressTouched,
+    touchAddress,
+    customer,
+    setField,
+    touched,
+    touch,
+    touchAll,
+    agreed,
+    setAgreed,
+    finish,
+  } = useCheckoutDraft();
   const productKey = [...new Set(lines.map((l) => l.product.id))].sort((a, b) => a - b).join(',');
   const [agenda, setAgenda] = useState<AgendaDTO | null>(null);
   const [agendaError, setAgendaError] = useState<string | null>(null);
@@ -78,14 +99,25 @@ export function CheckoutView({
     return () => ctrl.abort();
   }, [productKey]);
 
-  // Se a escolha deixou de valer (carrinho mudou, horário lotou), o cliente escolhe de novo.
+  // Tele-entrega só quando o operador a liga para algum dos dias (RN43, RN44); se for desligada
+  // enquanto o cliente escolhe, volta para retirada (C79).
+  const deliveryAvailable = !!agenda?.days.some((d) => d.delivery);
   useEffect(() => {
-    if (!agenda || !pickup) return;
-    const day = agenda.days.find((d) => d.date === pickup.date);
+    if (agenda && !deliveryAvailable && modo === 'entrega') setModo('retirada');
+  }, [agenda, deliveryAvailable, modo, setModo]);
+  const entrega = modo === 'entrega' && deliveryAvailable;
+  // Na entrega, o calendário mostra só os dias com entrega (C78).
+  const visibleAgenda = agenda && entrega ? { ...agenda, days: agenda.days.filter((d) => d.delivery) } : agenda;
+
+  // Se a escolha deixou de valer (carrinho mudou, horário lotou, trocou para entrega), o cliente
+  // escolhe de novo.
+  useEffect(() => {
+    if (!visibleAgenda || !pickup) return;
+    const day = visibleAgenda.days.find((d) => d.date === pickup.date);
     // Horário ainda não escolhido (`null`) vale; um horário escolhido precisa continuar livre.
     const stillValid = day && (pickup.time === null || day.times.includes(pickup.time));
     if (!stillValid) setPickup(null);
-  }, [agenda, pickup, setPickup]);
+  }, [visibleAgenda, pickup, setPickup]);
 
   if (!lines.length) {
     return (
@@ -99,15 +131,18 @@ export function CheckoutView({
   }
 
   const errors = validateCustomer(customer);
+  const addressErrors = entrega ? validateAddress(address) : {};
   const estimated = lines.some((l) => l.product.saleUnit === 'KG');
   const total = sumRanges(lines.map((l) => l.estimate));
   const itemCount = lines.length === 1 ? '1 item' : `${lines.length} itens`;
-  const day = agenda?.days.find((d) => d.date === pickup?.date);
+  const day = visibleAgenda?.days.find((d) => d.date === pickup?.date);
 
   // O que ainda falta para enviar (RN48: "Li e concordo" por último).
   const missing: string[] = [];
-  if (!day) missing.push('escolha o dia da retirada');
-  else if (!day.special && !pickup?.time) missing.push('escolha o horário da retirada');
+  const recebe = entrega ? 'entrega' : 'retirada';
+  if (!day) missing.push(`escolha o dia da ${recebe}`);
+  else if (!day.special && !pickup?.time) missing.push(`escolha o horário da ${recebe}`);
+  if (Object.keys(addressErrors).length) missing.push('preencha o endereço de entrega');
   if (Object.keys(errors).length) missing.push('confira seus dados');
   if (!agreed) missing.push('marque "Li e concordo"');
 
@@ -123,6 +158,7 @@ export function CheckoutView({
             special: day.special,
           },
           customer,
+          delivery: entrega ? address : null,
         }
       : null;
   const tooLong =
@@ -144,6 +180,8 @@ export function CheckoutView({
       pickup: day!.special
         ? `${formatDay(day!)} (${day!.special}), horário a combinar`
         : `${formatDay(day!)} às ${pickup!.time}`,
+      modo: entrega ? 'Entrega' : 'Retirada',
+      address: entrega ? formatAddress(address) : null,
       items: lines.map(({ line, product }) => {
         const choices = describeSelection(product, line.selection);
         return `${line.quantity}x ${product.name}${choices ? ` (${choices})` : ''}`;
@@ -160,7 +198,7 @@ export function CheckoutView({
         <button type="button" className="link" onClick={onBack}>
           ← Voltar ao carrinho
         </button>
-        <h2 id="checkout-title">Retirada e seus dados</h2>
+        <h2 id="checkout-title">{entrega ? 'Entrega e seus dados' : 'Retirada e seus dados'}</h2>
       </div>
 
       <p className="checkout-summary">
@@ -179,7 +217,23 @@ export function CheckoutView({
         </p>
       ) : (
         <>
-          <PickupPicker agenda={agenda} error={agendaError} value={pickup} onChange={setPickup} />
+          <PickupPicker
+            agenda={visibleAgenda}
+            error={agendaError}
+            value={pickup}
+            onChange={setPickup}
+            modo={entrega ? 'entrega' : 'retirada'}
+            onModo={deliveryAvailable ? setModo : null}
+          />
+          {entrega && (
+            <AddressForm
+              data={address}
+              errors={addressErrors}
+              touched={addressTouched}
+              onChange={setAddressField}
+              onBlur={touchAddress}
+            />
+          )}
           <CustomerForm data={customer} errors={errors} touched={touched} onChange={setField} onBlur={touch} />
 
           {/* Bloco único de avisos (RN48): só os que valem para este pedido. */}
@@ -187,6 +241,13 @@ export function CheckoutView({
             <h3 id="notices-title">Antes de enviar</h3>
             <ul>
               <li>Todas as encomendas precisam de um sinal. O valor será informado pela padaria no WhatsApp.</li>
+              {/* RN46: o site não mostra nem soma taxa de entrega. */}
+              {entrega && (
+                <li>
+                  A taxa de entrega será informada pela padaria no WhatsApp. A entrega depende de disponibilidade e será
+                  confirmada junto com o pedido.
+                </li>
+              )}
               {pickup && (
                 <li>
                   A data e o horário escolhidos são uma preferência: a padaria confirma pelo WhatsApp e pode propor
@@ -238,17 +299,47 @@ function PickupPicker({
   error,
   value,
   onChange,
+  modo,
+  onModo,
 }: {
   agenda: AgendaDTO | null;
   error: string | null;
   value: Pickup | null;
   onChange: (p: Pickup | null) => void;
+  modo: Modo;
+  /** Troca entre retirada e entrega; `null` quando a entrega está desligada (RN05). */
+  onModo: ((m: Modo) => void) | null;
 }) {
   const day = agenda?.days.find((d) => d.date === value?.date);
+  const entrega = modo === 'entrega';
 
   return (
     <section className="checkout-section" aria-labelledby="pickup-title">
-      <h3 id="pickup-title">Retirada no balcão</h3>
+      <h3 id="pickup-title">{onModo ? 'Como você quer receber?' : 'Retirada no balcão'}</h3>
+      {onModo && (
+        <div className="group__options modo" role="radiogroup" aria-label="Retirada ou tele-entrega">
+          {(
+            [
+              ['retirada', 'Retirar no balcão'],
+              ['entrega', 'Tele-entrega'],
+            ] as const
+          ).map(([m, label]) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={modo === m}
+              className={modo === m ? 'chip chip--on' : 'chip'}
+              onClick={() => onModo(m)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {onModo && entrega && agenda && agenda.days.length > 0 && (
+        <p className="checkout-info">A entrega vale só nos dias marcados no calendário, nos mesmos horários.</p>
+      )}
       {error && <p className="field__error">{error}</p>}
       {!agenda && !error && <p>Carregando os horários…</p>}
       {/* Cardápios especiais no carrinho: só as datas deles (RN19, RN29); sem data em comum, pedidos separados (RN30). */}
@@ -279,14 +370,15 @@ function PickupPicker({
           />
           {day && (
             <p className="checkout-chosen">
-              Retirada em {formatDay(day)}
+              {entrega ? 'Entrega' : 'Retirada'} em {formatDay(day)}
               {value?.time && ` às ${value.time}`}
             </p>
           )}
 
           {day?.special && (
             <p className="checkout-info">
-              {day.special}: escolha só o dia. O horário de retirada será informado pela padaria no próprio dia.
+              {day.special}: escolha só o dia. O horário {entrega ? 'da entrega' : 'de retirada'} será informado pela
+              padaria no próprio dia.
             </p>
           )}
 
@@ -386,7 +478,7 @@ function CustomerForm({
           value={data.cpf}
           onChange={(e) => onChange('cpf', formatCPF(e.target.value))}
         />
-        {help('cpf', 'Usado para identificar você na retirada e para a nota fiscal.')}
+        {help('cpf', 'Usado para identificar você no pedido e para a nota fiscal.')}
       </div>
 
       <div className="field">
@@ -413,6 +505,61 @@ function CustomerForm({
           onChange={(e) => onChange('note', e.target.value)}
         />
         {help('note', `Algo que a padaria precisa saber sobre o pedido. ${data.note.length}/${NOTE_MAX_LENGTH}`)}
+      </div>
+    </section>
+  );
+}
+
+const ADDRESS_FIELDS: { key: keyof Address; label: string; autoComplete: string; help?: string }[] = [
+  { key: 'street', label: 'Rua', autoComplete: 'address-line1' },
+  { key: 'number', label: 'Número', autoComplete: 'off', help: 'Sem número? Escreva "s/n".' },
+  { key: 'complement', label: 'Complemento (opcional)', autoComplete: 'address-line2', help: 'Ex: ap 201, bloco B' },
+  { key: 'district', label: 'Bairro', autoComplete: 'address-level3' },
+  { key: 'city', label: 'Cidade', autoComplete: 'address-level2' },
+  { key: 'reference', label: 'Ponto de referência (opcional)', autoComplete: 'off' },
+];
+
+/** Endereço da tele-entrega (RN45): vai só na mensagem, não passa pelo servidor nem fica salvo. */
+function AddressForm({
+  data,
+  errors,
+  touched,
+  onChange,
+  onBlur,
+}: {
+  data: Address;
+  errors: AddressErrors;
+  touched: AddressTouched;
+  onChange: (field: keyof Address, value: string) => void;
+  onBlur: (field: keyof Address) => void;
+}) {
+  const id = useId();
+  return (
+    <section className="checkout-section" aria-labelledby={`${id}-title`}>
+      <h3 id={`${id}-title`}>Endereço de entrega</h3>
+      <p className="field__help">Vai só na mensagem do WhatsApp e não fica salvo neste site.</p>
+      <div className="address">
+        {ADDRESS_FIELDS.map(({ key, label, autoComplete, help }) => {
+          const showError = touched[key] && errors[key];
+          return (
+            <div key={key} className={`field address__${key}`}>
+              <label htmlFor={`${id}-${key}`}>{label}</label>
+              <input
+                id={`${id}-${key}`}
+                autoComplete={autoComplete}
+                maxLength={ADDRESS_MAX_LENGTH}
+                aria-invalid={showError ? true : undefined}
+                aria-describedby={`${id}-${key}-help`}
+                value={data[key]}
+                onChange={(e) => onChange(key, e.target.value)}
+                onBlur={() => onBlur(key)}
+              />
+              <p id={`${id}-${key}-help`} className={showError ? 'field__error' : 'field__help'}>
+                {showError ? errors[key] : help}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

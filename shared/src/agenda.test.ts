@@ -119,6 +119,7 @@ describe('availableDays', () => {
       weekday: 4,
       special: 'Véspera de Natal',
       times: [],
+      delivery: false,
     });
     expect(availableDays(input, '2026-12-22T10:00', 48).map((d) => d.date)).not.toContain('2026-12-24');
   });

@@ -1565,3 +1565,38 @@ body {
   font-weight: bold;
   color: var(--marrom-forte);
 }
+
+/* ---------- Tele-entrega no checkout (RF43, RN45, C77–C82) ---------- */
+.modo {
+  margin-bottom: 0.75rem;
+}
+.address {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 0.75rem;
+}
+.address .field {
+  margin-top: 0.5rem;
+  grid-column: span 2;
+}
+.address .address__street {
+  grid-column: span 3;
+}
+.address .address__number {
+  grid-column: span 1;
+}
+.address .address__complement,
+.address .address__reference {
+  grid-column: 1 / -1;
+}
+.address .field input {
+  width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 480px) {
+  .address .field,
+  .address .address__street,
+  .address .address__number {
+    grid-column: 1 / -1;
+  }
+}

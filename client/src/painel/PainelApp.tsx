@@ -64,6 +64,7 @@ const SECOES: Secao[] = [
       { nome: 'Horários lotados', href: '#agenda/lotados' },
       { nome: 'Restrições de retirada', href: '#agenda/restricoes' },
       { nome: 'Antecedência e prazo', href: '#agenda/regras' },
+      { nome: 'Tele-entrega', href: '#agenda/entrega' },
     ],
   },
   {

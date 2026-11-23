@@ -61,6 +61,46 @@ export function formatPhone(value: string): string {
 
 export type CustomerErrors = Partial<Record<keyof CustomerData, string>>;
 
+/**
+ * Endereço da tele-entrega (RN45): vai só na mensagem do WhatsApp, como os dados do cliente
+ * (RN02). Rua, número, bairro e cidade obrigatórios; complemento e referência opcionais.
+ */
+export interface Address {
+  street: string;
+  number: string;
+  complement: string;
+  district: string;
+  city: string;
+  reference: string;
+}
+export const emptyAddress: Address = { street: '', number: '', complement: '', district: '', city: '', reference: '' };
+export const ADDRESS_MAX_LENGTH = 80;
+export type AddressErrors = Partial<Record<keyof Address, string>>;
+
+export function validateAddress(a: Address): AddressErrors {
+  const errors: AddressErrors = {};
+  const required: [keyof Address, string][] = [
+    ['street', 'Informe a rua.'],
+    ['number', 'Informe o número (ou "s/n").'],
+    ['district', 'Informe o bairro.'],
+    ['city', 'Informe a cidade.'],
+  ];
+  for (const [k, msg] of required) if (!a[k].trim()) errors[k] = msg;
+  for (const k of Object.keys(a) as (keyof Address)[])
+    if (a[k].length > ADDRESS_MAX_LENGTH) errors[k] = `Use até ${ADDRESS_MAX_LENGTH} caracteres.`;
+  return errors;
+}
+
+/** "Rua das Flores, 123, ap 2 - Centro, Xangri-lá (ref.: perto da praça)" */
+export function formatAddress(a: Address): string {
+  const t = (s: string) => s.trim();
+  let text = `${t(a.street)}, ${t(a.number)}`;
+  if (t(a.complement)) text += `, ${t(a.complement)}`;
+  text += ` - ${t(a.district)}, ${t(a.city)}`;
+  if (t(a.reference)) text += ` (ref.: ${t(a.reference)})`;
+  return text;
+}
+
 export function validateCustomer(data: CustomerData): CustomerErrors {
   const errors: CustomerErrors = {};
   if (data.name.trim().length > NAME_MAX_LENGTH) errors.name = `Use até ${NAME_MAX_LENGTH} caracteres.`;

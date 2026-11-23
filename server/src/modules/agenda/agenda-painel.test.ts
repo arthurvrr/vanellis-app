@@ -26,6 +26,7 @@ beforeEach(async () => {
   for (const t of [openingHours, weeklySchedule, pickupRestriction, blockedDate, closedPeriod, specialDate]) {
     await app.db.delete(t);
   }
+  await op('PUT', '/api/painel/agenda/entrega', { enabled: false, allDays: true, dates: [] });
   await op('PUT', '/api/painel/agenda/regras', { minLeadHours: 2, windowMonths: 4 });
   await op('PUT', '/api/painel/agenda/horario-atual', { hours: SEMANA });
 });
@@ -213,5 +214,36 @@ describe('Situação da loja no site', () => {
     const fechado = (await app.browser()('GET', '/api/agenda/loja')).body;
     expect(fechado.status.open).toBe(false);
     expect(fechado.status.nextOpen).toMatchObject({ date: '2026-11-23', time: '07:30' });
+  });
+});
+
+describe('Tele-entrega', () => {
+  const entrega = (body: object) => op('PUT', '/api/painel/agenda/entrega', body);
+
+  it('C77: ligada para todos os dias, todo dia disponível aceita entrega', async () => {
+    expect((await site()).days.some((d) => d.delivery)).toBe(false);
+    const r = await entrega({ enabled: true, allDays: true, dates: [] });
+    expect(r.status).toBe(200);
+    expect(r.body.delivery).toEqual({ enabled: true, allDays: true, dates: [] });
+    expect((await site()).days.every((d) => d.delivery)).toBe(true);
+  });
+
+  it('C78: só nas datas marcadas; a retirada continua em todos os dias', async () => {
+    await entrega({ enabled: true, allDays: false, dates: ['2026-12-31', '2026-12-24', '2026-12-24'] });
+    const a = await site();
+    expect(a.days.filter((d) => d.delivery).map((d) => d.date)).toEqual(['2026-12-24', '2026-12-31']);
+    expect(a.days.length).toBeGreaterThan(30);
+  });
+
+  it('C79: desligada, nenhum dia com entrega', async () => {
+    await entrega({ enabled: true, allDays: true, dates: [] });
+    await entrega({ enabled: false, allDays: true, dates: [] });
+    expect((await site()).days.some((d) => d.delivery)).toBe(false);
+  });
+
+  it('C83: só em datas, sem nenhuma data, é recusado', async () => {
+    const r = await entrega({ enabled: true, allDays: false, dates: [] });
+    expect(r.status).toBe(400);
+    expect(r.body.error).toMatch(/ao menos uma data/);
   });
 });

@@ -99,6 +99,13 @@
       "when": 1795467354274,
       "tag": "0013_cardapio_especial",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795470882171,
+      "tag": "0014_tele_entrega",
+      "breakpoints": true
     }
   ]
 }

@@ -101,6 +101,11 @@ export const agendaConfig = pgTable(
     windowMonths: integer('window_months').notNull().default(4),
     /** Pausa o recebimento de novos pedidos (RN11). */
     ordersPaused: boolean('orders_paused').notNull().default(false),
+    /** Tele-entrega ligada (RN43); desligada, o site só oferece retirada (RN05). */
+    deliveryEnabled: boolean('delivery_enabled').notNull().default(false),
+    /** Entrega em todos os dias com retirada, ou só nas `deliveryDates` (RN44). */
+    deliveryAllDays: boolean('delivery_all_days').notNull().default(true),
+    deliveryDates: date('delivery_dates', { mode: 'string' }).array().notNull().default(sql`'{}'::date[]`),
   },
   (t) => [
     check('agenda_config_single_row', sql`${t.id} = 1`),

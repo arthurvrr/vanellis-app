@@ -134,7 +134,12 @@
 }
 .form-ok {
   margin: 0.75rem 0 0;
-  color: #1f6f3e;
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  background: #2e7d4f;
+  color: #fff;
+  font-weight: bold;
+  box-shadow: var(--sombra-2);
 }
 
 /* Agenda (etapa 2) */
@@ -151,6 +156,13 @@
   margin: 0 0 1rem;
   padding: 0.6rem 1rem;
   background: #fff;
+}
+/* Confirmação em verde com texto branco, bem visível (vale para todas as telas do painel). */
+.form-ok.agenda__msg {
+  background: #2e7d4f;
+  color: #fff;
+}
+.agenda__msg {
   border-radius: 12px;
   box-shadow: var(--sombra-2);
 }
@@ -1101,4 +1113,16 @@
   background: #fdf3df;
   border-color: var(--dourado);
   color: var(--marrom-forte);
+}
+
+/* ---------- Tele-entrega na Agenda (RF44, C77–C79, C83) ---------- */
+.entrega__toggle {
+  font-weight: bold;
+}
+.entrega__modo {
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+}
+.entrega__datas {
+  margin-bottom: 0.75rem;
 }

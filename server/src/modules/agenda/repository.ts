@@ -24,6 +24,11 @@ export async function getAgendaInput(db: DB): Promise<{ input: AgendaInput; paus
     input: {
       minLeadHours: config?.minLeadHours ?? 2,
       windowMonths: config?.windowMonths ?? 4,
+      delivery: {
+        enabled: config?.deliveryEnabled ?? false,
+        allDays: config?.deliveryAllDays ?? true,
+        dates: config?.deliveryDates ?? [],
+      },
       schedules: schedules.map((s) => ({
         validFrom: s.validFrom,
         validUntil: s.validUntil,
