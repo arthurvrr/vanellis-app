@@ -5,6 +5,7 @@ import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
   check,
+  date,
   integer,
   jsonb,
   numeric,
@@ -24,6 +25,16 @@ export const category = pgTable('category', {
   /** Foto de capa do cartão da entrada; sem capa, vale a do primeiro produto (RF52). */
   coverImageUrl: varchar('cover_image_url', { length: 255 }),
   position: integer('position').notNull().default(0),
+  /**
+   * Cardápio especial (RF16–RF19, RN16–RN19): só aparece no site entre `visibleFrom` e
+   * `visibleUntil`, se não estiver oculto, e seus produtos só podem ser retirados nas
+   * `pickupDates`. Validado na API: especial exige período e ao menos uma data.
+   */
+  special: boolean('special').notNull().default(false),
+  visibleFrom: date('visible_from', { mode: 'string' }),
+  visibleUntil: date('visible_until', { mode: 'string' }),
+  hidden: boolean('hidden').notNull().default(false),
+  pickupDates: date('pickup_dates', { mode: 'string' }).array().notNull().default(sql`'{}'::date[]`),
 });
 
 export const product = pgTable(

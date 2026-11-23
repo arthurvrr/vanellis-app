@@ -1523,3 +1523,45 @@ body {
 .menu-intro {
   padding-top: 0.9rem;
 }
+
+/* ---------- Cardápio especial em destaque (etapa 6: RF02, C70) ---------- */
+.cat--especial {
+  border: 2px solid var(--dourado);
+  background: linear-gradient(135deg, #fffaf0 0%, #fff 60%);
+}
+.cat__badge {
+  align-self: flex-start;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  background: var(--dourado);
+  color: var(--marrom-forte);
+  font-size: 0.72rem;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+}
+.cat__especial {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--marrom);
+}
+.folder-tab--especial:not(.folder-tab--active) {
+  background: #fdf3df;
+  border-color: var(--dourado);
+}
+.folder-tab--especial span {
+  color: #b8862b;
+}
+.folder-tab--especial.folder-tab--active span {
+  color: var(--dourado);
+}
+.menu-intro__especial {
+  display: inline-block;
+  margin: 0.5rem 0 0;
+  padding: 0.35rem 0.8rem;
+  border-radius: 10px;
+  background: #fdf3df;
+  border: 1px solid var(--dourado);
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: var(--marrom-forte);
+}

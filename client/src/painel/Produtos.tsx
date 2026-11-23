@@ -1,3 +1,4 @@
+import { formatDates, shortDate, specialMenuProblem } from '@vanellis/shared';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, enviaFoto, type CategoriaPainel, type ProdutoLista } from './api';
 import { ProdutoEditor } from './ProdutoEditor';
@@ -321,7 +322,95 @@ function FotoCapa({
   );
 }
 
-const vazio = { name: '', description: '', coverImageUrl: null as string | null };
+type Especial = { visibleFrom: string; visibleUntil: string; pickupDates: string[] };
+const vazio = {
+  name: '',
+  description: '',
+  coverImageUrl: null as string | null,
+  /** Cardápio especial ligado e sua configuração (RF16–RF19). */
+  especial: false,
+  special: { visibleFrom: '', visibleUntil: '', pickupDates: [] } as Especial,
+};
+
+/** Situação do cardápio especial na lista: aparece no site agora ou não, e por quê. */
+function situacaoEspecial(c: CategoriaPainel): { texto: string; aviso: boolean } {
+  const sp = c.special!;
+  const retirada = `retirada em ${formatDates(sp.pickupDates)}`;
+  switch (c.specialState) {
+    case 'oculto':
+      return { texto: `Oculto: não aparece no site · ${retirada}`, aviso: true };
+    case 'em-breve':
+      return { texto: `Aparece no site a partir de ${shortDate(sp.visibleFrom)} · ${retirada}`, aviso: false };
+    case 'encerrado':
+      return { texto: `Encerrado em ${shortDate(sp.visibleUntil)}: não aparece no site`, aviso: true };
+    default:
+      return { texto: `No site até ${shortDate(sp.visibleUntil)} · ${retirada}`, aviso: false };
+  }
+}
+
+/** Período e datas de retirada do cardápio especial (C70, C72). */
+function CamposEspecial({ value, onChange }: { value: Especial; onChange: (v: Especial) => void }) {
+  const [nova, setNova] = useState('');
+  const incluir = () => {
+    if (!nova || value.pickupDates.includes(nova)) return;
+    onChange({ ...value, pickupDates: [...value.pickupDates, nova].sort() });
+    setNova('');
+  };
+  return (
+    <div className="especial">
+      <div className="especial__linha">
+        <div className="field">
+          <label htmlFor="esp-de">Aparece no site de</label>
+          <input
+            id="esp-de"
+            type="date"
+            value={value.visibleFrom}
+            onChange={(e) => onChange({ ...value, visibleFrom: e.target.value })}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="esp-ate">até (último dia de encomendas)</label>
+          <input
+            id="esp-ate"
+            type="date"
+            value={value.visibleUntil}
+            onChange={(e) => onChange({ ...value, visibleUntil: e.target.value })}
+          />
+        </div>
+      </div>
+      <div className="field">
+        <label htmlFor="esp-data">Datas de retirada (os produtos só podem ser retirados nelas)</label>
+        <div className="especial__linha">
+          <input id="esp-data" type="date" value={nova} onChange={(e) => setNova(e.target.value)} />
+          <button type="button" className="switch__btn" onClick={incluir} disabled={!nova}>
+            Incluir data
+          </button>
+        </div>
+        {value.pickupDates.length > 0 && (
+          <ul className="especial__datas">
+            {value.pickupDates.map((d) => (
+              <li key={d}>
+                {shortDate(d)}/{d.slice(0, 4)}
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label={`Tirar a data ${shortDate(d)}`}
+                  onClick={() => onChange({ ...value, pickupDates: value.pickupDates.filter((x) => x !== d) })}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <p className="field__help">
+        Se a data de retirada é uma data especial da Agenda (como 24/12), o cliente escolhe só o dia. Itens do cardápio
+        regular no mesmo pedido vêm junto nessa data.
+      </p>
+    </div>
+  );
+}
 
 function ListaCategorias({
   categorias,
@@ -339,12 +428,29 @@ function ListaCategorias({
 
   const abrir = (c: CategoriaPainel | null) => {
     setEditando(c ? c.id : 'nova');
-    setForm(c ? { name: c.name, description: c.description ?? '', coverImageUrl: c.coverImageUrl } : vazio);
+    setForm(
+      c
+        ? {
+            name: c.name,
+            description: c.description ?? '',
+            coverImageUrl: c.coverImageUrl,
+            especial: c.special !== null,
+            special: c.special
+              ? { visibleFrom: c.special.visibleFrom, visibleUntil: c.special.visibleUntil, pickupDates: c.special.pickupDates }
+              : vazio.special,
+          }
+        : vazio,
+    );
   };
 
   const salvar = async (e: FormEvent) => {
     e.preventDefault();
-    const dados = { name: form.name, description: form.description || null, coverImageUrl: form.coverImageUrl };
+    const dados = {
+      name: form.name,
+      description: form.description || null,
+      coverImageUrl: form.coverImageUrl,
+      special: form.especial ? form.special : null,
+    };
     const ok = await act(
       () => (editando === 'nova' ? api.criaCategoria(dados) : api.editaCategoria(editando as number, dados)),
       setCategorias,
@@ -352,6 +458,8 @@ function ListaCategorias({
     );
     if (ok) setEditando(null);
   };
+
+  const problemaEspecial = form.especial ? specialMenuProblem(form.special) : null;
 
   const formulario = (
     <form className="cat-form" onSubmit={salvar}>
@@ -376,11 +484,25 @@ function ListaCategorias({
         />
       </div>
       <FotoCapa value={form.coverImageUrl} onChange={(url) => setForm({ ...form, coverImageUrl: url })} erro={erro} />
+      <label className="check especial__toggle">
+        <input
+          type="checkbox"
+          checked={form.especial}
+          onChange={(e) => setForm({ ...form, especial: e.target.checked })}
+        />
+        Cardápio especial (ex: Ceia de Natal): aparece só num período e tem datas de retirada próprias
+      </label>
+      {form.especial && <CamposEspecial value={form.special} onChange={(special) => setForm({ ...form, special })} />}
+      {problemaEspecial && (
+        <p className="field__error" role="alert">
+          {problemaEspecial}
+        </p>
+      )}
       <div className="agenda__actions">
         <button type="button" className="link" onClick={() => setEditando(null)}>
           Cancelar
         </button>
-        <button type="submit" className="add">
+        <button type="submit" className="add" disabled={problemaEspecial !== null}>
           {editando === 'nova' ? 'Criar categoria' : 'Salvar'}
         </button>
       </div>
@@ -408,7 +530,28 @@ function ListaCategorias({
                   {c.productCount} {c.productCount === 1 ? 'produto' : 'produtos'}
                   {c.productCount === 0 && ' · não aparece no site'}
                 </span>
+                {c.special && (
+                  <span className={situacaoEspecial(c).aviso ? 'tag tag--warn' : 'tag tag--especial'}>
+                    ★ Especial · {situacaoEspecial(c).texto}
+                  </span>
+                )}
               </div>
+              {c.special && (
+                <button
+                  type="button"
+                  className={c.special.hidden ? 'toggle' : 'toggle toggle--on'}
+                  aria-pressed={!c.special.hidden}
+                  onClick={() =>
+                    act(
+                      () => api.ocultaCategoria(c.id, !c.special!.hidden),
+                      setCategorias,
+                      c.special!.hidden ? `${c.name} reexibido.` : `${c.name} oculto: saiu do site.`,
+                    )
+                  }
+                >
+                  {c.special.hidden ? 'Reexibir' : 'Ocultar'}
+                </button>
+              )}
               <span className="prow__order">
                 {i > 0 && (
                   <Seta

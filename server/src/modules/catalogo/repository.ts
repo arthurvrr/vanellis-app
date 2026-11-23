@@ -1,4 +1,11 @@
-import { withoutPrices, type CatalogoDTO, type PriceMode, type ProductDTO, type SaleUnit } from '@vanellis/shared';
+import {
+  specialMenuState,
+  withoutPrices,
+  type CatalogoDTO,
+  type PriceMode,
+  type ProductDTO,
+  type SaleUnit,
+} from '@vanellis/shared';
 import { asc } from 'drizzle-orm';
 import type { DB } from '../../db/client';
 import { storeSettings } from '../configuracoes/schema';
@@ -7,11 +14,31 @@ import { category, option, optionGroup, product } from './schema';
 // O PostgreSQL devolve `numeric` como texto para não perder precisão.
 const num = (v: string | null): number | null => (v === null ? null : Number(v));
 
-export async function getCatalogo(db: DB): Promise<CatalogoDTO> {
-  const categorias = await db
-    .select({ id: category.id, name: category.name, slug: category.slug, description: category.description, coverImageUrl: category.coverImageUrl })
-    .from(category)
-    .orderBy(asc(category.position), asc(category.id));
+/**
+ * Cardápio público de hoje ('AAAA-MM-DD'). Cardápio especial fora do período ou oculto não
+ * sai do servidor, nem os seus produtos (RN17, RN18); quem já tinha um item dele no carrinho
+ * o perde, como acontece com um produto excluído (C71).
+ */
+export async function getCatalogo(db: DB, today: string): Promise<CatalogoDTO> {
+  const rows0 = await db.select().from(category).orderBy(asc(category.position), asc(category.id));
+  const categorias = rows0
+    .filter(
+      (c) =>
+        !c.special ||
+        specialMenuState(
+          { visibleFrom: c.visibleFrom ?? '', visibleUntil: c.visibleUntil ?? '', hidden: c.hidden, pickupDates: c.pickupDates },
+          today,
+        ) === 'visivel',
+    )
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      coverImageUrl: c.coverImageUrl,
+      special: c.special ? { visibleUntil: c.visibleUntil!, pickupDates: [...c.pickupDates].sort() } : null,
+    }));
+  const shown = new Set(categorias.map((c) => c.id));
 
   const rows = await db.query.product.findMany({
     orderBy: [asc(product.position), asc(product.id)],
@@ -23,7 +50,7 @@ export async function getCatalogo(db: DB): Promise<CatalogoDTO> {
     },
   });
 
-  const produtos: ProductDTO[] = rows.map((p) => ({
+  const produtos: ProductDTO[] = rows.filter((p) => shown.has(p.categoryId)).map((p) => ({
     id: p.id,
     categoryId: p.categoryId,
     pdvCode: p.pdvCode,

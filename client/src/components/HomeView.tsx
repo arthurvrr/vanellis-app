@@ -1,4 +1,4 @@
-import { statusLabel, type CatalogoDTO } from '@vanellis/shared';
+import { pickupLabel, shortDate, statusLabel, type CatalogoDTO } from '@vanellis/shared';
 import { asset } from '../lib/demo';
 import { useLoja } from '../lib/useLoja';
 import { Photo } from './Photo';
@@ -63,10 +63,22 @@ export function HomeView({ catalogo, onCategory }: { catalogo: CatalogoDTO; onCa
         </h2>
         <div className="cats">
           {catalogo.categorias.map((c) => (
-            <button key={c.id} type="button" className="cat" onClick={() => onCategory(c.slug)}>
+            <button
+              key={c.id}
+              type="button"
+              className={c.special ? 'cat cat--especial' : 'cat'}
+              onClick={() => onCategory(c.slug)}
+            >
               <Photo src={c.coverImageUrl ?? imageOf(c.id)} className="cat__img" />
               <span className="cat__body">
+                {/* Cardápio especial em destaque (RF02): selo e datas de retirada. */}
+                {c.special && <span className="cat__badge">★ Cardápio especial</span>}
                 <span className="cat__name">{c.name}</span>
+                {c.special && (
+                  <span className="cat__especial">
+                    {pickupLabel(c.special)} · encomendas até {shortDate(c.special.visibleUntil)}
+                  </span>
+                )}
                 {c.description && <span className="cat__text">{c.description}</span>}
                 <span className="cat__cta">Ver {c.name.toLowerCase()} →</span>
               </span>

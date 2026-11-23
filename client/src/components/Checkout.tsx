@@ -2,6 +2,7 @@ import {
   describeSelection,
   formatBRL,
   formatCPF,
+  formatDates,
   formatDay,
   formatPhone,
   formatRange,
@@ -250,7 +251,22 @@ function PickupPicker({
       <h3 id="pickup-title">Retirada no balcão</h3>
       {error && <p className="field__error">{error}</p>}
       {!agenda && !error && <p>Carregando os horários…</p>}
-      {agenda && agenda.days.length === 0 && (
+      {/* Cardápios especiais no carrinho: só as datas deles (RN19, RN29); sem data em comum, pedidos separados (RN30). */}
+      {agenda?.rule?.conflict ? (
+        <p className="cart__notice" role="alert">
+          {agenda.rule.menus.map((m) => `${m.name} (retirada em ${formatDates(m.pickupDates)})`).join(' e ')} não têm
+          data de retirada em comum. Faça um pedido para cada cardápio: tire do carrinho os itens de um deles e envie,
+          depois faça o outro.
+        </p>
+      ) : (
+        agenda?.rule?.menus.map((m) => (
+          <p key={m.name} className="checkout-info">
+            {m.name}: retirada só em {formatDates(m.pickupDates)}
+            {agenda.rule!.menus.length === 1 ? '. Os outros itens do pedido vêm junto nessa data.' : '.'}
+          </p>
+        ))
+      )}
+      {agenda && agenda.days.length === 0 && !agenda.rule?.conflict && (
         <p>Não há horários de retirada disponíveis para estes itens nos próximos dias.</p>
       )}
       {agenda && agenda.days.length > 0 && (

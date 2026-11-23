@@ -1,5 +1,5 @@
 import {
-  availableDays,
+  agendaForCart,
   nowInBrasilia,
   storeInfo,
   type StoreInfoDTO,
@@ -33,13 +33,7 @@ export function fetchCatalogo(): Promise<CatalogoDTO> {
 export async function fetchDisponibilidade(productIds: number[], signal?: AbortSignal): Promise<AgendaDTO> {
   if (IS_DEMO) {
     const { catalogo, agenda } = await demo();
-    const ids = new Set(productIds);
-    const lead = Math.max(0, ...catalogo.produtos.filter((p) => ids.has(p.id)).map((p) => p.leadTimeHours ?? 0));
-    return {
-      paused: agenda.paused,
-      leadHours: Math.max(agenda.input.minLeadHours, lead),
-      days: agenda.paused ? [] : availableDays(agenda.input, nowInBrasilia(), lead),
-    };
+    return agendaForCart(agenda.input, agenda.paused, nowInBrasilia(), catalogo, productIds);
   }
   const ids = [...new Set(productIds)].sort((a, b) => a - b).join(',');
   return getJSON(`/api/agenda/disponibilidade?produtos=${ids}`, 'os horários de retirada', signal);

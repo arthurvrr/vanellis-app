@@ -1,8 +1,9 @@
-import { availableDays, storeInfo, type AgendaDTO } from '@vanellis/shared';
+import { agendaForCart, storeInfo } from '@vanellis/shared';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
-import { getAgendaInput, itemsLeadHours } from './repository';
+import { getCatalogo } from '../catalogo/repository';
+import { getAgendaInput } from './repository';
 
 const query = z.object({
   produtos: z
@@ -24,13 +25,9 @@ export function agendaRouter(db: DB, now: () => string) {
       return;
     }
     const { input, paused } = await getAgendaInput(db);
-    const lead = await itemsLeadHours(db, parsed.data.produtos);
-    const body: AgendaDTO = {
-      paused,
-      leadHours: Math.max(input.minLeadHours, lead),
-      days: paused ? [] : availableDays(input, now(), lead),
-    };
-    res.json(body);
+    // Antecedência dos itens (RN14) e datas dos cardápios especiais (RN19, RN29, RN30).
+    const catalogo = await getCatalogo(db, now().slice(0, 10));
+    res.json(agendaForCart(input, paused, now(), catalogo, parsed.data.produtos));
   });
   // Situação da loja e horário da semana, para a entrada e o rodapé do site.
   router.get('/loja', async (_req, res) => {

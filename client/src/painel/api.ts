@@ -1,4 +1,11 @@
-import type { PrecoCategoriaDTO, PrecosPatch, ProductForm, TemplateDTO } from '@vanellis/shared';
+import type {
+  PrecoCategoriaDTO,
+  PrecosPatch,
+  ProductForm,
+  SpecialMenu,
+  SpecialMenuState,
+  TemplateDTO,
+} from '@vanellis/shared';
 // Chamadas do painel. O cookie de sessão vai sozinho (mesmo site); mudanças vão como JSON,
 // que o servidor exige (proteção contra CSRF).
 
@@ -48,6 +55,9 @@ export interface CategoriaPainel {
   description: string | null;
   coverImageUrl: string | null;
   productCount: number;
+  /** Cardápio especial (RF16–RF19); `null` = categoria regular. */
+  special: SpecialMenu | null;
+  specialState: SpecialMenuState | null;
 }
 export interface ProdutoLista {
   id: number;
@@ -59,7 +69,13 @@ export interface ProdutoLista {
   imageUrl: string | null;
   saleUnit: string;
 }
-export type CategoriaForm = { name: string; description: string | null; coverImageUrl: string | null };
+export type CategoriaForm = {
+  name: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  /** Período e datas do cardápio especial; `null` = regular. */
+  special: Omit<SpecialMenu, 'hidden'> | null;
+};
 
 /** Erro com a mensagem do servidor; `status` 401 = sessão encerrada. */
 export class ApiError extends Error {
@@ -103,6 +119,8 @@ export const api = {
   criaCategoria: (c: CategoriaForm) => call<CategoriaPainel[]>('POST', '/painel/catalogo/categorias', c),
   editaCategoria: (id: number, c: Partial<CategoriaForm>) =>
     call<CategoriaPainel[]>('PUT', `/painel/catalogo/categorias/${id}`, c),
+  ocultaCategoria: (id: number, hidden: boolean) =>
+    call<CategoriaPainel[]>('PUT', `/painel/catalogo/categorias/${id}/oculto`, { hidden }),
   moveCategoria: (id: number, direcao: 'subir' | 'descer') =>
     call<CategoriaPainel[]>('POST', `/painel/catalogo/categorias/${id}/mover`, { direcao }),
   excluiCategoria: (id: number) => call<CategoriaPainel[]>('DELETE', `/painel/catalogo/categorias/${id}`, {}),

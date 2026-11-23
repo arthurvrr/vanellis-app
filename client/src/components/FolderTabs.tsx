@@ -38,10 +38,11 @@ export function FolderTabs({
           <button
             key={c.id}
             type="button"
-            className={c.id === activeId ? 'folder-tab folder-tab--active' : 'folder-tab'}
+            className={`folder-tab${c.id === activeId ? ' folder-tab--active' : ''}${c.special ? ' folder-tab--especial' : ''}`}
             aria-current={c.id === activeId ? 'page' : undefined}
             onClick={() => onSelect(c.slug)}
           >
+            {c.special && <span aria-hidden="true">★ </span>}
             {c.name}
           </button>
         ))}

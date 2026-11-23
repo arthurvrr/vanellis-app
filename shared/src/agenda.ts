@@ -1,6 +1,9 @@
 // Agenda de retirada (RN12–RN15, RN20, RN31, RN32, RN51, RN52): quais dias e horários o
 // cliente pode escolher. Datas em 'AAAA-MM-DD' e horas em 'HH:MM', no horário de Brasília.
 
+import { pickupRule, type PickupRule } from './cardapioEspecial';
+import type { CatalogoDTO } from './catalogo';
+
 /** Intervalo entre os horários oferecidos ao cliente (RN51). */
 export const PICKUP_STEP_MINUTES = 30;
 
@@ -83,6 +86,8 @@ export interface AgendaDTO {
   paused: boolean;
   leadHours: number;
   days: AvailableDay[];
+  /** Cardápios especiais no carrinho e as datas que eles permitem (RN19, RN29, RN30). */
+  rule?: PickupRule;
 }
 
 const MINUTE = 60_000;
@@ -155,7 +160,14 @@ export function pickupTimes(
  * um horário só aparece se é depois de `now` + antecedência. Data especial conta a partir
  * da meia-noite do dia, já que o horário é combinado depois.
  */
-export function availableDays(input: AgendaInput, now: string, itemsLeadHours = 0): AvailableDay[] {
+export function availableDays(
+  input: AgendaInput,
+  now: string,
+  itemsLeadHours = 0,
+  /** Só estas datas, quando o carrinho tem cardápio especial (RN19); null = todas. */
+  allowedDates: string[] | null = null,
+): AvailableDay[] {
+  const allowed = allowedDates ? new Set(allowedDates) : null;
   const [today, time] = now.split('T') as [string, string];
   const leadMinutes = Math.max(input.minLeadHours, itemsLeadHours) * 60;
   const earliest = wallMs(today, toMinutes(time) + leadMinutes);
@@ -167,6 +179,7 @@ export function availableDays(input: AgendaInput, now: string, itemsLeadHours = 
     const date = new Date(dayMs).toISOString().slice(0, 10);
     const weekday = new Date(dayMs).getUTCDay();
     if (blocked.has(date)) continue;
+    if (allowed && !allowed.has(date)) continue;
 
     const special = input.specialDates.find((s) => s.date === date);
     if (special) {
@@ -324,5 +337,28 @@ export function storeInfo(input: AgendaInput, paused: boolean, now: string): Sto
     minLeadHours: input.minLeadHours,
     status: storeStatus(input, now),
     week: scheduleFor(input.schedules, today)?.hours ?? [],
+  };
+}
+
+/**
+ * Dias de retirada para os produtos do carrinho: antecedência dos itens (RN14) e, com
+ * cardápio especial, só as datas dele (RN19, RN29); sem data em comum, nenhuma (RN30).
+ * Usada pelo servidor e pela versão de teste.
+ */
+export function agendaForCart(
+  input: AgendaInput,
+  paused: boolean,
+  now: string,
+  catalogo: Pick<CatalogoDTO, 'categorias' | 'produtos'>,
+  productIds: number[],
+): AgendaDTO {
+  const ids = new Set(productIds);
+  const lead = Math.max(0, ...catalogo.produtos.filter((p) => ids.has(p.id)).map((p) => p.leadTimeHours ?? 0));
+  const rule = pickupRule(catalogo, productIds);
+  return {
+    paused,
+    leadHours: Math.max(input.minLeadHours, lead),
+    days: paused || rule.conflict ? [] : availableDays(input, now, lead, rule.dates),
+    rule,
   };
 }

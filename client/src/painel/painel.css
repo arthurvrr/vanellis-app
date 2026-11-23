@@ -1041,3 +1041,64 @@
     padding-left: 0.5rem;
   }
 }
+
+/* ---------- Cardápio especial na categoria (etapa 6: RF16–RF19, C70–C72) ---------- */
+.especial__toggle {
+  margin-top: 0.75rem;
+  font-weight: bold;
+  align-items: flex-start;
+}
+.especial {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--borda);
+}
+.especial .field {
+  margin-top: 0.25rem;
+}
+.especial__linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 1rem;
+}
+.especial__linha input[type='date'],
+.cat-form .especial__linha input[type='date'] {
+  width: auto;
+}
+.especial input[type='date'] {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  min-height: 2.6rem;
+}
+.especial__datas,
+.plist .especial__datas {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+.especial__datas li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.2rem 0.1rem 0.7rem;
+  border-radius: 999px;
+  background: var(--creme);
+  border: 1px solid var(--borda);
+}
+.especial__datas .icon-btn {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+.tag--especial {
+  background: #fdf3df;
+  border-color: var(--dourado);
+  color: var(--marrom-forte);
+}

@@ -5,7 +5,7 @@
 
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { inArray } from 'drizzle-orm';
-import type { DemoData } from '@vanellis/shared';
+import { nowInBrasilia, type DemoData } from '@vanellis/shared';
 import { db, pool } from '../src/db/client';
 import { getAgendaInput } from '../src/modules/agenda/repository';
 import { getCatalogo } from '../src/modules/catalogo/repository';
@@ -18,7 +18,7 @@ if (!settings) throw new Error('Configurações da loja não cadastradas (rode n
 const { input, paused } = await getAgendaInput(db);
 
 const data: DemoData = {
-  catalogo: await getCatalogo(db),
+  catalogo: await getCatalogo(db, nowInBrasilia().slice(0, 10)),
   agenda: { input, paused },
   configuracoes: toPublicSettings(settings),
 };

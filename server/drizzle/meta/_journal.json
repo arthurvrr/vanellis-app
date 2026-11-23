@@ -92,6 +92,13 @@
       "when": 1795454863045,
       "tag": "0012_horario_intervalo",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795467354274,
+      "tag": "0013_cardapio_especial",
+      "breakpoints": true
     }
   ]
 }

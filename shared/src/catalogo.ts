@@ -2,6 +2,7 @@
 // Espelham o esquema proposto no doc de requisitos (Modelo de produtos e banco de dados).
 
 import type { AgendaInput } from './agenda';
+import type { PublicSpecialMenu } from './cardapioEspecial';
 
 export type SaleUnit = 'UN' | 'KG';
 export type PriceMode = 'replace' | 'add';
@@ -14,6 +15,8 @@ export interface CategoryDTO {
   description: string | null;
   /** Foto de capa do cartão da entrada; `null` = foto do primeiro produto. */
   coverImageUrl: string | null;
+  /** Cardápio especial visível hoje (RF02, RN19); `null` = categoria regular. */
+  special: PublicSpecialMenu | null;
 }
 
 export interface OptionDTO {
@@ -99,8 +102,10 @@ export interface DemoData {
 /**
  * Categorias que o cliente vê nas abas e na entrada: só as que têm ao menos um produto
  * cadastrado (mesmo indisponível). Uma categoria nova aparece quando ganha o primeiro produto.
+ * Os cardápios especiais vêm antes, em destaque (RF02).
  */
 export function visibleCategories(catalogo: Pick<CatalogoDTO, 'categorias' | 'produtos'>): CategoryDTO[] {
   const used = new Set(catalogo.produtos.map((p) => p.categoryId));
-  return catalogo.categorias.filter((c) => used.has(c.id));
+  const shown = catalogo.categorias.filter((c) => used.has(c.id));
+  return [...shown.filter((c) => c.special), ...shown.filter((c) => !c.special)];
 }

@@ -1,6 +1,8 @@
 // Tela Produtos do painel, parte 1 (etapa 3): categorias (RF52) e lista de produtos com
 // disponibilidade, ordem e exclusão (RF15, RF53, RF54, RN41). Cenários C43–C51.
+// Etapa 6: uma categoria pode ser cardápio especial (RF16–RF19; cenários C70–C72).
 
+import { specialMenuProblem, specialMenuState, type SpecialMenu, type SpecialMenuState } from '@vanellis/shared';
 import { and, asc, count, eq, isNotNull, ne, sql } from 'drizzle-orm';
 import { Router, type Response } from 'express';
 import { z } from 'zod';
@@ -24,6 +26,10 @@ export interface CategoriaPainelDTO {
   description: string | null;
   coverImageUrl: string | null;
   productCount: number;
+  /** Configuração do cardápio especial; `null` = categoria regular. */
+  special: SpecialMenu | null;
+  /** Situação hoje, para o painel mostrar se aparece no site. */
+  specialState: SpecialMenuState | null;
 }
 
 export interface ProdutoListaDTO {
@@ -69,6 +75,26 @@ const categoriaBody = z.object({
     .default(null),
   coverImageUrl: fotoUrl.default(null),
 });
+/** Período e datas do cardápio especial; `null` volta a ser categoria regular. */
+const especialBody = z
+  .object({
+    visibleFrom: z.string(),
+    visibleUntil: z.string(),
+    pickupDates: z.array(z.string()).max(31, 'No máximo 31 datas de retirada'),
+  })
+  .nullable();
+const ocultoBody = z.object({ hidden: z.boolean() });
+
+/** Colunas da categoria para gravar a configuração de cardápio especial. */
+function specialColumns(sp: z.infer<typeof especialBody>) {
+  if (!sp) return { special: false, visibleFrom: null, visibleUntil: null, pickupDates: [], hidden: false };
+  return {
+    special: true,
+    visibleFrom: sp.visibleFrom,
+    visibleUntil: sp.visibleUntil,
+    pickupDates: [...new Set(sp.pickupDates)].sort(),
+  };
+}
 const moverBody = z.object({ direcao: z.enum(['subir', 'descer']) });
 const disponivelBody = z.object({ available: z.boolean() });
 
@@ -93,7 +119,8 @@ async function move(
   return true;
 }
 
-export function catalogoPainelRouter(db: DB) {
+/** `today` devolve 'AAAA-MM-DD' no horário de Brasília (fixo nos testes). */
+export function catalogoPainelRouter(db: DB, today: () => string) {
   const router = Router();
   router.use(requireUser(db));
   const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -108,14 +135,21 @@ export function catalogoPainelRouter(db: DB) {
       .groupBy(product.categoryId);
     const byCat = new Map(counts.map((c) => [c.categoryId, Number(c.n)]));
     const rows = await db.select().from(category).orderBy(asc(category.position), asc(category.id));
-    return rows.map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      description: c.description,
-      coverImageUrl: c.coverImageUrl,
-      productCount: byCat.get(c.id) ?? 0,
-    }));
+    return rows.map((c) => {
+      const special: SpecialMenu | null = c.special
+        ? { visibleFrom: c.visibleFrom!, visibleUntil: c.visibleUntil!, hidden: c.hidden, pickupDates: [...c.pickupDates].sort() }
+        : null;
+      return {
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        description: c.description,
+        coverImageUrl: c.coverImageUrl,
+        productCount: byCat.get(c.id) ?? 0,
+        special,
+        specialState: special ? specialMenuState(special, today()) : null,
+      };
+    });
   }
 
   async function nameTaken(name: string, exceptId?: number) {
@@ -142,6 +176,10 @@ export function catalogoPainelRouter(db: DB) {
   router.post('/categorias', async (req, res) => {
     const parsed = categoriaBody.safeParse(req.body);
     if (!parsed.success) return fail(res, 400, firstIssue(parsed.error));
+    const sp = especialBody.optional().safeParse(req.body.special);
+    if (!sp.success) return fail(res, 400, firstIssue(sp.error));
+    const problema = sp.data ? specialMenuProblem(sp.data) : null;
+    if (problema) return fail(res, 400, problema);
     const { name, description, coverImageUrl } = parsed.data;
     if (await nameTaken(name)) return fail(res, 409, `Já existe a categoria "${name}"`);
     const [last] = await db
@@ -153,6 +191,7 @@ export function catalogoPainelRouter(db: DB) {
       description,
       coverImageUrl,
       position: Number(last?.max ?? -1) + 1,
+      ...specialColumns(sp.data ?? null),
     });
     res.status(201).json(await listCategorias());
   });
@@ -165,11 +204,30 @@ export function catalogoPainelRouter(db: DB) {
     const [atual] = await db.select().from(category).where(eq(category.id, id)).limit(1);
     if (!atual) return fail(res, 404, 'Categoria não encontrada');
     const patch = parsed.data;
+    // `special` ausente = não mexe; null = volta a ser regular (C70, C72).
+    const sp = especialBody.optional().safeParse(req.body.special);
+    if (!sp.success) return fail(res, 400, firstIssue(sp.error));
+    const problema = sp.data ? specialMenuProblem(sp.data) : null;
+    if (problema) return fail(res, 400, problema);
     if (patch.name && (await nameTaken(patch.name, id))) return fail(res, 409, `Já existe a categoria "${patch.name}"`);
-    if (Object.keys(patch).length) await db.update(category).set(patch).where(eq(category.id, id));
+    const set = { ...patch, ...(sp.data !== undefined ? specialColumns(sp.data) : {}) };
+    if (Object.keys(set).length) await db.update(category).set(set).where(eq(category.id, id));
     if (patch.coverImageUrl !== undefined && patch.coverImageUrl !== atual.coverImageUrl) {
       await deleteStoredImage(db, atual.coverImageUrl);
     }
+    res.json(await listCategorias());
+  });
+
+  // Ocultar ou reexibir um cardápio especial inteiro, a qualquer momento (RF18, C71).
+  router.put('/categorias/:id/oculto', async (req, res) => {
+    const parsed = ocultoBody.safeParse(req.body);
+    if (!parsed.success) return fail(res, 400, 'Dados inválidos');
+    const done = await db
+      .update(category)
+      .set({ hidden: parsed.data.hidden })
+      .where(and(eq(category.id, Number(req.params.id)), eq(category.special, true)))
+      .returning({ id: category.id });
+    if (!done.length) return fail(res, 404, 'Cardápio especial não encontrado');
     res.json(await listCategorias());
   });
 

@@ -6,3 +6,4 @@ export * from './cliente';
 export * from './mensagem';
 export * from './produtoForm';
 export * from './precos';
+export * from './cardapioEspecial';

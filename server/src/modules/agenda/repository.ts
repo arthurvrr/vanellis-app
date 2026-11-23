@@ -1,7 +1,5 @@
 import type { AgendaInput } from '@vanellis/shared';
-import { inArray, max } from 'drizzle-orm';
 import type { DB } from '../../db/client';
-import { product } from '../catalogo/schema';
 import {
   agendaConfig,
   blockedDate,
@@ -37,14 +35,4 @@ export async function getAgendaInput(db: DB): Promise<{ input: AgendaInput; paus
       specialDates: special.map((s) => ({ date: s.date, name: s.name })),
     },
   };
-}
-
-/** Maior antecedência exigida entre os produtos do carrinho (RN14); 0 se nenhum exige. */
-export async function itemsLeadHours(db: DB, productIds: number[]): Promise<number> {
-  if (!productIds.length) return 0;
-  const [row] = await db
-    .select({ lead: max(product.leadTimeHours) })
-    .from(product)
-    .where(inArray(product.id, productIds));
-  return row?.lead ?? 0;
 }
