@@ -12,6 +12,8 @@ export interface CategoryDTO {
   slug: string;
   /** Frase curta da categoria (RF52); `null` = sem frase. */
   description: string | null;
+  /** Foto de capa do cartão da entrada; `null` = foto do primeiro produto. */
+  coverImageUrl: string | null;
 }
 
 export interface OptionDTO {

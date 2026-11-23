@@ -38,6 +38,16 @@ export function Inicio({ onAuthError }: Props) {
       <h2 id="inicio-title">Início</h2>
 
       {/* Avisos permanentes: ficam aqui enquanto a opção estiver ligada (RF39). */}
+      {/* Produtos sem código PDV: aviso até zerar (RN41, cenário C46). */}
+      {!!status.pdvMissing && (
+        <p className="alert alert--info" role="status">
+          <strong>
+            {status.pdvMissing} {status.pdvMissing === 1 ? 'produto sem' : 'produtos sem'} código PDV.
+          </strong>{' '}
+          Eles continuam no cardápio, mas a mensagem do pedido vai sem o código.{' '}
+          <a href="#produtos-sem-pdv">Ver produtos</a>
+        </p>
+      )}
       {(status.ordersPaused || status.pricesHidden) && (
         <div className="alerts">
           {status.ordersPaused && (

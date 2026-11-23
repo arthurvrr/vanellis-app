@@ -66,12 +66,14 @@ export function clearSessionCookie(res: Response, secure: boolean): void {
 
 /**
  * Exige login (e, se pedido, o papel admin). O usuário fica em `res.locals.user`.
- * Pedidos que mudam dados precisam vir como JSON: um formulário de outro site não consegue
- * mandar JSON com o cookie sem passar pela checagem do navegador (proteção contra CSRF).
+ * Pedidos que mudam dados precisam vir como JSON (ou foto, image/*): um formulário de outro
+ * site não consegue mandar esses tipos com o cookie sem passar pela checagem do navegador
+ * (proteção contra CSRF).
  */
 export function requireUser(db: DB, role?: 'admin') {
   return async (req: Request, res: Response, next: NextFunction) => {
-    if (req.method !== 'GET' && req.method !== 'HEAD' && !req.is('application/json')) {
+    // Fotos vão com Content-Type image/*, que também exige a checagem do navegador.
+    if (req.method !== 'GET' && req.method !== 'HEAD' && !req.is('application/json') && !req.is('image/*')) {
       res.status(415).json({ error: 'Envie os dados como JSON' });
       return;
     }

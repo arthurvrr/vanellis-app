@@ -50,6 +50,10 @@ export async function loadCatalogo(db: DB, seed: SeedCatalogo): Promise<void> {
             minSelect: g.minSelect,
             maxSelect: g.maxSelect,
             controlsImage: g.controlsImage,
+            // Características do grupo tiradas das opções (o editor do painel usa estas colunas).
+            priceMode: g.options.find((o) => o.priceMode)?.priceMode ?? null,
+            hasWeight: g.options.some((o) => o.weightMinKg != null),
+            hasPdv: g.options.some((o) => o.pdvCode),
             position: gi,
           })
           .returning({ id: optionGroup.id });

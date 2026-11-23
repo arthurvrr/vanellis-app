@@ -64,7 +64,7 @@ export function HomeView({ catalogo, onCategory }: { catalogo: CatalogoDTO; onCa
         <div className="cats">
           {catalogo.categorias.map((c) => (
             <button key={c.id} type="button" className="cat" onClick={() => onCategory(c.slug)}>
-              <Photo src={imageOf(c.id)} className="cat__img" />
+              <Photo src={c.coverImageUrl ?? imageOf(c.id)} className="cat__img" />
               <span className="cat__body">
                 <span className="cat__name">{c.name}</span>
                 {c.description && <span className="cat__text">{c.description}</span>}

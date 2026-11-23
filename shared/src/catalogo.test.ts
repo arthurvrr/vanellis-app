@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { visibleCategories, type CategoryDTO } from './catalogo';
 import { product } from './test-utils';
 
-const cat = (id: number, slug: string): CategoryDTO => ({ id, name: slug, slug, description: null });
+const cat = (id: number, slug: string): CategoryDTO => ({ id, name: slug, slug, description: null, coverImageUrl: null });
 
 describe('categorias visíveis para o cliente', () => {
   it('esconde categoria sem produtos e mantém a com produtos indisponíveis', () => {

@@ -21,6 +21,8 @@ export const category = pgTable('category', {
   slug: varchar('slug', { length: 50 }).notNull().unique(),
   /** Frase curta da categoria, na entrada e no topo do cardápio (RF52). */
   description: varchar('description', { length: 160 }),
+  /** Foto de capa do cartão da entrada; sem capa, vale a do primeiro produto (RF52). */
+  coverImageUrl: varchar('cover_image_url', { length: 255 }),
   position: integer('position').notNull().default(0),
 });
 
@@ -64,9 +66,16 @@ export const optionGroup = pgTable(
     minSelect: integer('min_select').notNull().default(0),
     maxSelect: integer('max_select').notNull().default(1),
     controlsImage: boolean('controls_image').notNull().default(false),
+    /** As opções trocam o preço ('replace'), somam ('add') ou não mexem (null). */
+    priceMode: varchar('price_mode', { length: 7 }),
+    /** As opções têm faixa de peso (tamanhos de produto por quilo). */
+    hasWeight: boolean('has_weight').notNull().default(false),
+    /** As opções têm código PDV próprio (produto por unidade com variações, RN41). */
+    hasPdv: boolean('has_pdv').notNull().default(false),
     position: integer('position').notNull().default(0),
   },
   (t) => [
+    check('option_group_price_mode_check', sql`${t.priceMode} in ('replace', 'add')`),
     check('option_group_select_check', sql`${t.minSelect} >= 0 and ${t.maxSelect} >= 1 and ${t.maxSelect} >= ${t.minSelect}`),
   ],
 );

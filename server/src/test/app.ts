@@ -30,19 +30,26 @@ export async function startTestApp(options: AppOptions = {}) {
   function browser() {
     let cookie = '';
     return async (method: string, path: string, body?: unknown, headers: Record<string, string> = {}) => {
+      // Buffer = arquivo (foto), enviado como está; o resto vai como JSON.
+      const isFile = Buffer.isBuffer(body);
       const res = await fetch(base + path, {
         method,
         headers: {
-          ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+          ...(body !== undefined && !isFile ? { 'content-type': 'application/json' } : {}),
           ...(cookie ? { cookie } : {}),
           ...headers,
         },
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        body: body === undefined ? undefined : isFile ? new Uint8Array(body) : JSON.stringify(body),
       });
       const set = res.headers.get('set-cookie');
       if (set) cookie = set.split(';')[0]!.endsWith('=') ? '' : set.split(';')[0]!;
+      const type = res.headers.get('content-type') ?? '';
+      if (!type.includes('json')) {
+        const bytes = Buffer.from(await res.arrayBuffer());
+        return { status: res.status, body: null, bytes, type, setCookie: set };
+      }
       const text = await res.text();
-      return { status: res.status, body: text ? JSON.parse(text) : null, setCookie: set };
+      return { status: res.status, body: text ? JSON.parse(text) : null, bytes: null, type, setCookie: set };
     };
   }
 

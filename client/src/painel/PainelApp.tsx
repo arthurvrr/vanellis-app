@@ -5,16 +5,19 @@ import { Configuracoes } from './Configuracoes';
 import { Contas } from './Contas';
 import { Inicio } from './Inicio';
 import { Login } from './Login';
+import { Produtos } from './Produtos';
 
-type Tela = 'inicio' | 'agenda' | 'configuracoes' | 'contas';
+type Tela = 'inicio' | 'produtos' | 'agenda' | 'configuracoes' | 'contas';
 const TELAS: { id: Tela; nome: string; soAdmin?: boolean }[] = [
   { id: 'inicio', nome: 'Início' },
+  { id: 'produtos', nome: 'Produtos' },
   { id: 'agenda', nome: 'Agenda' },
   { id: 'configuracoes', nome: 'Configurações' },
   { id: 'contas', nome: 'Contas', soAdmin: true },
 ];
 const telaDoEndereco = (): Tela => {
   const h = window.location.hash.slice(1);
+  if (h === 'produtos-sem-pdv' || h.startsWith('produto/')) return 'produtos';
   return TELAS.some((t) => t.id === h) ? (h as Tela) : 'inicio';
 };
 
@@ -82,6 +85,7 @@ export function PainelApp() {
         ))}
       </nav>
       {atual === 'inicio' && <Inicio onAuthError={onAuthError} />}
+      {atual === 'produtos' && <Produtos onAuthError={onAuthError} />}
       {atual === 'agenda' && <Agenda onAuthError={onAuthError} />}
       {atual === 'configuracoes' && <Configuracoes papel={sessao.papel} onAuthError={onAuthError} />}
       {atual === 'contas' && <Contas onAuthError={onAuthError} />}

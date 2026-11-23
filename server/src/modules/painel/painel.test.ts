@@ -14,7 +14,7 @@ afterAll(() => app.stop());
 
 describe('Pausar pedidos e ocultar preços', () => {
   it('começa com pedidos abertos e preços visíveis', async () => {
-    expect((await operador('GET', '/api/painel/status')).body).toEqual({ ordersPaused: false, pricesHidden: false });
+    expect((await operador('GET', '/api/painel/status')).body).toEqual({ ordersPaused: false, pricesHidden: false, pdvMissing: 0 });
   });
 
   it('C9/C11: pausa e retoma os pedidos', async () => {
@@ -25,7 +25,7 @@ describe('Pausar pedidos e ocultar preços', () => {
 
   it('C12/C14: oculta e reexibe os preços, sem mexer na pausa', async () => {
     const res = await operador('PUT', '/api/painel/status', { pricesHidden: true });
-    expect(res.body).toEqual({ ordersPaused: false, pricesHidden: true });
+    expect(res.body).toMatchObject({ ordersPaused: false, pricesHidden: true });
     expect((await operador('PUT', '/api/painel/status', { pricesHidden: false })).body.pricesHidden).toBe(false);
   });
 
