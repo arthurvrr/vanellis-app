@@ -140,6 +140,34 @@ describe('Grupos de opção', () => {
     expect(p.groups[1].options[0]).toMatchObject({ priceMode: 'add', price: 1 });
   });
 
+  it('C69: descrição de cada opção aparece no site quando escolhida', async () => {
+    const id = await criar({
+      ...coxinha(),
+      name: 'Cupcake',
+      basePrice: null,
+      groups: [
+        {
+          ...emptyGroup(),
+          name: 'Tamanho',
+          priceMode: 'replace',
+          options: [
+            opt('Mini', { price: 4.9, description: 'Aproximadamente 50 gramas' }),
+            opt('Tradicional', { price: 8, description: '  ' }),
+          ],
+        },
+        { ...emptyGroup(), name: 'Sabor', options: [opt('Cenoura', { description: ' Massa fofinha de cenoura. ' })] },
+      ],
+    });
+    const p = await noSite(id);
+    expect(p.groups[0].options.map((o: { description: string | null }) => o.description)).toEqual([
+      'Aproximadamente 50 gramas',
+      null, // só espaços = sem descrição
+    ]);
+    expect(p.groups[1].options[0].description).toBe('Massa fofinha de cenoura.');
+    // O cadastro devolve a descrição para editar.
+    expect((await cadastro(id)).groups[1]!.options[0]!.description).toBe('Massa fofinha de cenoura.');
+  });
+
   it('C58: regras dos grupos impedem salvar', async () => {
     const res = await op('POST', '/api/painel/catalogo/produtos', {
       ...coxinha(),

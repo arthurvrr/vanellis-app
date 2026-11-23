@@ -578,6 +578,15 @@ export function ProdutoEditor({
                   >
                     Remover
                   </button>
+                  <textarea
+                    className="opcao__desc"
+                    aria-label={`Descrição da opção ${o.name}`}
+                    placeholder="Descrição (opcional): aparece no site quando o cliente escolhe esta opção. Ex: Aproximadamente 50 gramas"
+                    maxLength={300}
+                    rows={2}
+                    value={o.description ?? ''}
+                    onChange={(e) => setOption(gi, oi, { description: e.target.value || null })}
+                  />
                 </li>
               ))}
             </ul>
