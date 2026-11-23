@@ -72,7 +72,7 @@ O site fica em http://localhost:5173 e o painel em http://localhost:5173/painel/
 | `npm run typecheck` | Verificação de tipos dos três pacotes |
 | `npm run db:generate` | Gera uma migração a partir das mudanças no esquema |
 | `npm run db:migrate` | Aplica as migrações pendentes |
-| `npm run db:seed` | Apaga e recarrega o catálogo a partir de `server/src/db/seed/catalogo.json` |
+| `npm run db:seed` | Carga inicial do catálogo, agenda e configurações (recusa se já houver produtos; para apagar e recarregar: `npm run db:seed -- --sobrescrever`) |
 | `npm run usuario:senha -- <usuário>` | Troca a senha de uma conta do painel e encerra as sessões dela (com `--papel`, cria a conta) |
 | `npm run demo:export` | Exporta catálogo, agenda e configurações do banco para a versão de teste |
 | `npm run demo:build` | Compila a versão de teste em `client/dist` |
@@ -109,3 +109,63 @@ Pendências da carga, a acertar no painel:
 - Pesos provisórios em 7 tortas sem peso no protótipo; a lista sai no fim da conversão.
 - Foto da Torta de Cremes (`bolo-cremes.png`) e do estilo Naked da Torta Ouro Branco não existem.
 - As fotos em `client/public/images` somam cerca de 157 MB e precisam ser otimizadas (RNF03).
+
+## Colocar no ar (servidor com Docker)
+
+O sistema roda em qualquer servidor Linux com Docker, sempre do mesmo jeito: a imagem traz o
+site, o painel e a API já compilados; o que muda de um servidor para outro (domínio, senhas)
+fica no arquivo `.env` do servidor. São quatro serviços (`docker-compose.yml`):
+
+| Serviço | O que faz |
+| --- | --- |
+| `app` | O sistema (Node). Aplica as migrações do banco ao subir |
+| `db` | PostgreSQL, com os dados num volume; não fica exposto na internet |
+| `caddy` | HTTPS automático (pede e renova o certificado sozinho) |
+| `backup` | Backup do banco ao subir e todo dia às 3h, guardando 14 dias em `backups/` |
+
+### Primeira vez (servidor Ubuntu 22.04 ou 24.04, com 2 GB de RAM ou mais)
+
+1. No Registro.br (ou onde estiver o domínio), aponte `DOMINIO` e `www.DOMINIO` para o IP do servidor.
+2. Entre no servidor por SSH e clone o projeto:
+
+   ```bash
+   git clone https://github.com/arthurvrr/vanellis-app.git && cd vanellis-app
+   ```
+
+3. Prepare o servidor (Docker, firewall, atualizações automáticas, proteção do SSH, `.env`):
+
+   ```bash
+   sudo bash deploy/setup-server.sh
+   nano .env   # preencha DOMAIN e ACME_EMAIL
+   ```
+
+4. Suba o sistema, faça a carga inicial e crie as contas do painel:
+
+   ```bash
+   bash deploy/deploy.sh
+   docker compose exec app node dist/seed.js
+   docker compose exec app node dist/usuario-senha.js <seu-usuario> --papel admin
+   docker compose exec app node dist/usuario-senha.js <usuario-da-padaria> --papel operador
+   ```
+
+O site fica em `https://DOMINIO` e o painel em `https://DOMINIO/painel/`.
+
+### Dia a dia
+
+| Tarefa | Comando |
+| --- | --- |
+| Atualizar para a versão mais nova da `main` | `bash deploy/deploy.sh` |
+| Ver os registros do servidor | `docker compose logs -f app` |
+| Ver os backups | `ls -lh backups/` |
+| Restaurar um backup (substitui os dados) | `bash deploy/restore.sh backups/vanellis-AAAA-MM-DD_0300.sql.gz` |
+| Trocar a senha de uma conta | `docker compose exec app node dist/usuario-senha.js <usuario>` |
+
+Verificação mensal: conferir se há backups recentes em `backups/` e se o site responde. Vale
+copiar de vez em quando um backup para fora do servidor (ex: `scp` para o seu computador).
+
+### Testar no seu computador antes
+
+`bash deploy/teste-local.sh` sobe o mesmo conjunto num projeto separado, com banco de teste, em
+`https://localhost:8443` (certificado local: o navegador avisa). `bash deploy/teste-local.sh parar`
+desliga e apaga os dados de teste. O seu usuário precisa poder usar o Docker
+(`sudo usermod -aG docker $USER` e entrar de novo na sessão).

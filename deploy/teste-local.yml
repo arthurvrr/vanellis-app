@@ -1,0 +1,8 @@
+# Teste local do conjunto de produção, sem ocupar as portas 80/443 do computador:
+#   bash deploy/teste-local.sh
+# O site responde em https://localhost:8443 (certificado local, o navegador vai avisar).
+services:
+  caddy:
+    ports: !override
+      - '8080:80'
+      - '8443:443'
