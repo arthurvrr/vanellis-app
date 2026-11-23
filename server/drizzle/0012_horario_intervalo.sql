@@ -1,0 +1,2 @@
+ALTER TABLE "opening_hours" DROP CONSTRAINT "opening_hours_unique";--> statement-breakpoint
+ALTER TABLE "opening_hours" ADD CONSTRAINT "opening_hours_period_unique" UNIQUE("schedule_id","weekday","open_time");

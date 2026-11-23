@@ -7,6 +7,7 @@ import {
   lastBookableDate,
   formatDay,
   pickupTimes,
+  weekHoursProblem,
   type AgendaInput,
   type PickupRestriction,
   type WeeklySchedule,
@@ -177,11 +178,72 @@ describe('situação da loja na entrada', () => {
     expect(statusLabel(storeStatus(input, '2026-11-24T20:00'), '2026-11-24')).toBe('Fechado · abre qui às 7h30');
   });
 
+  it('todos os dias fechados: temporariamente fechado', () => {
+    const fechada = { ...input, schedules: input.schedules.map((sc) => ({ ...sc, hours: [] })) };
+    expect(statusLabel(storeStatus(fechada, '2026-11-23T10:00'), '2026-11-23')).toBe('Temporariamente fechado');
+  });
+
   it('resume a semana juntando dias iguais', () => {
     expect(weekSummary(semana.hours)).toBe('Seg a sáb 7h30–19h · Dom 7h30–12h');
     expect(weekSummary(semana.hours.filter((h) => h.weekday !== 0))).toBe('Seg a sáb 7h30–19h');
     expect(weekSummary([{ weekday: 6, open: '08:00', close: '13:00' }, { weekday: 0, open: '08:00', close: '13:00' }])).toBe(
       'Sáb e dom 8h–13h',
     );
+  });
+});
+
+describe('C67: horário com intervalo de almoço', () => {
+  // Segunda a sexta 7h30–12h e 14h–18h30; sábado 8h–12h.
+  const dias = [1, 2, 3, 4, 5];
+  const comAlmoco: WeeklySchedule = {
+    validFrom: '2026-01-01',
+    validUntil: null,
+    hours: [
+      ...dias.map((weekday) => ({ weekday, open: '14:00', close: '18:30' })),
+      ...dias.map((weekday) => ({ weekday, open: '07:30', close: '12:00' })),
+      { weekday: 6, open: '08:00', close: '12:00' },
+    ],
+  };
+  const input = { ...base, schedules: [comAlmoco], minLeadHours: 0 };
+
+  it('oferece retirada nos dois períodos, sem o intervalo', () => {
+    const [segunda] = availableDays(input, '2026-11-23T06:00');
+    expect(segunda!.times).toEqual([
+      '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+      '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00',
+    ]);
+  });
+
+  it('no intervalo, a loja está fechada e abre hoje às 14h', () => {
+    expect(statusLabel(storeStatus(input, '2026-11-23T10:00'), '2026-11-23')).toBe('Aberto agora · fecha às 12h');
+    expect(statusLabel(storeStatus(input, '2026-11-23T12:30'), '2026-11-23')).toBe('Fechado · abre hoje às 14h');
+    expect(statusLabel(storeStatus(input, '2026-11-23T15:00'), '2026-11-23')).toBe('Aberto agora · fecha às 18h30');
+    expect(statusLabel(storeStatus(input, '2026-11-23T19:00'), '2026-11-23')).toBe('Fechado · abre amanhã às 7h30');
+  });
+
+  it('o resumo da semana mostra os dois períodos', () => {
+    expect(weekSummary(comAlmoco.hours)).toBe('Seg a sex 7h30–12h e 14h–18h30 · Sáb 8h–12h');
+  });
+});
+
+describe('C68: períodos que se sobrepõem', () => {
+  it('recusa sobreposição e fechamento antes da abertura', () => {
+    expect(
+      weekHoursProblem([
+        { weekday: 2, open: '07:30', close: '12:00' },
+        { weekday: 2, open: '11:00', close: '18:00' },
+      ]),
+    ).toMatch(/^Na terça, os períodos se sobrepõem/);
+    expect(weekHoursProblem([{ weekday: 1, open: '12:00', close: '08:00' }])).toMatch(/depois da abertura/);
+  });
+
+  it('aceita períodos encostados e em dias diferentes', () => {
+    expect(
+      weekHoursProblem([
+        { weekday: 2, open: '07:30', close: '12:00' },
+        { weekday: 2, open: '12:00', close: '18:00' },
+        { weekday: 3, open: '07:30', close: '19:00' },
+      ]),
+    ).toBeNull();
   });
 });

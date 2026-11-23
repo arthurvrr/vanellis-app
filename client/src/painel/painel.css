@@ -46,6 +46,13 @@
   margin: 0.25rem 0 0.5rem;
   text-align: center;
 }
+.login__voltar {
+  display: block;
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--marrom);
+}
 .login__error {
   margin-top: 0.75rem;
   font-size: 0.9rem;
@@ -192,6 +199,26 @@
   border-radius: 8px;
   background: #fff;
   min-height: 2.5rem;
+}
+.week__periods {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem 0.75rem;
+}
+.week__e {
+  color: #8a7a5c;
+}
+.week__remove {
+  width: 1.9rem;
+  height: 1.9rem;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.week__add {
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 .week__closed {
   color: #8a7a5c;
@@ -845,5 +872,161 @@
   }
   .painel__user span {
     display: none;
+  }
+}
+
+/* ---------- Preços (etapa 4: RF31, C62–C66) ---------- */
+.precos {
+  max-width: 52rem;
+  padding-bottom: 5rem;
+}
+.precos__ajuda {
+  margin: -0.25rem 0 1rem;
+}
+.precos__busca {
+  flex: 1 1 16rem;
+  max-width: 22rem;
+}
+.precos__lista {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.preco-prod {
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  background: var(--creme);
+}
+.preco-prod--off .preco-row__nome strong {
+  opacity: 0.6;
+}
+.preco-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+}
+.preco-row__nome {
+  flex: 1 1 12rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+  min-height: 2.5rem;
+  min-width: 0;
+}
+.preco-row__editar {
+  font-size: 0.8rem;
+  color: #8a7a5c;
+}
+.preco-row__nota {
+  align-self: center;
+  font-size: 0.85rem;
+  color: #8a7a5c;
+}
+.preco-row__grupo {
+  color: #8a7a5c;
+}
+.preco-opcoes {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0.35rem 0 0 1rem;
+  border-top: 1px dashed var(--borda);
+  display: grid;
+  gap: 0.35rem;
+}
+.preco-row--opcao .preco-row__nome {
+  font-size: 0.92rem;
+}
+.preco-campo {
+  flex: 0 0 13rem;
+  display: grid;
+  gap: 0.2rem;
+}
+.preco-campo input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0.4rem 0.2rem 0.4rem 0;
+  min-height: 2.4rem;
+  box-sizing: border-box;
+  font: inherit;
+  background: transparent;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.preco-campo input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.preco-campo .nfield__box:focus-within {
+  border-color: var(--dourado);
+  box-shadow: var(--anel-foco);
+}
+.preco-campo--mudou .nfield__box {
+  border-color: var(--dourado);
+  background: #fff8e6;
+  box-shadow: 0 0 0 2px rgba(201, 151, 42, 0.18);
+}
+.preco-campo--mudou input {
+  background: transparent;
+}
+.preco-campo--erro .nfield__box {
+  border-color: #a3361f;
+  box-shadow: 0 0 0 2px rgba(163, 54, 31, 0.15);
+}
+.preco-campo__info {
+  font-size: 0.78rem;
+  color: #7a5a12;
+  text-align: right;
+}
+.precos__barra {
+  position: sticky;
+  bottom: 1rem;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: var(--sombra-2);
+}
+.precos__barra > span {
+  margin-right: auto;
+}
+.precos__barra .add {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0 1.25rem;
+  min-height: 2.6rem;
+}
+.precos__problemas {
+  color: #a3361f;
+}
+.preco-row__nome .tag {
+  align-self: center;
+}
+@media (max-width: 600px) {
+  .preco-row {
+    flex-wrap: nowrap;
+  }
+  .preco-row__nome {
+    flex: 1 1 auto;
+  }
+  .preco-campo {
+    flex: 0 0 8.5rem;
+  }
+  .preco-row--opcao .preco-row__nome {
+    font-size: 0.85rem;
+  }
+  .preco-opcoes {
+    padding-left: 0.5rem;
   }
 }

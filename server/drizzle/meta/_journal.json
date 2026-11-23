@@ -85,6 +85,13 @@
       "when": 1795435810280,
       "tag": "0011_grupo_caracteristicas",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795454863045,
+      "tag": "0012_horario_intervalo",
+      "breakpoints": true
     }
   ]
 }

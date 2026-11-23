@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, ApiError, type Sessao } from './api';
 import { Agenda } from './Agenda';
 import { Configuracoes } from './Configuracoes';
 import { Contas } from './Contas';
 import { Inicio } from './Inicio';
 import { Login } from './Login';
+import { Precos } from './Precos';
 import { Produtos } from './Produtos';
+import { podeSair } from './saida';
 
-type Tela = 'inicio' | 'produtos' | 'agenda' | 'configuracoes' | 'contas';
+type Tela = 'inicio' | 'produtos' | 'precos' | 'agenda' | 'configuracoes' | 'contas';
 
 interface SubItem {
   nome: string;
@@ -46,6 +48,7 @@ const SECOES: Secao[] = [
       { nome: 'Lista de produtos', href: '#produtos' },
       { nome: 'Categorias', href: '#categorias' },
       { nome: 'Novo produto', href: '#produto/novo' },
+      { nome: 'Preços', href: '#precos' },
     ],
   },
   {
@@ -82,11 +85,12 @@ function telaDoEndereco(): Tela {
   const h = window.location.hash.slice(1);
   const base = h.split('/')[0];
   if (base === 'produto' || base === 'categorias' || base === 'produtos-sem-pdv') return 'produtos';
-  if (['inicio', 'produtos', 'agenda', 'configuracoes', 'contas'].includes(base!)) return base as Tela;
+  if (['inicio', 'produtos', 'precos', 'agenda', 'configuracoes', 'contas'].includes(base!)) return base as Tela;
   return 'inicio';
 }
 
-const secaoDaTela = (t: Tela): Secao['id'] => (t === 'contas' ? 'configuracoes' : t);
+const secaoDaTela = (t: Tela): Secao['id'] =>
+  t === 'contas' ? 'configuracoes' : t === 'precos' ? 'produtos' : t;
 
 // Painel do operador. Sem sessão, mostra o login (cenário C4).
 export function PainelApp() {
@@ -94,6 +98,7 @@ export function PainelApp() {
   const [tela, setTela] = useState<Tela>(telaDoEndereco);
   const [hash, setHash] = useState(window.location.hash);
   const [menuAberto, setMenuAberto] = useState(false);
+  const hashAnterior = useRef(window.location.hash);
 
   useEffect(() => {
     api
@@ -101,6 +106,13 @@ export function PainelApp() {
       .then(setSessao)
       .catch(() => setSessao(null));
     const onHash = () => {
+      // C65: com alterações não salvas, pergunta antes de trocar de tela; se o operador
+      // ficar, o endereço volta sem recarregar nada.
+      if (window.location.hash !== hashAnterior.current && !podeSair()) {
+        history.replaceState(null, '', hashAnterior.current || window.location.pathname);
+        return;
+      }
+      hashAnterior.current = window.location.hash;
       setTela(telaDoEndereco());
       setHash(window.location.hash);
       setMenuAberto(false);
@@ -119,6 +131,7 @@ export function PainelApp() {
   }, []);
 
   const sair = async () => {
+    if (!podeSair()) return;
     await api.logout().catch(() => undefined);
     setSessao(null);
     window.location.replace('#');
@@ -204,6 +217,7 @@ export function PainelApp() {
         <div className="painel__main">
           {atual === 'inicio' && <Inicio onAuthError={onAuthError} />}
           {atual === 'produtos' && <Produtos onAuthError={onAuthError} />}
+          {atual === 'precos' && <Precos onAuthError={onAuthError} />}
           {atual === 'agenda' && <Agenda onAuthError={onAuthError} />}
           {atual === 'configuracoes' && <Configuracoes papel={sessao.papel} onAuthError={onAuthError} />}
           {atual === 'contas' && <Contas onAuthError={onAuthError} />}

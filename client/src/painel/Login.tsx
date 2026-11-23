@@ -57,6 +57,9 @@ export function Login({ onLogin }: { onLogin: (s: Sessao) => void }) {
         <button type="submit" className="primary" disabled={enviando}>
           {enviando ? 'Entrando…' : 'Entrar'}
         </button>
+        <a className="login__voltar" href="/">
+          ← Voltar ao site
+        </a>
       </form>
     </main>
   );

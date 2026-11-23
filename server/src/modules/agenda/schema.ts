@@ -26,7 +26,10 @@ export const weeklySchedule = pgTable(
   (t) => [check('weekly_schedule_period_check', sql`${t.validUntil} >= ${t.validFrom}`)],
 );
 
-/** Abertura e fechamento num dia da semana (0 = domingo). Dia sem linha = fechado (RN32). */
+/**
+ * Um período de funcionamento num dia da semana (0 = domingo). Dia sem linha = fechado (RN32);
+ * várias linhas no mesmo dia = intervalo, como o almoço (C67). Sobreposição é validada na API.
+ */
 export const openingHours = pgTable(
   'opening_hours',
   {
@@ -39,7 +42,7 @@ export const openingHours = pgTable(
     closeTime: time('close_time').notNull(),
   },
   (t) => [
-    unique('opening_hours_unique').on(t.scheduleId, t.weekday),
+    unique('opening_hours_period_unique').on(t.scheduleId, t.weekday, t.openTime),
     check('opening_hours_weekday_check', sql`${t.weekday} between 0 and 6`),
     check('opening_hours_time_check', sql`${t.closeTime} > ${t.openTime}`),
   ],

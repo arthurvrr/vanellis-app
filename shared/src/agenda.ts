@@ -4,7 +4,10 @@
 /** Intervalo entre os horários oferecidos ao cliente (RN51). */
 export const PICKUP_STEP_MINUTES = 30;
 
-/** Horário de funcionamento num dia da semana (0 = domingo). */
+/**
+ * Um período de funcionamento num dia da semana (0 = domingo). Um dia pode ter vários, como
+ * 7h30–12h e 14h–18h30 com intervalo de almoço (C67).
+ */
 export interface OpeningHours {
   weekday: number;
   open: string;
@@ -17,6 +20,28 @@ export interface WeeklySchedule {
   validUntil: string | null;
   /** Dia sem horário de funcionamento = loja fechada (RN32). */
   hours: OpeningHours[];
+}
+
+/** Períodos de um dia da semana, em ordem de abertura. */
+export function dayPeriods(hours: OpeningHours[], weekday: number): OpeningHours[] {
+  return hours.filter((h) => h.weekday === weekday).sort((a, b) => a.open.localeCompare(b.open));
+}
+
+const WEEKDAY_NAMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+
+/**
+ * Problema no horário de uma semana, ou null: fechamento antes da abertura, ou dois períodos
+ * do mesmo dia que se sobrepõem (C29, C68). O painel e o servidor usam a mesma regra.
+ */
+export function weekHoursProblem(hours: OpeningHours[]): string | null {
+  for (const h of hours) if (h.close <= h.open) return 'O fechamento precisa ser depois da abertura';
+  for (let wd = 0; wd < 7; wd++) {
+    const ps = dayPeriods(hours, wd);
+    for (let i = 1; i < ps.length; i++)
+      if (ps[i]!.open < ps[i - 1]!.close)
+        return `Na ${WEEKDAY_NAMES[wd]}, os períodos se sobrepõem: o seguinte precisa começar depois que o anterior termina`;
+  }
+  return null;
 }
 
 /**
@@ -96,27 +121,32 @@ export function scheduleFor(schedules: WeeklySchedule[], date: string): WeeklySc
 }
 
 /**
- * Horários de retirada de um dia, sem considerar a antecedência: de 30 em 30 minutos, da
- * abertura até 30 minutos antes do fechamento (RN51), fora das restrições (RN52) e dos
- * períodos fechados por lotação (RN15). Abertura fora do passo (ex: 7h15) começa no seguinte.
+ * Horários de retirada de um dia, sem considerar a antecedência: de 30 em 30 minutos, em cada
+ * período, da abertura até 30 minutos antes do fechamento (RN51, C67), fora das restrições
+ * (RN52) e dos períodos fechados por lotação (RN15). Abertura fora do passo (ex: 7h15)
+ * começa no seguinte. Recebe os períodos de um mesmo dia da semana.
  */
 export function pickupTimes(
-  hours: OpeningHours,
+  periods: OpeningHours | OpeningHours[],
   restrictions: PickupRestriction[],
   closed: { start: string; end: string }[],
 ): string[] {
-  const blocked = [
-    ...restrictions.filter((r) => r.weekday === null || r.weekday === hours.weekday),
-    ...closed,
-  ].map((b) => [toMinutes(b.start), toMinutes(b.end)] as const);
+  const list = Array.isArray(periods) ? periods : [periods];
+  if (!list.length) return [];
+  const weekday = list[0]!.weekday;
+  const blocked = [...restrictions.filter((r) => r.weekday === null || r.weekday === weekday), ...closed].map(
+    (b) => [toMinutes(b.start), toMinutes(b.end)] as const,
+  );
 
-  const first = Math.ceil(toMinutes(hours.open) / PICKUP_STEP_MINUTES) * PICKUP_STEP_MINUTES;
-  const last = toMinutes(hours.close) - PICKUP_STEP_MINUTES;
-  const times: string[] = [];
-  for (let t = first; t <= last; t += PICKUP_STEP_MINUTES) {
-    if (!blocked.some(([start, end]) => t >= start && t < end)) times.push(toTime(t));
+  const times = new Set<number>();
+  for (const p of list) {
+    const first = Math.ceil(toMinutes(p.open) / PICKUP_STEP_MINUTES) * PICKUP_STEP_MINUTES;
+    const last = toMinutes(p.close) - PICKUP_STEP_MINUTES;
+    for (let t = first; t <= last; t += PICKUP_STEP_MINUTES) {
+      if (!blocked.some(([start, end]) => t >= start && t < end)) times.add(t);
+    }
   }
-  return times;
+  return [...times].sort((a, b) => a - b).map(toTime);
 }
 
 /**
@@ -144,10 +174,10 @@ export function availableDays(input: AgendaInput, now: string, itemsLeadHours = 
       continue;
     }
 
-    const hours = scheduleFor(input.schedules, date)?.hours.find((h) => h.weekday === weekday);
-    if (!hours) continue;
+    const periods = dayPeriods(scheduleFor(input.schedules, date)?.hours ?? [], weekday);
+    if (!periods.length) continue;
     const closed = input.closedPeriods.filter((c) => c.date === date);
-    const times = pickupTimes(hours, input.restrictions, closed).filter(
+    const times = pickupTimes(periods, input.restrictions, closed).filter(
       (t) => wallMs(date, toMinutes(t)) >= earliest,
     );
     if (times.length) days.push({ date, weekday, special: null, times });
@@ -198,24 +228,24 @@ export function storeStatus(
   const [today, time] = now.split('T') as [string, string];
   const minutes = toMinutes(time);
   const blocked = new Set(input.blockedDates);
-  const hoursOn = (dayMs: number) => {
+  const periodsOn = (dayMs: number) => {
     const date = new Date(dayMs).toISOString().slice(0, 10);
     const weekday = new Date(dayMs).getUTCDay();
-    if (blocked.has(date)) return { date, weekday, hours: undefined };
-    return { date, weekday, hours: scheduleFor(input.schedules, date)?.hours.find((h) => h.weekday === weekday) };
+    if (blocked.has(date)) return { date, weekday, periods: [] };
+    return { date, weekday, periods: dayPeriods(scheduleFor(input.schedules, date)?.hours ?? [], weekday) };
   };
 
   const todayMs = wallMs(today);
-  const t = hoursOn(todayMs);
-  if (t.hours && minutes >= toMinutes(t.hours.open) && minutes < toMinutes(t.hours.close)) {
-    return { open: true, closesAt: t.hours.close, nextOpen: null };
-  }
-  if (t.hours && minutes < toMinutes(t.hours.open)) {
-    return { open: false, closesAt: null, nextOpen: { date: t.date, weekday: t.weekday, time: t.hours.open } };
-  }
+  const t = periodsOn(todayMs);
+  const current = t.periods.find((p) => minutes >= toMinutes(p.open) && minutes < toMinutes(p.close));
+  if (current) return { open: true, closesAt: current.close, nextOpen: null };
+  // Antes de abrir, ou no intervalo entre dois períodos (C67): abre hoje.
+  const later = t.periods.find((p) => minutes < toMinutes(p.open));
+  if (later) return { open: false, closesAt: null, nextOpen: { date: t.date, weekday: t.weekday, time: later.open } };
   for (let i = 1; i <= 14; i++) {
-    const d = hoursOn(todayMs + i * DAY);
-    if (d.hours) return { open: false, closesAt: null, nextOpen: { date: d.date, weekday: d.weekday, time: d.hours.open } };
+    const d = periodsOn(todayMs + i * DAY);
+    if (d.periods.length)
+      return { open: false, closesAt: null, nextOpen: { date: d.date, weekday: d.weekday, time: d.periods[0]!.open } };
   }
   return { open: false, closesAt: null, nextOpen: null };
 }
@@ -228,34 +258,45 @@ export function formatHour(time: string): string {
   return `${Number(h)}h${m === '00' ? '' : m}`;
 }
 
+/** "7h30–12h e 14h–18h30" */
+export function formatPeriods(periods: OpeningHours[]): string {
+  return periods.map((p) => `${formatHour(p.open)}–${formatHour(p.close)}`).join(' e ');
+}
+
 /**
  * Horário da semana em uma linha, juntando dias seguidos com o mesmo horário, de segunda a
- * domingo: "Seg a sáb 7h30–19h · Dom 7h30–12h". Dias fechados não aparecem.
+ * domingo: "Seg a sáb 7h30–19h · Dom 7h30–12h", ou com intervalo, "Seg a sex 7h30–12h e
+ * 14h–18h30" (C67). Dias fechados não aparecem.
  */
 export function weekSummary(hours: OpeningHours[]): string {
   const order = [1, 2, 3, 4, 5, 6, 0];
-  const groups: { days: number[]; open: string; close: string }[] = [];
+  const groups: { days: number[]; text: string }[] = [];
   for (const wd of order) {
-    const h = hours.find((x) => x.weekday === wd);
+    const periods = dayPeriods(hours, wd);
+    const text = formatPeriods(periods);
     const last = groups.at(-1);
     const prevDay = last?.days.at(-1);
     const consecutive = prevDay !== undefined && order.indexOf(wd) === order.indexOf(prevDay) + 1;
-    if (h && last && consecutive && last.open === h.open && last.close === h.close) last.days.push(wd);
-    else if (h) groups.push({ days: [wd], open: h.open, close: h.close });
+    if (periods.length && last && consecutive && last.text === text) last.days.push(wd);
+    else if (periods.length) groups.push({ days: [wd], text });
   }
   const parts = groups.map((g) => {
     const first = WEEKDAYS_LOWER[g.days[0]!]!;
     const lastDay = WEEKDAYS_LOWER[g.days.at(-1)!]!;
     const days = g.days.length === 1 ? first : g.days.length === 2 ? `${first} e ${lastDay}` : `${first} a ${lastDay}`;
-    return `${days} ${formatHour(g.open)}–${formatHour(g.close)}`;
+    return `${days} ${g.text}`;
   });
   return parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' · ');
 }
 
-/** Texto do selo da entrada: "Aberto agora · fecha às 19h" ou "Fechado · abre amanhã às 7h30". */
+/**
+ * Texto do selo da entrada: "Aberto agora · fecha às 19h" ou "Fechado · abre amanhã às 7h30".
+ * Sem nenhum dia aberto nas próximas duas semanas (todos os dias fechados no horário, ou um
+ * período longo bloqueado): "Temporariamente fechado".
+ */
 export function statusLabel(s: StoreStatus, today: string): string {
   if (s.open) return `Aberto agora · fecha às ${formatHour(s.closesAt!)}`;
-  if (!s.nextOpen) return 'Fechado';
+  if (!s.nextOpen) return 'Temporariamente fechado';
   const when =
     s.nextOpen.date === today
       ? 'hoje'

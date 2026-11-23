@@ -52,6 +52,42 @@ describe('Horário semanal', () => {
     expect((await site()).days.some((d) => d.weekday === 0)).toBe(false);
   });
 
+  it('C67: dia com intervalo de almoço oferece os dois períodos', async () => {
+    const almoco = [
+      ...SEMANA.filter((h) => h.weekday !== 1),
+      { weekday: 1, open: '14:00', close: '18:30' },
+      { weekday: 1, open: '07:30', close: '12:00' },
+    ];
+    const res = await op('PUT', '/api/painel/agenda/horario-atual', { hours: almoco });
+    expect(res.status).toBe(200);
+    // O painel devolve os períodos do dia em ordem de abertura.
+    expect(res.body.current.hours.filter((h: { weekday: number }) => h.weekday === 1)).toEqual([
+      { weekday: 1, open: '07:30', close: '12:00' },
+      { weekday: 1, open: '14:00', close: '18:30' },
+    ]);
+    const segunda = day(await site(), '2026-11-23')!.times;
+    expect(segunda).toContain('11:30');
+    expect(segunda).not.toContain('12:00');
+    expect(segunda).not.toContain('13:30');
+    expect(segunda).toContain('14:00');
+    expect(segunda.at(-1)).toBe('18:00');
+    // Também numa mudança programada.
+    const mudanca = await op('POST', '/api/painel/agenda/mudancas', { validFrom: '2027-01-04', hours: almoco });
+    expect(mudanca.status).toBe(200);
+    expect(day(await site(), '2027-01-04')!.times).not.toContain('12:30');
+  });
+
+  it('C68: recusa períodos que se sobrepõem no mesmo dia', async () => {
+    const res = await op('PUT', '/api/painel/agenda/horario-atual', {
+      hours: [
+        { weekday: 2, open: '07:30', close: '12:00' },
+        { weekday: 2, open: '11:00', close: '18:00' },
+      ],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/^Na terça, os períodos se sobrepõem/);
+  });
+
   it('C26: mudança permanente programada vale só a partir da data', async () => {
     const res = await op('POST', '/api/painel/agenda/mudancas', {
       validFrom: '2027-02-01',

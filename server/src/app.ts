@@ -7,6 +7,7 @@ import { acessoRouter } from './modules/acesso/routes';
 import { agendaPainelRouter } from './modules/agenda/painel';
 import { agendaRouter } from './modules/agenda/routes';
 import { catalogoPainelRouter } from './modules/catalogo/painel';
+import { precosPainelRouter } from './modules/catalogo/precos';
 import { catalogoRouter } from './modules/catalogo/routes';
 import { configuracoesPainelRouter, configuracoesRouter } from './modules/configuracoes/routes';
 import { imagensPainelRouter, imagensRouter } from './modules/imagens/imagens';
@@ -20,6 +21,8 @@ export interface AppOptions {
 export function createApp(db: DB = defaultDb, { now = () => nowInBrasilia() }: AppOptions = {}) {
   const app = express();
   app.disable('x-powered-by');
+  // Em produção o Caddy fica na frente e repassa o HTTPS.
+  app.set('trust proxy', 1);
   app.use(express.json({ limit: '100kb' }));
 
   app.get('/api/health', (_req, res) => {
@@ -35,6 +38,7 @@ export function createApp(db: DB = defaultDb, { now = () => nowInBrasilia() }: A
   app.use('/api/imagens', imagensRouter(db));
   app.use('/api/painel/imagens', imagensPainelRouter(db));
   app.use('/api/painel/catalogo', catalogoPainelRouter(db));
+  app.use('/api/painel/precos', precosPainelRouter(db));
   app.use('/api/painel/agenda', agendaPainelRouter(db, () => now().slice(0, 10)));
   app.use('/api/painel', painelRouter(db));
 

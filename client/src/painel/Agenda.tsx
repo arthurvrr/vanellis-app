@@ -1,3 +1,4 @@
+import { dayPeriods, formatPeriods, weekHoursProblem } from '@vanellis/shared';
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { api, type AgendaPainel, type Horario } from './api';
 
@@ -17,8 +18,8 @@ function periodo(validFrom: string, validUntil: string | null) {
 
 function resumoSemana(hours: Horario[]) {
   return ORDEM.map((wd) => {
-    const h = hours.find((x) => x.weekday === wd);
-    return `${DIAS[wd]!.slice(0, 3)} ${h ? `${hora(h.open)}–${hora(h.close)}` : 'fechado'}`;
+    const ps = dayPeriods(hours, wd);
+    return `${DIAS[wd]!.slice(0, 3)} ${ps.length ? formatPeriods(ps) : 'fechado'}`;
   }).join(' · ');
 }
 
@@ -33,18 +34,37 @@ function descreveRestricao(r: AgendaPainel['restrictions'][number]) {
 
 // ---------- editor da semana ----------
 
-type Semana = Record<number, { aberto: boolean; open: string; close: string }>;
+// Um dia pode ter vários períodos, como o intervalo de almoço (C67).
+type Periodo = { open: string; close: string };
+type Semana = Record<number, { aberto: boolean; periodos: Periodo[] }>;
 
 function toSemana(hours: Horario[]): Semana {
   const s: Semana = {};
   for (let wd = 0; wd < 7; wd++) {
-    const h = hours.find((x) => x.weekday === wd);
-    s[wd] = h ? { aberto: true, open: h.open, close: h.close } : { aberto: false, open: '07:30', close: '19:00' };
+    const ps = dayPeriods(hours, wd).map(({ open, close }) => ({ open, close }));
+    s[wd] = ps.length ? { aberto: true, periodos: ps } : { aberto: false, periodos: [{ open: '07:30', close: '19:00' }] };
   }
   return s;
 }
 const fromSemana = (s: Semana): Horario[] =>
-  ORDEM.filter((wd) => s[wd]!.aberto).map((wd) => ({ weekday: wd, open: s[wd]!.open, close: s[wd]!.close }));
+  ORDEM.filter((wd) => s[wd]!.aberto).flatMap((wd) => s[wd]!.periodos.map((p) => ({ weekday: wd, ...p })));
+
+/** Problema do horário digitado, na hora, pela mesma regra do servidor (C29, C68). */
+const problemaSemana = (s: Semana) => weekHoursProblem(fromSemana(s));
+
+/**
+ * Ao incluir um intervalo, divide o último período em dois: 7h30–19h vira 7h30–12h e
+ * 14h–19h. Se o último período não comporta o almoço, o novo começa 1h depois dele.
+ */
+function comIntervalo(periodos: Periodo[]): Periodo[] {
+  const last = periodos.at(-1)!;
+  if (last.open < '12:00' && last.close > '14:00')
+    return [...periodos.slice(0, -1), { open: last.open, close: '12:00' }, { open: '14:00', close: last.close }];
+  const [h, m] = last.close.split(':').map(Number);
+  const abre = `${String(Math.min(h! + 1, 22)).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  const fecha = `${String(Math.min(h! + 3, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  return [...periodos, { open: abre, close: fecha }];
+}
 
 function EditorSemana({ value, onChange }: { value: Semana; onChange: (s: Semana) => void }) {
   return (
@@ -52,6 +72,8 @@ function EditorSemana({ value, onChange }: { value: Semana; onChange: (s: Semana
       {ORDEM.map((wd) => {
         const d = value[wd]!;
         const set = (patch: Partial<typeof d>) => onChange({ ...value, [wd]: { ...d, ...patch } });
+        const setPeriodo = (i: number, patch: Partial<Periodo>) =>
+          set({ periodos: d.periodos.map((p, j) => (j === i ? { ...p, ...patch } : p)) });
         return (
           <div key={wd} className={d.aberto ? 'week__row' : 'week__row week__row--off'}>
             <label className="week__day">
@@ -59,20 +81,45 @@ function EditorSemana({ value, onChange }: { value: Semana; onChange: (s: Semana
               {DIAS[wd]}
             </label>
             {d.aberto ? (
-              <span className="week__times">
-                <input
-                  type="time"
-                  aria-label={`${DIAS[wd]}: abre`}
-                  value={d.open}
-                  onChange={(e) => set({ open: e.target.value })}
-                />
-                <span>às</span>
-                <input
-                  type="time"
-                  aria-label={`${DIAS[wd]}: fecha`}
-                  value={d.close}
-                  onChange={(e) => set({ close: e.target.value })}
-                />
+              <span className="week__periods">
+                {d.periodos.map((p, i) => (
+                  <span key={i} className="week__times">
+                    {i > 0 && <span className="week__e">e</span>}
+                    <input
+                      type="time"
+                      aria-label={`${DIAS[wd]}, período ${i + 1}: abre`}
+                      value={p.open}
+                      onChange={(e) => setPeriodo(i, { open: e.target.value })}
+                    />
+                    <span>às</span>
+                    <input
+                      type="time"
+                      aria-label={`${DIAS[wd]}, período ${i + 1}: fecha`}
+                      value={p.close}
+                      onChange={(e) => setPeriodo(i, { close: e.target.value })}
+                    />
+                    {d.periodos.length > 1 && (
+                      <button
+                        type="button"
+                        className="icon-btn week__remove"
+                        aria-label={`Remover o período ${i + 1} de ${DIAS[wd]}`}
+                        title="Remover período"
+                        onClick={() => set({ periodos: d.periodos.filter((_, j) => j !== i) })}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                ))}
+                {d.periodos.length < 4 && (
+                  <button
+                    type="button"
+                    className="link week__add"
+                    onClick={() => set({ periodos: comIntervalo(d.periodos) })}
+                  >
+                    + intervalo
+                  </button>
+                )}
               </span>
             ) : (
               <span className="week__closed">Fechado</span>
@@ -82,6 +129,15 @@ function EditorSemana({ value, onChange }: { value: Semana; onChange: (s: Semana
       })}
     </div>
   );
+}
+
+function ProblemaSemana({ semana }: { semana: Semana }) {
+  const p = problemaSemana(semana);
+  return p ? (
+    <p className="field__error" role="alert">
+      {p}
+    </p>
+  ) : null;
 }
 
 // ---------- blocos ----------
@@ -246,7 +302,8 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
       >
         <form onSubmit={salvarSemana}>
           <EditorSemana value={semana} onChange={setSemana} />
-          <button type="submit" className="primary" disabled={ocupado}>
+          <ProblemaSemana semana={semana} />
+          <button type="submit" className="primary" disabled={ocupado || problemaSemana(semana) !== null}>
             Salvar horário em vigor
           </button>
         </form>
@@ -297,11 +354,12 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
               </div>
             </div>
             <EditorSemana value={mudanca.semana} onChange={(s) => setMudanca({ ...mudanca, semana: s })} />
+            <ProblemaSemana semana={mudanca.semana} />
             <div className="agenda__actions">
               <button type="button" className="link" onClick={() => setProgramando(false)}>
                 Cancelar
               </button>
-              <button type="submit" className="add" disabled={ocupado}>
+              <button type="submit" className="add" disabled={ocupado || problemaSemana(mudanca.semana) !== null}>
                 Programar mudança
               </button>
             </div>

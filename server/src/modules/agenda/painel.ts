@@ -1,7 +1,7 @@
 // Tela Agenda do painel (RF20, RF21, RF22, RF35; cenários C24–C35).
 // Toda mudança responde com a agenda inteira, para a tela redesenhar de uma vez.
 
-import { scheduleFor, type OpeningHours, type WeeklySchedule } from '@vanellis/shared';
+import { scheduleFor, weekHoursProblem, type OpeningHours, type WeeklySchedule } from '@vanellis/shared';
 import { and, asc, eq, gt, gte } from 'drizzle-orm';
 import { Router, type Response } from 'express';
 import { z } from 'zod';
@@ -42,16 +42,13 @@ const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida');
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido (use HH:MM)');
 const weekday = z.number().int().min(0).max(6);
 
+// Um dia pode ter vários períodos, como o intervalo de almoço (C67), sem sobreposição (C68).
 const hoursList = z
   .array(z.object({ weekday, open: time, close: time }))
-  .max(7)
+  .max(28)
   .superRefine((list, ctx) => {
-    const seen = new Set<number>();
-    for (const h of list) {
-      if (seen.has(h.weekday)) ctx.addIssue({ code: 'custom', message: 'Dia da semana repetido' });
-      seen.add(h.weekday);
-      if (h.close <= h.open) ctx.addIssue({ code: 'custom', message: 'O fechamento precisa ser depois da abertura' });
-    }
+    const problem = weekHoursProblem(list);
+    if (problem) ctx.addIssue({ code: 'custom', message: problem });
   });
 
 const endAfterStart = (v: { start: string; end: string }) => v.end > v.start;
@@ -95,7 +92,7 @@ async function readAgenda(db: DB, today: string): Promise<AgendaPainelDTO> {
     validUntil: s.validUntil,
     hours: s.hours
       .map((h) => ({ weekday: h.weekday, open: hm(h.openTime), close: hm(h.closeTime) }))
-      .sort((a, b) => a.weekday - b.weekday),
+      .sort((a, b) => a.weekday - b.weekday || a.open.localeCompare(b.open)),
   }));
   const [config] = await db.select().from(agendaConfig).limit(1);
 

@@ -1,4 +1,4 @@
-import type { ProductForm, TemplateDTO } from '@vanellis/shared';
+import type { PrecoCategoriaDTO, PrecosPatch, ProductForm, TemplateDTO } from '@vanellis/shared';
 // Chamadas do painel. O cookie de sessão vai sozinho (mesmo site); mudanças vão como JSON,
 // que o servidor exige (proteção contra CSRF).
 
@@ -117,6 +117,8 @@ export const api = {
   criaProduto: (f: ProductForm) => call<{ id: number; warnings: string[] }>('POST', '/painel/catalogo/produtos', f),
   salvaProduto: (id: number, f: ProductForm) =>
     call<{ id: number; warnings: string[] }>('PUT', `/painel/catalogo/produtos/${id}`, f),
+  precos: () => call<PrecoCategoriaDTO[]>('GET', '/painel/precos'),
+  salvaPrecos: (patch: PrecosPatch) => call<PrecoCategoriaDTO[]>('PUT', '/painel/precos', patch),
   duplicaProduto: (id: number) => call<{ id: number }>('POST', `/painel/catalogo/produtos/${id}/duplicar`, {}),
   senhaOperador: (senha: string) => call<{ usuario: string }>('PUT', '/auth/operador/senha', { senha }),
 };

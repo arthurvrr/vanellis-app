@@ -5,3 +5,4 @@ export * from './agenda';
 export * from './cliente';
 export * from './mensagem';
 export * from './produtoForm';
+export * from './precos';
