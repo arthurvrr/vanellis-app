@@ -86,9 +86,10 @@ function EditorSemana({ value, onChange }: { value: Semana; onChange: (s: Semana
 
 // ---------- blocos ----------
 
-function Bloco({ titulo, ajuda, children }: { titulo: string; ajuda?: string; children: ReactNode }) {
+function Bloco({ id, titulo, ajuda, children }: { id: string; titulo: string; ajuda?: string; children: ReactNode }) {
+  // O id permite chegar ao bloco pela barra lateral ('#agenda/especiais').
   return (
-    <section className="card-form agenda__block">
+    <section id={`agenda-${id}`} className="card-form agenda__block">
       <h3>{titulo}</h3>
       {ajuda && <p className="field__help">{ajuda}</p>}
       {children}
@@ -146,6 +147,20 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
       .then(aplicar)
       .catch((e: unknown) => onAuthError(e) || setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) }));
   }, [aplicar, onAuthError]);
+
+  // Subseção pela barra lateral: '#agenda/especiais' rola até o bloco.
+  const carregada = agenda !== null;
+  useEffect(() => {
+    if (!carregada) return;
+    const ir = () => {
+      const m = window.location.hash.match(/^#agenda\/(\w+)$/);
+      if (m) document.getElementById(`agenda-${m[1]}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else if (window.location.hash === '#agenda') window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    ir();
+    window.addEventListener('hashchange', ir);
+    return () => window.removeEventListener('hashchange', ir);
+  }, [carregada]);
 
   /** Envia uma mudança; em sucesso atualiza a tela e mostra `ok`. Devolve se deu certo. */
   const muda = async (method: 'POST' | 'PUT' | 'DELETE', path: string, body: unknown, ok: string) => {
@@ -221,6 +236,7 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
 
       {/* 1. Horário em vigor (C24, C25) */}
       <Bloco
+        id="horario"
         titulo="Horário em vigor"
         ajuda={
           c
@@ -238,6 +254,7 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
 
       {/* 2. Mudanças programadas (C26–C28) */}
       <Bloco
+        id="mudancas"
         titulo="Próximas mudanças"
         ajuda="Um horário novo a partir de uma data. Com data de fim, o horário normal volta sozinho depois."
       >
@@ -297,7 +314,11 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
       </Bloco>
 
       {/* 3. Exceções no calendário (C30–C33) */}
-      <Bloco titulo="Datas sem retirada" ajuda="Feriados e folgas: o dia some do calendário do cliente.">
+      <Bloco
+        id="bloqueadas"
+        titulo="Datas sem retirada"
+        ajuda="Feriados e folgas: o dia some do calendário do cliente."
+      >
         <Lista vazia="Nenhuma data bloqueada.">
           {agenda.blockedDates.map((b) => (
             <Item
@@ -350,6 +371,7 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
       </Bloco>
 
       <Bloco
+        id="especiais"
         titulo="Datas especiais"
         ajuda="O cliente escolhe só o dia; a padaria combina o horário pelo WhatsApp (ex: vésperas de Natal e Ano Novo)."
       >
@@ -399,6 +421,7 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
       </Bloco>
 
       <Bloco
+        id="lotados"
         titulo="Horários fechados por lotação"
         ajuda="Fecha um período só naquele dia, quando a produção lota. Reabra quando quiser."
       >
@@ -457,7 +480,11 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
       </Bloco>
 
       {/* 4. Regras gerais (C34, C35) */}
-      <Bloco titulo="Restrições de retirada" ajuda="Horários em que a loja está aberta, mas não entrega encomendas.">
+      <Bloco
+        id="restricoes"
+        titulo="Restrições de retirada"
+        ajuda="Horários em que a loja está aberta, mas não entrega encomendas."
+      >
         <Lista vazia="Nenhuma restrição.">
           {agenda.restrictions.map((r) => (
             <Item
@@ -534,7 +561,7 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
         </form>
       </Bloco>
 
-      <Bloco titulo="Antecedência e prazo">
+      <Bloco id="regras" titulo="Antecedência e prazo">
         <form
           className="agenda__inline"
           onSubmit={(e) => {

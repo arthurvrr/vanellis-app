@@ -41,7 +41,9 @@ const Thumb = ({ src }: { src: string | null }) =>
   );
 
 export function Produtos({ onAuthError }: { onAuthError: (e: unknown) => boolean }) {
-  const [aba, setAba] = useState<Aba>(window.location.hash === '#produtos-sem-pdv' ? 'produtos' : 'produtos');
+  // A barra lateral escolhe a subseção pelo endereço: '#categorias' ou a lista.
+  const abaDoEndereco = (): Aba => (window.location.hash === '#categorias' ? 'categorias' : 'produtos');
+  const [aba, setAba] = useState<Aba>(abaDoEndereco);
   const [categorias, setCategorias] = useState<CategoriaPainel[] | null>(null);
   const [produtos, setProdutos] = useState<ProdutoLista[] | null>(null);
   const [msg, setMsg] = useState<Msg>(null);
@@ -50,7 +52,11 @@ export function Produtos({ onAuthError }: { onAuthError: (e: unknown) => boolean
   const [editor, setEditor] = useState(editorDoEndereco);
 
   useEffect(() => {
-    const onHash = () => setEditor(editorDoEndereco());
+    const onHash = () => {
+      setEditor(editorDoEndereco());
+      setAba(abaDoEndereco());
+      if (window.location.hash === '#produtos-sem-pdv') setSoSemPdv(true);
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -110,24 +116,9 @@ export function Produtos({ onAuthError }: { onAuthError: (e: unknown) => boolean
 
   return (
     <section className="painel__page produtos" aria-labelledby="produtos-title">
-      <h2 id="produtos-title">Produtos</h2>
-      <div className="subtabs" role="tablist" aria-label="Produtos e categorias">
-        {(['produtos', 'categorias'] as Aba[]).map((a) => (
-          <button
-            key={a}
-            type="button"
-            role="tab"
-            aria-selected={aba === a}
-            className={aba === a ? 'subtab subtab--on' : 'subtab'}
-            onClick={() => {
-              setAba(a);
-              setMsg(null);
-            }}
-          >
-            {a === 'produtos' ? `Lista de produtos (${produtos.length})` : `Categorias (${categorias.length})`}
-          </button>
-        ))}
-      </div>
+      <h2 id="produtos-title">
+        {aba === 'produtos' ? `Lista de produtos (${produtos.length})` : `Categorias (${categorias.length})`}
+      </h2>
       {msg && (
         <p className={msg.ok ? 'form-ok agenda__msg' : 'field__error agenda__msg'} role={msg.ok ? 'status' : 'alert'}>
           {msg.text}
