@@ -68,9 +68,10 @@ O site fica em http://localhost:5173 e o painel em http://localhost:5173/painel/
 | `npm run dev` | Servidor (porta 3000) e site (porta 5173) com recarga automática |
 | `npm run build` | Compila site e servidor |
 | `npm start` | Roda o servidor compilado, servindo API e site |
-| `npm test` | Testes das regras (shared) e dos cenários do servidor |
+| `npm test` | Testes das regras (shared) e dos cenários do servidor, com cobertura mínima |
 | `npm run test:e2e` | Fluxos principais num navegador de verdade (Playwright), num banco só de teste |
-| `npm run typecheck` | Verificação de tipos dos três pacotes |
+| `npm run typecheck` | Verificação de tipos dos três pacotes e dos testes de ponta a ponta |
+| `npm run lint` | Lint (Oxlint): hooks do React, promessas sem `await`, código morto |
 | `npm run db:generate` | Gera uma migração a partir das mudanças no esquema |
 | `npm run db:migrate` | Aplica as migrações pendentes |
 | `npm run db:seed` | Carga inicial do catálogo, agenda e configurações (recusa se já houver produtos; para apagar e recarregar: `npm run db:seed -- --sobrescrever`) |
@@ -89,7 +90,21 @@ O site fica em http://localhost:5173 e o painel em http://localhost:5173/painel/
   (`vanellis_e2e`), apagado e recriado a cada execução por `e2e/servidor.sh`; o banco de
   desenvolvimento não é tocado. Na primeira vez, instale o navegador: `npx playwright install chromium`.
   Por padrão usa o Postgres local por socket; para outro, defina `E2E_ADMIN_URL` e `E2E_DATABASE_URL`.
-- No GitHub, os dois rodam a cada push e pull request (`.github/workflows/testes.yml`).
+- **Cobertura mínima** (em `shared/vitest.config.ts` e `server/vitest.config.ts`): 90% das linhas
+  e funções e 75% dos desvios. Se cair abaixo, `npm test` falha. Quando a cobertura subir, o piso
+  sobe junto e nunca desce.
+- **Lint** (`.oxlintrc.json`): Oxlint em vez de ESLint, porque o ESLint não lê o TypeScript 7 do
+  projeto. Exceções só no ponto, com comentário `oxlint-disable-next-line ... -- motivo`.
+
+### CI e pre-push
+
+| Onde | O que roda |
+| --- | --- |
+| Antes de cada push (`.githooks/pre-push`) | tipos, lint e testes; se algo falhar, o push é cancelado |
+| GitHub, a cada push na `main` e pull request (`.github/workflows/testes.yml`) | cinco trabalhos em paralelo: **tipos**, **lint**, **testes**, **ponta a ponta** e **docker** (compila a imagem, sobe e confere o site, o painel e o `/api/health`) |
+
+O plano completo da esteira de qualidade, com os requisitos de cada etapa, está na aba
+"Qualidade e CI/CD" do doc de requisitos.
 
 ## Versão de teste (GitHub Pages)
 

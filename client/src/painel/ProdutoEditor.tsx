@@ -44,11 +44,14 @@ function NumField({
   placeholder?: string;
 }) {
   const [text, setText] = useState(showNum(value, digits));
-  useEffect(() => {
-    // Reflete mudanças de fora (carregar, modelo) sem atrapalhar a digitação.
-    if (parseNum(text) !== value && !(value === null && text === '')) setText(showNum(value, digits));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  // Reflete mudanças de fora (carregar, modelo) sem atrapalhar a digitação: só reescreve o campo
+  // se o valor novo não for o que já está digitado. Ajustado durante a renderização, como
+  // recomenda o React, em vez de num efeito.
+  const [prevValue, setPrevValue] = useState(value);
+  if (!Object.is(value, prevValue)) {
+    setPrevValue(value);
+    if (!Object.is(parseNum(text), value) && !(value === null && text === '')) setText(showNum(value, digits));
+  }
   return (
     <label className="nfield">
       <span>{label}</span>
@@ -182,6 +185,7 @@ export function ProdutoEditor({
 
   useEffect(() => {
     if (produtoId === null) return;
+    // oxlint-disable-next-line react/set-state-in-effect -- mostra "carregando" ao iniciar a busca do produto
     setCarregando(true);
     api
       .cadastro(produtoId)

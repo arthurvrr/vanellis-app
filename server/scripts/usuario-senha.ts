@@ -56,7 +56,7 @@ async function askHidden(question: string): Promise<string> {
   const { value, done } = await lines.next();
   process.stdout.write('\n');
   if (done) fail('Senha não informada.');
-  return value as string;
+  return value;
 }
 
 const [existing] = await db.select().from(appUser).where(eq(appUser.username, username)).limit(1);

@@ -1,5 +1,5 @@
 import type { AvailableDay } from '@vanellis/shared';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 // Calendário mensal da retirada: só os dias com faixas livres (ou datas especiais) podem ser
 // escolhidos. Navega por mês dentro da janela de agendamento.
@@ -46,7 +46,7 @@ function shiftDate(date: string, days: number): string {
 function monthGrid(key: string): (string | null)[][] {
   const [y, m] = key.split('-').map(Number);
   const first = new Date(Date.UTC(y!, m! - 1, 1));
-  const daysInMonth = new Date(Date.UTC(y!, m!, 0)).getUTCDate();
+  const daysInMonth = new Date(Date.UTC(y!, m, 0)).getUTCDate();
   const cells: (string | null)[] = Array(first.getUTCDay()).fill(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(`${key}-${String(d).padStart(2, '0')}`);
   while (cells.length % 7) cells.push(null);
@@ -55,7 +55,7 @@ function monthGrid(key: string): (string | null)[][] {
 
 function fullLabel(date: string): string {
   const [y, m, d] = date.split('-').map(Number);
-  const weekday = new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay();
+  const weekday = new Date(Date.UTC(y!, m! - 1, d)).getUTCDay();
   return `${WEEKDAY_NAMES[weekday]}, ${d} de ${MONTHS[m! - 1]}`;
 }
 
@@ -69,14 +69,10 @@ export function PickupCalendar({ days, value, onChange }: Props) {
   const byDate = useMemo(() => new Map(days.map((d) => [d.date, d])), [days]);
   const firstMonth = monthKey(days[0]!.date);
   const lastMonth = monthKey(days.at(-1)!.date);
-  const [month, setMonth] = useState(value ? monthKey(value) : firstMonth);
+  const [chosenMonth, setMonth] = useState(value ? monthKey(value) : firstMonth);
   const gridRef = useRef<HTMLDivElement>(null);
-
-  // Se a janela mudar (outros produtos, outra antecedência), mantém o mês dentro dela.
-  useEffect(() => {
-    if (month < firstMonth) setMonth(firstMonth);
-    else if (month > lastMonth) setMonth(lastMonth);
-  }, [firstMonth, lastMonth, month]);
+  // Se a janela mudar (outros produtos, outra antecedência), o mês mostrado fica dentro dela.
+  const month = chosenMonth < firstMonth ? firstMonth : chosenMonth > lastMonth ? lastMonth : chosenMonth;
 
   const [y, m] = month.split('-').map(Number);
   const weeks = monthGrid(month);

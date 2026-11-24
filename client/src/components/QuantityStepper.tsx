@@ -1,5 +1,5 @@
 import { MAX_QUANTITY } from '@vanellis/shared';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface Props {
   value: number;
@@ -12,7 +12,13 @@ interface Props {
 // Seletor de quantidade: botões de 1 em 1 e campo digitável, sempre entre o mínimo e 999.
 export function QuantityStepper({ value, min, onChange, label, disabled }: Props) {
   const [draft, setDraft] = useState(String(value));
-  useEffect(() => setDraft(String(value)), [value]);
+  // Quando a quantidade muda por fora (ex: outro produto), o campo acompanha. Ajustado durante a
+  // renderização, como recomenda o React, em vez de num efeito que renderizaria duas vezes.
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setDraft(String(value));
+  }
 
   const commit = (n: number) => {
     const next = Math.min(MAX_QUANTITY, Math.max(min, Number.isFinite(n) ? Math.floor(n) : min));

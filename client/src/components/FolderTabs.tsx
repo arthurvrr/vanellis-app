@@ -24,11 +24,13 @@ export function FolderTabs({
     const ro = new ResizeObserver(check);
     ro.observe(row);
     return () => ro.disconnect();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- categorias é o gatilho: novas abas mudam a largura
   }, [categorias]);
 
   // A aba aberta fica sempre à vista, mesmo com muitas categorias.
   useEffect(() => {
     rowRef.current?.querySelector('.folder-tab--active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- activeId é o gatilho: trocar de aba rola até ela
   }, [activeId]);
 
   return (

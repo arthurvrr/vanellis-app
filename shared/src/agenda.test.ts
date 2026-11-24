@@ -150,7 +150,7 @@ describe('formatDay', () => {
 });
 
 describe('situação da loja na entrada', () => {
-  const semana = {
+  const semanaComDomingo = {
     validFrom: '2026-01-01',
     validUntil: null,
     hours: [
@@ -158,7 +158,7 @@ describe('situação da loja na entrada', () => {
       ...[1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, open: '07:30', close: '19:00' })),
     ],
   };
-  const input = { schedules: [semana], blockedDates: ['2026-11-25'] };
+  const input = { schedules: [semanaComDomingo], blockedDates: ['2026-11-25'] };
 
   it('aberta: mostra até quando', () => {
     const s = storeStatus(input, '2026-11-23T10:00');
@@ -185,8 +185,8 @@ describe('situação da loja na entrada', () => {
   });
 
   it('resume a semana juntando dias iguais', () => {
-    expect(weekSummary(semana.hours)).toBe('Seg a sáb 7h30–19h · Dom 7h30–12h');
-    expect(weekSummary(semana.hours.filter((h) => h.weekday !== 0))).toBe('Seg a sáb 7h30–19h');
+    expect(weekSummary(semanaComDomingo.hours)).toBe('Seg a sáb 7h30–19h · Dom 7h30–12h');
+    expect(weekSummary(semanaComDomingo.hours.filter((h) => h.weekday !== 0))).toBe('Seg a sáb 7h30–19h');
     expect(weekSummary([{ weekday: 6, open: '08:00', close: '13:00' }, { weekday: 0, open: '08:00', close: '13:00' }])).toBe(
       'Sáb e dom 8h–13h',
     );

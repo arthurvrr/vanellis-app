@@ -12,7 +12,7 @@ import {
   type ReminderDTO,
   type ReminderKind,
 } from '@vanellis/shared';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, type Configuracoes as Dados, type Papel } from './api';
 
 // Tela Configurações do painel (RF23, RF34, RF37): contatos e localização mostrados no site,
@@ -302,16 +302,16 @@ function Lembretes({ onAuthError }: { onAuthError: (e: unknown) => boolean }) {
   const [msg, setMsg] = useState<Msg>(null);
   const [salvando, setSalvando] = useState(false);
 
-  const aplicar = (l: ReminderDTO[]) => {
+  const aplicar = useCallback((l: ReminderDTO[]) => {
     setSalvos(l);
     setForm(Object.fromEntries(l.map((r) => [r.kind, String(r.everyDays)])) as Record<ReminderKind, string>);
-  };
+  }, []);
   useEffect(() => {
     api
       .lembretes()
       .then(aplicar)
       .catch((e: unknown) => onAuthError(e) || setMsg({ ok: false, text: erroDe(e) }));
-  }, [onAuthError]);
+  }, [aplicar, onAuthError]);
 
   if (!salvos) return null;
   const mudou = REMINDERS.filter((r) => form[r.kind] !== String(salvos.find((s) => s.kind === r.kind)?.everyDays));

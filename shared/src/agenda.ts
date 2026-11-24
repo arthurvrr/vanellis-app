@@ -126,7 +126,7 @@ const toTime = (minutes: number) =>
 /** Data e hora de parede como milissegundos numa linha do tempo sem fuso. */
 function wallMs(date: string, minutes = 0): number {
   const [y, m, d] = date.split('-').map(Number);
-  return Date.UTC(y!, m! - 1, d!) + minutes * MINUTE;
+  return Date.UTC(y!, m! - 1, d) + minutes * MINUTE;
 }
 
 /**

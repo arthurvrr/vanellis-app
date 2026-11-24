@@ -1,0 +1,61 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "react",
+    "unicorn",
+    "oxc",
+    "import"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": [
+      "error",
+      {
+        "checksVoidReturn": {
+          "attributes": false
+        }
+      }
+    ],
+    "typescript/await-thenable": "error",
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "destructuredArrayIgnorePattern": "^_",
+        "caughtErrors": "none"
+      }
+    ],
+    "eqeqeq": [
+      "error",
+      "smart"
+    ],
+    "react/react-in-jsx-scope": "off",
+    "oxc/no-async-endpoint-handlers": "off",
+    "typescript/no-unsafe-type-assertion": "off",
+    "unicorn/no-array-sort": "off",
+    "unicorn/no-array-reverse": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "typescript/consistent-return": "off",
+    "import/no-unassigned-import": "off",
+    "no-underscore-dangle": "off",
+    "typescript/no-unnecessary-type-conversion": "off"
+  },
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "client/src/demo/**",
+    "client/public/**",
+    "server/drizzle/**",
+    "playwright-report/**",
+    "test-results/**",
+    "**/coverage/**"
+  ]
+}

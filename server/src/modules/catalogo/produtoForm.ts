@@ -183,7 +183,7 @@ async function pdvConflicts(db: DB, f: ProductForm, productId: number | null): P
 async function check(db: DB, raw: unknown, productId: number | null): Promise<{ form: ProductForm; warnings: string[] }> {
   const parsed = productFormSchema.safeParse(raw);
   if (!parsed.success) throw new FormError(400, [parsed.error.issues[0]?.message ?? 'Dados inválidos']);
-  const form = normalize(parsed.data as ProductForm);
+  const form = normalize(parsed.data);
   const { errors, warnings } = validateProduct(form);
   if (errors.length) throw new FormError(400, errors);
   const [cat] = await db.select({ id: category.id }).from(category).where(eq(category.id, form.categoryId)).limit(1);
@@ -260,7 +260,7 @@ async function saveGroups(tx: DB, productId: number, groups: GroupForm[]): Promi
 
     // Nomes únicos por grupo: grava primeiro com nome provisório, para trocas de nome não colidirem.
     for (const [oi, o] of g.options.entries()) {
-      const values = {
+      const optionValues = {
         name: `~provisorio~${oi}`,
         description: o.description,
         imageUrl: o.imageUrl,
@@ -275,9 +275,9 @@ async function saveGroups(tx: DB, productId: number, groups: GroupForm[]): Promi
       if (o.id && keepOptions.includes(o.id)) {
         const before = old!.options.find((x) => x.id === o.id)!;
         if (before.imageUrl && before.imageUrl !== o.imageUrl) removedImages.push(before.imageUrl);
-        await tx.update(option).set(values).where(eq(option.id, o.id));
+        await tx.update(option).set(optionValues).where(eq(option.id, o.id));
       } else {
-        const [row] = await tx.insert(option).values({ groupId, ...values }).returning({ id: option.id });
+        const [row] = await tx.insert(option).values({ groupId, ...optionValues }).returning({ id: option.id });
         o.id = row!.id;
       }
     }
