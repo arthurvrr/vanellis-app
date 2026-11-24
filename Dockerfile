@@ -2,7 +2,7 @@
 # Roda igual em qualquer máquina com Docker; o que muda de um servidor para outro vem do .env.
 
 # ---------- 1. Compilação ----------
-FROM node:22-bookworm-slim AS build
+FROM node:25-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY shared/package.json shared/
@@ -16,7 +16,7 @@ COPY client client
 RUN npm run build -w client && npm run build -w server
 
 # ---------- 2. Só as dependências que o servidor usa em produção ----------
-FROM node:22-bookworm-slim AS deps
+FROM node:25-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY shared/package.json shared/
@@ -25,7 +25,7 @@ COPY client/package.json client/
 RUN npm ci --omit=dev --workspace server
 
 # ---------- 3. Imagem final ----------
-FROM node:22-bookworm-slim
+FROM node:25-bookworm-slim
 ENV NODE_ENV=production \
     PORT=3000 \
     TZ=America/Sao_Paulo
