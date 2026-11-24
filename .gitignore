@@ -7,3 +7,7 @@ dist/
 # Backups do banco no servidor
 backups/
 deploy/.env.teste
+
+# Testes de ponta a ponta (Playwright)
+test-results/
+playwright-report/

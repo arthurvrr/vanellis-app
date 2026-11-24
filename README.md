@@ -69,6 +69,7 @@ O site fica em http://localhost:5173 e o painel em http://localhost:5173/painel/
 | `npm run build` | Compila site e servidor |
 | `npm start` | Roda o servidor compilado, servindo API e site |
 | `npm test` | Testes das regras (shared) e dos cenários do servidor |
+| `npm run test:e2e` | Fluxos principais num navegador de verdade (Playwright), num banco só de teste |
 | `npm run typecheck` | Verificação de tipos dos três pacotes |
 | `npm run db:generate` | Gera uma migração a partir das mudanças no esquema |
 | `npm run db:migrate` | Aplica as migrações pendentes |
@@ -76,6 +77,19 @@ O site fica em http://localhost:5173 e o painel em http://localhost:5173/painel/
 | `npm run usuario:senha -- <usuário>` | Troca a senha de uma conta do painel e encerra as sessões dela (com `--papel`, cria a conta) |
 | `npm run demo:export` | Exporta catálogo, agenda e configurações do banco para a versão de teste |
 | `npm run demo:build` | Compila a versão de teste em `client/dist` |
+
+## Testes
+
+- **Regras e API** (`npm test`, Vitest): ao lado do código, em `shared/src/*.test.ts` e
+  `server/src/modules/*/*.test.ts`. Os do servidor sobem a API sobre um Postgres em memória
+  (PGlite), com as mesmas migrações da produção. Cada arquivo cita os cenários (Cxx) do doc.
+- **Fluxos principais** (`npm run test:e2e`, Playwright): em `e2e/`. Um navegador percorre o
+  pedido com retirada e com entrega até a mensagem do WhatsApp, o cardápio especial, o reajuste
+  de preço e a pausa de pedidos. Rodam contra o sistema completo num banco **só de teste**
+  (`vanellis_e2e`), apagado e recriado a cada execução por `e2e/servidor.sh`; o banco de
+  desenvolvimento não é tocado. Na primeira vez, instale o navegador: `npx playwright install chromium`.
+  Por padrão usa o Postgres local por socket; para outro, defina `E2E_ADMIN_URL` e `E2E_DATABASE_URL`.
+- No GitHub, os dois rodam a cada push e pull request (`.github/workflows/testes.yml`).
 
 ## Versão de teste (GitHub Pages)
 

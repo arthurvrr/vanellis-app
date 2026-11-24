@@ -1,0 +1,52 @@
+# Testes a cada push e pull request: regras e API (Vitest) e os fluxos principais num navegador
+# de verdade (Playwright), contra o sistema completo num Postgres só de teste.
+name: Testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      E2E_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      E2E_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vanellis_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Regras e API (Vitest)
+        run: npm test
+      - name: Navegador para os testes de ponta a ponta
+        run: npx playwright install --with-deps chromium
+      - name: Fluxos principais (Playwright)
+        run: npm run test:e2e
+      - name: Relatório dos testes de ponta a ponta
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

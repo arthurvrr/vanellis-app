@@ -18,9 +18,11 @@
     "db:seed": "npm run db:seed -w server",
     "demo:export": "npm run demo:export -w server",
     "demo:build": "npm run build:demo -w client",
-    "usuario:senha": "npm run usuario:senha -w server --"
+    "usuario:senha": "npm run usuario:senha -w server --",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "concurrently": "^10.0.7",
     "typescript": "^7.0.2"
   },
