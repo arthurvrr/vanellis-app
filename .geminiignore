@@ -1,0 +1,17 @@
+# Arquivos que o Gemini CLI não deve ler (mesmo formato do .gitignore).
+# Segredos e dados locais: nenhum deles é necessário para revisar o código.
+.env
+.env.*
+**/.env
+!.env*.example
+!**/.env*.example
+deploy/.env.teste
+backups/
+
+# Gerados ou de terceiros: só aumentam o volume sem ajudar a revisão.
+node_modules/
+**/dist/
+coverage/
+playwright-report/
+test-results/
+client/src/demo/dados.json
