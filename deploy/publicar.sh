@@ -8,10 +8,10 @@
 # 4) troca a versão e sobe; 5) teste de fumaça: API, site e painel respondem e a versão é a
 # pedida (RQ33); 6) se o teste falhar, volta sozinho para a versão anterior (RQ34).
 #
-# As migrações do banco rodam quando o app sobe e não são desfeitas na volta: as migrações deste
-# projeto só acrescentam (colunas, tabelas), então a versão anterior continua funcionando com elas.
-# Se um dia uma migração apagar ou transformar dados, a volta é manual: deploy/restore.sh com o
-# backup feito no passo 3.
+# As migrações do banco rodam quando o app sobe e NÃO são desfeitas na volta automática. Uma
+# migração que só acrescenta (coluna, tabela) não atrapalha a versão anterior. Uma que apaga ou
+# transforma (já houve: 0002 apagou tabelas, 0004 uma coluna) exige volta manual, com
+# deploy/restore.sh e o backup feito no passo 3; avalie isso no PR antes de aprovar a publicação.
 #
 # Tudo fica dentro de main(): o Bash lê a função inteira antes de executar, então o passo 1 pode
 # trocar este próprio arquivo sem atrapalhar a execução em andamento.
