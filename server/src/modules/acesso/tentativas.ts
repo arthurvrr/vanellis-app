@@ -15,13 +15,13 @@ const entries = new Map<string, Entry>();
 /** Minutos que faltam de bloqueio (arredondado para cima), ou 0 se pode tentar. */
 export function lockedMinutes(username: string, now = Date.now()): number {
   const e = entries.get(username);
+  // Stryker disable next-line EqualityOperator: no instante exato do fim, "<" daria ceil(0) = 0 também.
   if (!e || e.lockedUntil <= now) return 0;
   return Math.ceil((e.lockedUntil - now) / 60_000);
 }
 
 export function registerFailure(username: string, now = Date.now()): void {
   const e = entries.get(username) ?? { failures: 0, lockedUntil: 0 };
-  if (e.lockedUntil && e.lockedUntil <= now) e.lockedUntil = 0;
   e.failures += 1;
   if (e.failures >= MAX_FAILURES) {
     e.failures = 0;

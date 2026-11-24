@@ -8,6 +8,7 @@ const blankToNull = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? 
 
 /** Telefone brasileiro em qualquer formato → só dígitos com DDI 55 (ex: 5551995284226). */
 const phone = (what: string) =>
+  // Stryker disable next-line MethodExpression: sem o trim dá no mesmo, só os dígitos ficam.
   z
     .string()
     .trim()
@@ -23,12 +24,9 @@ const httpsUrl = (what: string, hosts: RegExp, example: string) =>
     .trim()
     .max(500, `${what}: link longo demais`)
     .refine((v) => {
-      try {
-        const u = new URL(v);
-        return u.protocol === 'https:' && hosts.test(u.hostname);
-      } catch {
-        return false;
-      }
+      if (!URL.canParse(v)) return false;
+      const u = new URL(v);
+      return u.protocol === 'https:' && hosts.test(u.hostname);
     }, `${what}: cole o link completo, ex: ${example}`);
 
 /** "@perfil" ou "perfil" vira o link do Instagram. */
@@ -63,6 +61,7 @@ export const settingsPatch = z
       .transform((v) => (v === null || !v.trim() || v.trim() === DEFAULT_MESSAGE_TEMPLATE ? null : v.replace(/\r\n/g, '\n').trimEnd()))
       .superRefine((v, ctx) => {
         const problem = v === null ? null : messageTemplateProblem(v);
+        // Stryker disable next-line StringLiteral: o código do erro é interno do zod; a API só devolve a mensagem.
         if (problem) ctx.addIssue({ code: 'custom', message: problem });
       }),
   })
@@ -77,6 +76,7 @@ export const remindersPatch = z
         r.kind,
         z.number().superRefine((d, ctx) => {
           const problem = reminderDaysProblem(d);
+          // Stryker disable next-line StringLiteral: o código do erro é interno do zod; a API só devolve a mensagem.
           if (problem) ctx.addIssue({ code: 'custom', message: `${r.label}: ${problem.toLowerCase()}` });
         }),
       ]),

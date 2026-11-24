@@ -1,7 +1,9 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // .stryker-tmp: cópias temporárias dos testes de mutação, se uma execução for interrompida.
+    exclude: [...configDefaults.exclude, '**/.stryker-tmp*/**'],
     // Os testes usam PGlite (PostgreSQL em memória); a URL só satisfaz a validação do env.
     // Subir o PGlite e aplicar as migrações leva alguns segundos.
     hookTimeout: 60_000,

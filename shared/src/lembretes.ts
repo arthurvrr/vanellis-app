@@ -4,6 +4,8 @@
 
 export type ReminderKind = 'cardapio' | 'horario' | 'precos';
 
+// Stryker disable StringLiteral: label, help e screen são textos de tela, conferidos a olho; kind e
+// href, que o código usa, estão presos no teste "REMINDERS" de lembretes.test.ts.
 export const REMINDERS: {
   kind: ReminderKind;
   label: string;
@@ -38,6 +40,7 @@ export const REMINDERS: {
     screen: 'Preços',
   },
 ];
+// Stryker restore StringLiteral
 
 export interface ReminderDTO {
   kind: ReminderKind;
