@@ -39,6 +39,9 @@ COPY --from=build /app/client/dist client/dist
 WORKDIR /app/server
 USER node
 EXPOSE 3000
+# Versão (commit) desta imagem, mostrada no /api/health. O CD passa o commit; local fica "dev".
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD node -e "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 # Aplica as migrações pendentes e sobe o servidor.

@@ -25,8 +25,9 @@ export function createApp(db: DB = defaultDb, { now = () => nowInBrasilia() }: A
   app.set('trust proxy', 1);
   app.use(express.json({ limit: '100kb' }));
 
+  // A versão (commit) vem da imagem: o CD confere de fora que publicou exatamente o que foi aprovado.
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true });
+    res.json({ ok: true, version: process.env.APP_VERSION || 'dev' });
   });
 
   // Um router por módulo de domínio (RNF14). Entrega entra aqui quando for implementada.

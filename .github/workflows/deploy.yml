@@ -1,0 +1,84 @@
+# CD (etapa 5 da aba "Qualidade e CI/CD"): a cada merge na main, compila a imagem e a publica no
+# GHCR; depois, com a aprovação do dono do repositório (ambiente "producao"), manda o servidor
+# trocar para ela. O servidor faz backup, sobe, confere e volta sozinho se algo falhar
+# (deploy/publicar.sh). Só chega na main o que passou pelo CI no pull request (main protegida).
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Uma publicação por vez, sem cancelar a que já está em andamento.
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+env:
+  IMAGEM: ghcr.io/arthurvrr/vanellis-app
+  SERVIDOR: 143.95.191.200
+  PORTA_SSH: '22022'
+  SITE: https://vanellispadaria.com.br
+  # Impressão digital pública do servidor: o GitHub só conversa com ele, nunca com um impostor.
+  SERVIDOR_CHAVE: '[143.95.191.200]:22022 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKq3aGCIO4V+QmKVS1yKOPQjOfnymVaui/dZNbTUcWv9'
+
+jobs:
+  # RQ29: imagem compilada aqui, com o commit embutido (aparece no /api/health).
+  imagem:
+    name: imagem
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: APP_VERSION=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGEM }}:${{ github.sha }}
+            ${{ env.IMAGEM }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # RQ30–RQ34: espera a aprovação, publica no servidor e confere de fora.
+  producao:
+    name: produção
+    needs: imagem
+    runs-on: ubuntu-latest
+    # RQ31: o ambiente "producao" exige a aprovação do dono do repositório antes deste trabalho.
+    environment:
+      name: producao
+      url: ${{ env.SITE }}
+    permissions:
+      contents: read
+    steps:
+      - name: Publica no servidor (backup, sobe, teste de fumaça, volta se falhar)
+        env:
+          CHAVE_DEPLOY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$CHAVE_DEPLOY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$SERVIDOR_CHAVE" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy -p "$PORTA_SSH" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=15 root@"$SERVIDOR" "publicar ${{ github.sha }}"
+      - name: Confere de fora que o site está na versão nova
+        run: |
+          for i in $(seq 1 10); do
+            versao="$(curl -fsS --max-time 10 "$SITE/api/health" | jq -r .version || true)"
+            [ "$versao" = "${{ github.sha }}" ] && { echo "No ar: $versao"; exit 0; }
+            sleep 6
+          done
+          echo "O site respondeu a versão '$versao', esperada ${{ github.sha }}" >&2
+          exit 1
+      - name: Apaga a chave do runner
+        if: always()
+        run: rm -f ~/.ssh/deploy
