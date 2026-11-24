@@ -1,0 +1,61 @@
+# Dependabot (etapa 4 da aba "Qualidade e CI/CD"): abre PRs de atualização, que passam pelo mesmo
+# CI e pela mesma proteção da main de qualquer outro PR. Nada é aplicado sem o seu merge.
+# As atualizações de segurança (RQ23) vêm fora deste calendário, assim que a falha é publicada.
+version: 2
+updates:
+  # RQ24: bibliotecas do projeto (os três pacotes, num package-lock.json só, na raiz).
+  # Pequenas e de correção num PR só por semana; as grandes (versão principal) em PRs separados.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    groups:
+      npm-pequenas:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: deps
+
+  # RQ25: ações dos workflows (checkout, setup-node, docker/*...), todas num PR só.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/Sao_Paulo
+    groups:
+      acoes:
+        patterns: ['*']
+    commit-message:
+      prefix: ci
+
+  # RQ26: imagem base do app (node:22-bookworm-slim, no Dockerfile).
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: docker
+
+  # RQ26: imagens do servidor (postgres e caddy, no docker-compose.yml).
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/Sao_Paulo
+    ignore:
+      # Versão principal do Postgres (17 → 18) não abre PR: o formato dos arquivos do banco muda
+      # e a troca exige exportar e importar os dados. É uma migração planejada, não uma atualização.
+      - dependency-name: postgres
+        update-types: ['version-update:semver-major']
+    commit-message:
+      prefix: docker
