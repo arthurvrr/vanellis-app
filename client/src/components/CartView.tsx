@@ -45,6 +45,7 @@ export function CartView({
   // Itens que deixaram de valer (produto removido ou indisponível) saem do carrinho (RN10).
   useEffect(() => {
     if (!invalid.length) return;
+    // oxlint-disable-next-line react/set-state-in-effect -- sincroniza com o carrinho salvo: avisa e remove o que deixou de existir
     setRemovedKeys((prev) => new Set([...prev, ...invalid.map((l) => l.key)]));
     for (const l of invalid) remove(l.key);
   }, [invalid, remove]);

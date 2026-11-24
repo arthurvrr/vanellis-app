@@ -1,11 +1,19 @@
 #!/bin/sh
-# Antes de cada push: testes das regras e da API (npm test, uns 10 segundos).
-# Se algum falhar, o push é cancelado. Os testes de ponta a ponta (Playwright) ficam no GitHub.
+# Antes de cada push: tipos, lint e testes com cobertura mínima (cerca de 1 minuto).
+# Se algo falhar, o push é cancelado. Os fluxos de ponta a ponta (Playwright) e o build do
+# Docker ficam só no GitHub, por serem mais lentos.
 # Numa emergência, para enviar mesmo assim: git push --no-verify
-echo "==> pre-push: rodando npm test antes de enviar"
-if ! npm test --silent; then
+
+falhou() {
   echo ""
-  echo "Testes falharam: push cancelado. Corrija e tente de novo."
+  echo "$1 falhou: push cancelado. Corrija e tente de novo."
   echo "(Para enviar mesmo assim, numa emergência: git push --no-verify)"
   exit 1
-fi
+}
+
+echo "==> pre-push 1/3: tipos"
+npm run --silent typecheck || falhou "A checagem de tipos"
+echo "==> pre-push 2/3: lint"
+npm run --silent lint || falhou "O lint"
+echo "==> pre-push 3/3: testes"
+npm test --silent || falhou "Os testes"

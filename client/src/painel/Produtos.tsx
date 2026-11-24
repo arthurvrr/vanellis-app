@@ -17,6 +17,9 @@ function editorDoEndereco(): number | 'novo' | null {
 }
 type Msg = { ok: boolean; text: string } | null;
 
+/** A barra lateral escolhe a subseção pelo endereço: '#categorias' ou a lista. */
+const abaDoEndereco = (): Aba => (window.location.hash === '#categorias' ? 'categorias' : 'produtos');
+
 function Seta({ dir, label, onClick }: { dir: 'subir' | 'descer'; label: string; onClick: () => void }) {
   return (
     <button type="button" className="icon-btn" aria-label={label} title={label} onClick={onClick}>
@@ -42,8 +45,6 @@ const Thumb = ({ src }: { src: string | null }) =>
   );
 
 export function Produtos({ onAuthError }: { onAuthError: (e: unknown) => boolean }) {
-  // A barra lateral escolhe a subseção pelo endereço: '#categorias' ou a lista.
-  const abaDoEndereco = (): Aba => (window.location.hash === '#categorias' ? 'categorias' : 'produtos');
   const [aba, setAba] = useState<Aba>(abaDoEndereco);
   const [categorias, setCategorias] = useState<CategoriaPainel[] | null>(null);
   const [produtos, setProdutos] = useState<ProdutoLista[] | null>(null);

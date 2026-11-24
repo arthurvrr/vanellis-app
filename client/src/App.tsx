@@ -22,7 +22,7 @@ const FIXED: Record<string, View> = { '#carrinho': 'carrinho', '#dados': 'dados'
 /** Tela pelo endereço: '' = entrada, '#cardapio' ou '#<categoria>' = cardápio, demais fixas. */
 function routeFromHash(slugs: string[]): { view: View; slug: string | null } {
   const h = window.location.hash;
-  if (FIXED[h]) return { view: FIXED[h]!, slug: null };
+  if (FIXED[h]) return { view: FIXED[h], slug: null };
   const slug = h.slice(1);
   if (h === '#cardapio') return { view: 'cardapio', slug: null };
   if (slugs.includes(slug)) return { view: 'cardapio', slug };

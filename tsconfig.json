@@ -1,0 +1,9 @@
+{
+  // Só os testes de ponta a ponta e a configuração do Playwright. Cada pacote (shared, server,
+  // client) tem o seu próprio tsconfig.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["e2e", "playwright.config.ts"]
+}

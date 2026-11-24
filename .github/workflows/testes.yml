@@ -1,6 +1,6 @@
-# Testes a cada push e pull request: regras e API (Vitest) e os fluxos principais num navegador
-# de verdade (Playwright), contra o sistema completo num Postgres só de teste.
-name: Testes
+# CI: a cada push e pull request, cinco verificações em paralelo (aba "Qualidade e CI/CD" do
+# doc de requisitos, etapa 1). Os nomes dos trabalhos são os checks exigidos na main (etapa 2).
+name: CI
 
 on:
   push:
@@ -11,8 +11,54 @@ on:
 permissions:
   contents: read
 
+# Um push novo no mesmo branch cancela a execução anterior, que ficou desatualizada.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # RQ01: tipos dos três pacotes e dos testes de ponta a ponta.
+  tipos:
+    name: tipos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  # RQ02: lint (Oxlint) com regras de hooks do React, promessas sem await e código morto.
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  # RQ04: regras (shared) e API (server), com cobertura mínima por pacote.
   testes:
+    name: testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  # Os cinco fluxos principais num navegador, contra o sistema completo num Postgres só de teste.
+  ponta-a-ponta:
+    name: ponta a ponta
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -35,13 +81,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Regras e API (Vitest)
-        run: npm test
-      - name: Navegador para os testes de ponta a ponta
+      - name: Navegador
         run: npx playwright install --with-deps chromium
-      - name: Fluxos principais (Playwright)
-        run: npm run test:e2e
-      - name: Relatório dos testes de ponta a ponta
+      - run: npm run test:e2e
+      - name: Relatório quando falha
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -50,3 +93,48 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  # RQ05: a imagem do servidor compila e sobe; o /api/health e o site respondem.
+  docker:
+    name: docker
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Compila a imagem
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: vanellis-app:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Sobe o contêiner (aplica as migrações ao iniciar)
+        run: |
+          docker run -d --name app --network host \
+            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
+            -e PORT=3000 vanellis-app:ci
+      - name: Confere que responde
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/health; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:3000/api/health
+          curl -fsS http://localhost:3000/ | grep -q '<div id="root">'
+          curl -fsS http://localhost:3000/painel/ | grep -q '<div id="root">'
+          echo "Imagem ok: API, site e painel respondem."
+      - name: Logs do contêiner
+        if: always()
+        run: docker logs app

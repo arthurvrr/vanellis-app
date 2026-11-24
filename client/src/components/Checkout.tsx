@@ -25,7 +25,7 @@ import {
   type ProductDTO,
   type PublicSettingsDTO,
 } from '@vanellis/shared';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { fetchConfiguracoes, fetchDisponibilidade } from '../lib/api';
 import { IS_DEMO } from '../lib/demo';
 import { useCart } from '../lib/cart';
@@ -90,6 +90,7 @@ export function CheckoutView({
   useEffect(() => {
     if (!productKey) return;
     const ctrl = new AbortController();
+    // oxlint-disable-next-line react/set-state-in-effect -- limpa o erro anterior ao iniciar uma nova busca
     setAgendaError(null);
     fetchDisponibilidade(productKey.split(',').map(Number), ctrl.signal)
       .then(setAgenda)
@@ -107,7 +108,10 @@ export function CheckoutView({
   }, [agenda, deliveryAvailable, modo, setModo]);
   const entrega = modo === 'entrega' && deliveryAvailable;
   // Na entrega, o calendário mostra só os dias com entrega (C78).
-  const visibleAgenda = agenda && entrega ? { ...agenda, days: agenda.days.filter((d) => d.delivery) } : agenda;
+  const visibleAgenda = useMemo(
+    () => (agenda && entrega ? { ...agenda, days: agenda.days.filter((d) => d.delivery) } : agenda),
+    [agenda, entrega],
+  );
 
   // Se a escolha deixou de valer (carrinho mudou, horário lotou, trocou para entrega), o cliente
   // escolhe de novo.
