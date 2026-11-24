@@ -25,7 +25,9 @@ services:
 
   app:
     build: .
-    image: vanellis-app
+    # No servidor, o CD aponta APP_IMAGE para a imagem pronta do GHCR (ghcr.io/...:<commit>) e sobe
+    # sem compilar. Sem APP_IMAGE (teste local, deploy manual), compila aqui com o nome vanellis-app.
+    image: ${APP_IMAGE:-vanellis-app}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://vanellis:${POSTGRES_PASSWORD}@db:5432/vanellis
