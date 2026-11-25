@@ -43,15 +43,15 @@ jobs:
       matrix:
         pacote: [shared, server]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
       - run: npm ci
 
       # Base do modo incremental: o resultado da última execução (da main ou deste PR).
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ${{ matrix.pacote }}/reports/stryker-incremental.json
           key: stryker-${{ matrix.pacote }}-${{ github.sha }}
@@ -89,7 +89,7 @@ jobs:
         env:
           PACOTE: ${{ matrix.pacote }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: mutacao-${{ matrix.pacote }}
