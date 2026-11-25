@@ -12,6 +12,7 @@ const cents = (n: number) => Math.round(n * 100) / 100;
 
 function chosenOptions(product: ProductDTO, selection: Selection): OptionDTO[] {
   return product.groups.flatMap((g) =>
+    // Stryker disable next-line ArrayDeclaration: equivalente, nenhum id de opção casa com o texto inserido
     (selection[g.id] ?? [])
       .map((id) => g.options.find((o) => o.id === id))
       .filter((o): o is OptionDTO => o !== undefined),

@@ -38,6 +38,7 @@ const WEEKDAY_NAMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sext
  */
 export function weekHoursProblem(hours: OpeningHours[]): string | null {
   for (const h of hours) if (h.close <= h.open) return 'O fechamento precisa ser depois da abertura';
+  // Stryker disable next-line EqualityOperator: equivalente, o dia 7 não existe e não tem períodos
   for (let wd = 0; wd < 7; wd++) {
     const ps = dayPeriods(hours, wd);
     for (let i = 1; i < ps.length; i++)
@@ -211,7 +212,9 @@ export function availableDays(
       continue;
     }
 
+    // Stryker disable next-line ArrayDeclaration: equivalente, dayPeriods filtra por dia da semana e descarta qualquer item sem weekday
     const periods = dayPeriods(scheduleFor(input.schedules, date)?.hours ?? [], weekday);
+    // Stryker disable next-line ConditionalExpression: equivalente, sem períodos pickupTimes devolve [] e o dia fica de fora
     if (!periods.length) continue;
     const closed = input.closedPeriods.filter((c) => c.date === date);
     const times = pickupTimes(periods, input.restrictions, closed).filter(
@@ -269,6 +272,7 @@ export function storeStatus(
     const date = new Date(dayMs).toISOString().slice(0, 10);
     const weekday = new Date(dayMs).getUTCDay();
     if (blocked.has(date)) return { date, weekday, periods: [] };
+    // Stryker disable next-line ArrayDeclaration: equivalente, dayPeriods filtra por dia da semana e descarta qualquer item sem weekday
     return { date, weekday, periods: dayPeriods(scheduleFor(input.schedules, date)?.hours ?? [], weekday) };
   };
 
@@ -277,6 +281,7 @@ export function storeStatus(
   const current = t.periods.find((p) => minutes >= toMinutes(p.open) && minutes < toMinutes(p.close));
   if (current) return { open: true, closesAt: current.close, nextOpen: null };
   // Antes de abrir, ou no intervalo entre dois períodos (C67): abre hoje.
+  // Stryker disable next-line EqualityOperator: equivalente, no minuto exato da abertura o período já é o atual
   const later = t.periods.find((p) => minutes < toMinutes(p.open));
   if (later) return { open: false, closesAt: null, nextOpen: { date: t.date, weekday: t.weekday, time: later.open } };
   for (let i = 1; i <= 14; i++) {
@@ -313,7 +318,9 @@ export function weekSummary(hours: OpeningHours[]): string {
     const text = formatPeriods(periods);
     const last = groups.at(-1);
     const prevDay = last?.days.at(-1);
+    // Stryker disable next-line ConditionalExpression: equivalente, sem dia anterior também não há grupo (last), e a junção exige last
     const consecutive = prevDay !== undefined && order.indexOf(wd) === order.indexOf(prevDay) + 1;
+    // Stryker disable next-line ConditionalExpression,LogicalOperator: equivalente, dia fechado tem texto '' (nunca igual ao de um grupo) e consecutive já implica last
     if (periods.length && last && consecutive && last.text === text) last.days.push(wd);
     else if (periods.length) groups.push({ days: [wd], text });
   }

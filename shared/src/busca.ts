@@ -21,6 +21,7 @@ export const normalize = (s: string) =>
  * chave). Primeiro as que começam pelo texto digitado, depois as que o têm no título.
  */
 export function searchEntries<T extends SearchEntry>(entries: T[], query: string, limit = 8): T[] {
+  // Stryker disable next-line Regex: equivalente, o filter(Boolean) descarta os vazios de espaços repetidos
   const words = normalize(query).split(/\s+/).filter(Boolean);
   if (!words.length) return [];
   const q = words.join(' ');

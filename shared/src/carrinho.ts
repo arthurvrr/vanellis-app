@@ -17,9 +17,9 @@ export interface CartLine {
 
 /** Chave estável de uma combinação, independente da ordem das escolhas. */
 export function lineKey(productId: number, selection: Selection): string {
+  // Object.entries já devolve as chaves inteiras (ids dos grupos) em ordem crescente.
   const parts = Object.entries(selection)
     .filter(([, ids]) => ids.length > 0)
-    .sort(([a], [b]) => Number(a) - Number(b))
     .map(([group, ids]) => `${group}:${[...ids].sort((a, b) => a - b).join(',')}`);
   return [productId, ...parts].join('|');
 }
