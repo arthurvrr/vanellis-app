@@ -16,7 +16,7 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.test.ts', 'src/test/**', 'src/index.ts', 'src/db/migrate.ts', 'src/db/seed/**'],
       reporter: ['text-summary', 'json-summary'],
-      thresholds: { lines: 90, functions: 90, branches: 75, statements: 90 },
+      thresholds: { lines: 94, functions: 93, branches: 76, statements: 91 },
     },
   },
 });
