@@ -71,6 +71,9 @@ main() {
   log "5/5 Teste de fumaça"
   if fumaca "$dominio" "$versao"; then
     log "Publicado: ${versao:0:12} no ar em https://${dominio}"
+    # O backup lê deploy/backup.sh montado do servidor; sem reiniciar, o processo antigo seguiria
+    # com o script velho. Ao reiniciar, ele faz um backup na hora e volta ao horário diário.
+    docker compose restart backup >/dev/null && log "   serviço de backup reiniciado com o script desta versão"
     limpar_imagens "$nova" "$anterior"
     return 0
   fi

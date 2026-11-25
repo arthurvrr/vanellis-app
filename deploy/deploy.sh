@@ -16,6 +16,8 @@ echo "==> Compilando no servidor (sem a imagem do GHCR)"
 # O CD deixa APP_IMAGE apontando para a imagem pronta; o modo manual compila a sua própria.
 sed -i '/^APP_IMAGE=/d' .env
 docker compose up -d --build
+# O backup lê deploy/backup.sh montado; reinicia para usar o script desta versão.
+docker compose restart backup
 
 echo "==> Limpando imagens antigas"
 docker image prune -f >/dev/null
