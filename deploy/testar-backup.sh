@@ -47,10 +47,20 @@ echo "==> Subindo um Postgres de teste"
 docker network create "$REDE" >/dev/null
 docker run -d --name "$BANCO" --network "$REDE" -e POSTGRES_USER=vanellis -e POSTGRES_PASSWORD=teste \
   -e POSTGRES_DB=vanellis "$IMAGEM" >/dev/null
-for _ in $(seq 1 30); do
-  docker exec "$BANCO" pg_isready -U vanellis -d vanellis >/dev/null 2>&1 && break
+# Espera o banco vanellis aceitar consultas. Só pg_isready não basta: na primeira subida, a imagem
+# roda um servidor temporário para criar o banco e reinicia, e ele já responde antes disso.
+pronto=0
+for _ in $(seq 1 60); do
+  if docker exec "$BANCO" psql -U vanellis -d vanellis -qtAc 'select 1' >/dev/null 2>&1; then
+    pronto=1
+    break
+  fi
   sleep 1
 done
+[ "$pronto" = 1 ] || { echo "O Postgres de teste não ficou pronto em 60 s." >&2; exit 1; }
+# Mais uma conferência depois de um instante, para não pegar o servidor temporário no fim.
+sleep 2
+docker exec "$BANCO" psql -U vanellis -d vanellis -qtAc 'select 1' >/dev/null
 docker exec "$BANCO" psql -U vanellis -d vanellis -q -c \
   "create table produto (id int primary key, nome text); insert into produto values (1, 'Coxinha');"
 
