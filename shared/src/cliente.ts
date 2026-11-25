@@ -33,8 +33,8 @@ export function isValidPhone(value: string): boolean {
   const ddd = Number(phone.slice(0, 2));
   if (ddd < 11) return false;
   if (phone.length === 11) return phone[2] === '9';
-  // Stryker disable next-line StringLiteral: inalcançável, com 10 dígitos phone[2] sempre existe (o ?? só satisfaz o tipo)
-  return phone.length === 10 && /[2-5]/.test(phone[2] ?? '');
+  // Fixo: o primeiro dígito depois do DDD vai de 2 a 5.
+  return phone.length === 10 && /^\d{2}[2-5]/.test(phone);
 }
 
 /** Nome completo: ao menos duas palavras com letras. */

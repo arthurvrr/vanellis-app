@@ -16,8 +16,7 @@ import {
   type PickupRestriction,
   type WeeklySchedule,
 } from './agenda';
-import type { CategoryDTO } from './catalogo';
-import { product } from './test-utils';
+import { category, product } from './test-utils';
 
 // Segunda a sábado das 7h30 às 19h; domingo fechado.
 const semana: WeeklySchedule = {
@@ -462,14 +461,7 @@ describe('storeInfo', () => {
 });
 
 describe('agendaForCart: antecedência dos itens e pausa', () => {
-  const pães: CategoryDTO = {
-    id: 1,
-    name: 'Pães',
-    slug: 'paes',
-    description: null,
-    coverImageUrl: null,
-    special: null,
-  };
+  const pães = category({ id: 1, name: 'Pães', slug: 'paes' });
   const catalogo = {
     categorias: [pães],
     produtos: [

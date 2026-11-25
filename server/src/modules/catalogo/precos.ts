@@ -14,7 +14,7 @@ import { asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
-import { money } from '../../db/conversao';
+import { money, num } from '../../db/conversao';
 import { requireUser } from '../acesso/sessao';
 import { category, option, optionGroup, product } from './schema';
 
@@ -54,7 +54,8 @@ export async function listPrecos(db: DB): Promise<PrecoCategoriaDTO[]> {
       groupName: o.groupName,
       name: o.name,
       priceMode: o.priceMode as PriceMode,
-      price: Number(o.price),
+      // A consulta só traz opções com preço (isNotNull acima).
+      price: num(o.price)!,
     });
     byProduct.set(o.productId, list);
   }
@@ -69,7 +70,7 @@ export async function listPrecos(db: DB): Promise<PrecoCategoriaDTO[]> {
         name: p.name,
         saleUnit: p.saleUnit as SaleUnit,
         available: p.available,
-        price: p.basePrice === null ? null : Number(p.basePrice),
+        price: num(p.basePrice),
         options: byProduct.get(p.id) ?? [],
       })),
   }));

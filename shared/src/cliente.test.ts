@@ -57,6 +57,9 @@ describe('telefone com DDD', () => {
   it('recusa sem DDD, celular sem o 9 e DDD inexistente', () => {
     expect(isValidPhone('99528-4226')).toBe(false);
     expect(isValidPhone('51895284226')).toBe(false);
+    // Fixo: o dígito depois do DDD precisa ser de 2 a 5, mesmo que outro dígito do número seja.
+    expect(isValidPhone('(51) 1012-3456')).toBe(false);
+    expect(isValidPhone('(51) 6012-3456')).toBe(false);
     expect(isValidPhone('0533334444')).toBe(false);
   });
 

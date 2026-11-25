@@ -17,7 +17,7 @@ on:
       - 'server/src/modules/**'
       - 'server/src/db/conversao*.ts'
       - 'server/stryker.config.mjs'
-      - 'server/vitest.config.ts'
+      - 'server/vitest.mutacao.config.ts'
       - '.github/workflows/mutacao.yml'
   push:
     branches: [main]

@@ -4,12 +4,17 @@
 import { eq } from 'drizzle-orm';
 import { Router, raw } from 'express';
 import sharp from 'sharp';
+import { z } from 'zod';
 import type { DB } from '../../db/client';
 import { requireUser } from '../acesso/sessao';
 import { storedImage } from './schema';
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_SIDE = 1200;
+// Limite de pixels ao ler a foto (G08): ~60 milhões cobre as câmeras de celular de 48 MP com folga.
+// Sem ele, valia o padrão do sharp (~268 milhões): um PNG pequeno com dimensões enormes ocuparia
+// cerca de 1 GB de memória ao ser decodificado.
+export const MAX_INPUT_PIXELS = 60_000_000;
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'];
 const URL_PREFIX = '/api/imagens/';
 
@@ -24,13 +29,24 @@ export function storedImageId(url: string | null | undefined): number | null {
 
 /** Reduz para no máximo 1200 px no lado maior e converte para WebP (cerca de 100 KB). */
 export async function compressImage(input: Buffer): Promise<{ data: Buffer; width: number; height: number }> {
-  const { data, info } = await sharp(input)
+  const { data, info } = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
     .rotate() // respeita a orientação da câmera do celular
     .resize({ width: MAX_SIDE, height: MAX_SIDE, fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 78 })
     .toBuffer({ resolveWithObject: true });
   return { data, width: info.width, height: info.height };
 }
+
+/**
+ * Endereço de foto aceito no cadastro (categoria, produto e opção): só as fotos guardadas pelo
+ * painel (/api/imagens/<id>) ou as do próprio site (/images/...). Nunca um endereço de fora (G08).
+ */
+export const photoUrl = z
+  .string()
+  .trim()
+  .max(255)
+  .refine((u) => u.startsWith(URL_PREFIX) || u.startsWith('/images/'), 'Foto inválida')
+  .nullable();
 
 /** Apaga uma foto guardada que deixou de ser usada (trocada ou do produto excluído). */
 export async function deleteStoredImage(db: DB, url: string | null | undefined): Promise<void> {

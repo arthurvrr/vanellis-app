@@ -115,7 +115,11 @@ export function messageTemplateProblem(template: string): string | null {
 export function fillMessageTemplate(template: string, values: Record<MessageField, string>): string {
   const lines = template.split('\n').flatMap((line) => {
     const onlyField = /^\s*\{(\w+)\}\s*$/.exec(line);
-    const filled = line.replace(/\{(\w+)\}/g, (m, k: string) => (k in values ? values[k as MessageField] : m));
+    // Object.hasOwn, não "in": {toString} ou {constructor} não podem pegar algo herdado do objeto.
+    // O modelo salvo já vem validado (messageTemplateProblem); isto protege quem chama direto.
+    const filled = line.replace(/\{(\w+)\}/g, (m, k: string) =>
+      Object.hasOwn(values, k) ? values[k as MessageField] : m,
+    );
     if (onlyField && !filled.trim()) return [];
     return filled.split('\n');
   });

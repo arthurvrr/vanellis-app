@@ -107,3 +107,11 @@ describe('C86: campos obrigatórios e desconhecidos', () => {
     expect(messageTemplateProblem(template)).toBeNull();
   });
 });
+
+describe('fillMessageTemplate: campo fora da lista (G19)', () => {
+  it('mantém o texto do campo e não usa nada herdado do objeto', () => {
+    expect(fillMessageTemplate('{toString} {constructor} {xyz}', SAMPLE_MESSAGE_VALUES)).toBe(
+      '{toString} {constructor} {xyz}',
+    );
+  });
+});

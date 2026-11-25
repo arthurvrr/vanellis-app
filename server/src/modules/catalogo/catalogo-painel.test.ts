@@ -120,6 +120,15 @@ describe('Categorias', () => {
     expect(await app.db.select().from(storedImage)).toEqual([]);
   });
 
+  it('G08: recusa foto com dimensões enormes, antes de ocupar a memória', async () => {
+    const enorme = await sharp({ create: { width: 8000, height: 8000, channels: 3, background: { r: 255, g: 255, b: 255 } } })
+      .png()
+      .toBuffer();
+    const res = await op('POST', '/api/painel/imagens', enorme, { 'content-type': 'image/png' });
+    expect(res.status).toBe(400);
+    // Gerar a imagem de 64 milhões de pixels para o teste leva alguns segundos.
+  }, 30_000);
+
   it('recusa arquivo que não é foto', async () => {
     const res = await op('POST', '/api/painel/imagens', Buffer.from('não é foto'), { 'content-type': 'image/png' });
     expect(res.status).toBe(400);

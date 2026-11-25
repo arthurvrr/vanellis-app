@@ -70,6 +70,36 @@ const site = async () => (await app.browser()('GET', '/api/catalogo')).body;
 const noSite = async (id: number) => (await site()).produtos.find((p: { id: number }) => p.id === id);
 const cadastro = async (id: number): Promise<ProductForm> => (await op('GET', `/api/painel/catalogo/produtos/${id}/cadastro`)).body;
 
+describe('Endereço da foto (G08)', () => {
+  it('recusa foto de produto ou de opção com endereço de fora do site', async () => {
+    const produto = await op('POST', '/api/painel/catalogo/produtos', {
+      ...coxinha(),
+      imageUrl: 'https://outro-site.com/foto.jpg',
+    });
+    expect(produto.status).toBe(400);
+    const t = torta();
+    const opcao = await op('POST', '/api/painel/catalogo/produtos', {
+      ...t,
+      groups: [{ ...t.groups[0]!, options: [opt('Mini', { weightMinKg: 1, weightMaxKg: 1.2, imageUrl: 'javascript:alert(1)' })] }],
+    });
+    expect(opcao.status).toBe(400);
+  });
+
+  it('aceita foto guardada pelo painel ou do próprio site', async () => {
+    const doSite = await op('POST', '/api/painel/catalogo/produtos', {
+      ...coxinha(),
+      imageUrl: '/images/card-images/coxinha-frango.webp',
+    });
+    expect(doSite.status).toBeLessThan(300);
+    const guardada = await op('POST', '/api/painel/catalogo/produtos', {
+      ...coxinha(),
+      name: 'Coxinha de Queijo',
+      imageUrl: '/api/imagens/1',
+    });
+    expect(guardada.status).toBeLessThan(300);
+  });
+});
+
 describe('Dados do produto', () => {
   it('C52: editar preço, mínimo, descrição, foto e código', async () => {
     const id = await criar(coxinha());
