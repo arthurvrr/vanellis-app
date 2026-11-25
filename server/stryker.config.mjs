@@ -14,6 +14,7 @@ export default {
   mutate: [
     'src/modules/acesso/tentativas.ts', // bloqueio por tentativas de login (C3)
     'src/modules/configuracoes/validacao.ts', // telefones, links, modelo da mensagem, lembretes
+    'src/db/conversao.ts', // números, dinheiro, peso e horas entre o banco e a aplicação
   ],
   coverageAnalysis: 'perTest',
   incremental: true,

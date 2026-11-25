@@ -3,7 +3,7 @@
 // Etapa 6: uma categoria pode ser cardápio especial (RF16–RF19; cenários C70–C72).
 
 import { specialMenuProblem, specialMenuState, type SpecialMenu, type SpecialMenuState } from '@vanellis/shared';
-import { and, asc, count, eq, isNotNull, ne, sql } from 'drizzle-orm';
+import { and, asc, count, eq, ne, sql } from 'drizzle-orm';
 import { Router, type Response } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
@@ -17,6 +17,7 @@ import {
   loadProductForm,
   updateProduct,
 } from './produtoForm';
+import { productsMissingPdv } from './repository';
 import { category, option, optionGroup, product } from './schema';
 
 export interface CategoriaPainelDTO {
@@ -261,12 +262,7 @@ export function catalogoPainelRouter(db: DB, today: () => string) {
   // ---------- produtos (lista) ----------
 
   async function listProdutos(): Promise<ProdutoListaDTO[]> {
-    const withOptionCode = await db
-      .selectDistinct({ productId: optionGroup.productId })
-      .from(option)
-      .innerJoin(optionGroup, eq(option.groupId, optionGroup.id))
-      .where(isNotNull(option.pdvCode));
-    const coded = new Set(withOptionCode.map((r) => r.productId));
+    const missing = await productsMissingPdv(db);
     const rows = await db
       .select({
         id: product.id,
@@ -280,7 +276,7 @@ export function catalogoPainelRouter(db: DB, today: () => string) {
       .from(product)
       .innerJoin(category, eq(category.id, product.categoryId))
       .orderBy(asc(category.position), asc(product.position), asc(product.id));
-    return rows.map((p) => ({ ...p, missingPdv: !p.pdvCode && !coded.has(p.id) }));
+    return rows.map((p) => ({ ...p, missingPdv: missing.has(p.id) }));
   }
 
   router.get('/produtos', async (_req, res) => {

@@ -15,12 +15,10 @@ import {
 import { and, asc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
+import { kg, money, num } from '../../db/conversao';
 import { deleteStoredImage } from '../imagens/imagens';
 import { category, option, optionGroup, product, productTemplate } from './schema';
 
-const num = (v: string | null) => (v === null ? null : Number(v));
-const money = (v: number | null) => (v === null ? null : v.toFixed(2));
-const kg = (v: number | null) => (v === null ? null : v.toFixed(3));
 const txt = (v: string | null) => (v && v.trim() ? v.trim() : null);
 
 // ---------- formato recebido ----------

@@ -14,6 +14,7 @@ import { asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
+import { money } from '../../db/conversao';
 import { requireUser } from '../acesso/sessao';
 import { category, option, optionGroup, product } from './schema';
 
@@ -91,7 +92,7 @@ async function savePrecos(db: DB, patch: PrecosPatch) {
           throw new PrecoError(`${p.name}: o preço vem das opções; altere-o no cadastro do produto`);
         const problema = problemaPreco(price);
         if (problema) throw new PrecoError(`${p.name}: ${problema}`);
-        await tx.update(product).set({ basePrice: price.toFixed(2) }).where(eq(product.id, id));
+        await tx.update(product).set({ basePrice: money(price) }).where(eq(product.id, id));
       }
     }
     if (patch.opcoes.length) {
@@ -109,7 +110,7 @@ async function savePrecos(db: DB, patch: PrecosPatch) {
         if (!o.priceMode) throw new PrecoError(`${o.productName} · ${o.name}: esta opção não tem preço próprio`);
         const problema = problemaPreco(price, o.priceMode as PriceMode);
         if (problema) throw new PrecoError(`${o.productName} · ${o.name}: ${problema}`);
-        await tx.update(option).set({ price: price.toFixed(2) }).where(eq(option.id, id));
+        await tx.update(option).set({ price: money(price) }).where(eq(option.id, id));
       }
     }
   });

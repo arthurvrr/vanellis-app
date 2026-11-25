@@ -6,13 +6,28 @@ import {
   type ProductDTO,
   type SaleUnit,
 } from '@vanellis/shared';
-import { asc } from 'drizzle-orm';
+import { asc, eq, isNotNull } from 'drizzle-orm';
 import type { DB } from '../../db/client';
+import { num } from '../../db/conversao';
 import { storeSettings } from '../configuracoes/schema';
 import { category, option, optionGroup, product } from './schema';
 
-// O PostgreSQL devolve `numeric` como texto para não perder precisão.
-const num = (v: string | null): number | null => (v === null ? null : Number(v));
+
+/**
+ * Produtos sem código PDV, nem no produto nem em alguma opção (RN41, C46): o caixa não tem como
+ * registrar o item. Única definição dessa regra, usada pelo aviso do Início e pela lista de
+ * produtos do painel.
+ */
+export async function productsMissingPdv(db: DB): Promise<Set<number>> {
+  const withOptionCode = await db
+    .selectDistinct({ productId: optionGroup.productId })
+    .from(option)
+    .innerJoin(optionGroup, eq(option.groupId, optionGroup.id))
+    .where(isNotNull(option.pdvCode));
+  const coded = new Set(withOptionCode.map((r) => r.productId));
+  const products = await db.select({ id: product.id, pdvCode: product.pdvCode }).from(product);
+  return new Set(products.filter((p) => !p.pdvCode && !coded.has(p.id)).map((p) => p.id));
+}
 
 /**
  * Cardápio público de hoje ('AAAA-MM-DD'). Cardápio especial fora do período ou oculto não
