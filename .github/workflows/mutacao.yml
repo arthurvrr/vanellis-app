@@ -15,6 +15,7 @@ on:
       - 'shared/stryker.config.mjs'
       - 'shared/vitest.config.ts'
       - 'server/src/modules/**'
+      - 'server/src/db/conversao*.ts'
       - 'server/stryker.config.mjs'
       - 'server/vitest.config.ts'
       - '.github/workflows/mutacao.yml'

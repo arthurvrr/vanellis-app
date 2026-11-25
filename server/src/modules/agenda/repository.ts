@@ -1,5 +1,6 @@
 import type { AgendaInput } from '@vanellis/shared';
 import type { DB } from '../../db/client';
+import { hm } from '../../db/conversao';
 import {
   agendaConfig,
   blockedDate,
@@ -9,7 +10,6 @@ import {
 } from './schema';
 
 // O PostgreSQL devolve `time` como 'HH:MM:SS'; a agenda trabalha com 'HH:MM'.
-const hm = (t: string) => t.slice(0, 5);
 
 export async function getAgendaInput(db: DB): Promise<{ input: AgendaInput; paused: boolean }> {
   const [config] = await db.select().from(agendaConfig).limit(1);

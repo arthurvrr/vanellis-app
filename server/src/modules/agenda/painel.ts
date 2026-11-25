@@ -13,6 +13,7 @@ import { and, asc, eq, gt, gte } from 'drizzle-orm';
 import { Router, type Response } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
+import { hm } from '../../db/conversao';
 import { requireUser } from '../acesso/sessao';
 import {
   agendaConfig,
@@ -24,7 +25,6 @@ import {
   weeklySchedule,
 } from './schema';
 
-const hm = (t: string) => t.slice(0, 5);
 
 export interface ScheduleDTO extends WeeklySchedule {
   id: number;

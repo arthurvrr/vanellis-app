@@ -1,10 +1,9 @@
 import { sql } from 'drizzle-orm';
 import type { DB } from '../client';
+import { kg, money } from '../conversao';
 import { category, option, optionGroup, product, productTemplate } from '../schema';
 import type { SeedCatalogo } from './types';
 
-const money = (n: number | null | undefined) => (n == null ? null : n.toFixed(2));
-const kg = (n: number | null | undefined) => (n == null ? null : n.toFixed(3));
 
 /** Apaga e recria categorias, produtos, grupos, opções e modelos numa transação. */
 export async function loadCatalogo(db: DB, seed: SeedCatalogo): Promise<void> {
