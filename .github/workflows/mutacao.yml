@@ -1,0 +1,96 @@
+# Testes de mutação (etapa 3 da aba "Qualidade e CI/CD"). O resultado é determinístico, então
+# só roda quando o código com regra ou os testes mudam, nunca por calendário:
+#   - PR que toca shared/src ou os módulos do servidor: modo incremental, só as mutações do que
+#     mudou (RQ18, RQ19); PRs só de telas, CSS, documentação ou do Dependabot não disparam.
+#   - merge na main com essas mudanças: atualiza a base que os próximos PRs reaproveitam.
+#   - botão "Run workflow": execução completa, do zero (RQ20).
+# Por enquanto só relatório (RQ22): a nota aparece no resumo da execução e o relatório navegável
+# fica nos artefatos; o piso que reprova entra depois que a nota estabilizar.
+name: Mutação
+
+on:
+  pull_request:
+    paths: &caminhos
+      - 'shared/src/**'
+      - 'shared/stryker.config.mjs'
+      - 'shared/vitest.config.ts'
+      - 'server/src/modules/**'
+      - 'server/stryker.config.mjs'
+      - 'server/vitest.config.ts'
+      - '.github/workflows/mutacao.yml'
+  push:
+    branches: [main]
+    paths: *caminhos
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutacao-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutacao:
+    name: mutação (${{ matrix.pacote }})
+    # RQ19: atualização de dependência não muda o nosso código; os testes normais bastam.
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        pacote: [shared, server]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Base do modo incremental: o resultado da última execução (da main ou deste PR).
+      - uses: actions/cache@v4
+        with:
+          path: ${{ matrix.pacote }}/reports/stryker-incremental.json
+          key: stryker-${{ matrix.pacote }}-${{ github.sha }}
+          restore-keys: stryker-${{ matrix.pacote }}-
+
+      - name: Stryker
+        working-directory: ${{ matrix.pacote }}
+        run: npx stryker run ${{ github.event_name == 'workflow_dispatch' && '--force' || '' }}
+
+      - name: Nota no resumo da execução
+        if: always()
+        working-directory: ${{ matrix.pacote }}
+        run: |
+          [ -f reports/mutation/mutation.json ] || exit 0
+          node -e '
+            const r = require("./reports/mutation/mutation.json");
+            const linhas = [], total = { k: 0, s: 0, n: 0, t: 0 };
+            for (const [arquivo, f] of Object.entries(r.files)) {
+              const c = { k: 0, s: 0, n: 0, t: 0 };
+              for (const m of f.mutants) {
+                if (m.status === "Killed") c.k++;
+                else if (m.status === "Timeout") c.t++;
+                else if (m.status === "Survived") c.s++;
+                else if (m.status === "NoCoverage") c.n++;
+              }
+              for (const k in c) total[k] += c[k];
+              const nota = ((c.k + c.t) / Math.max(1, c.k + c.t + c.s + c.n)) * 100;
+              linhas.push(`| ${arquivo} | ${nota.toFixed(1)}% | ${c.k + c.t} | ${c.s} | ${c.n} |`);
+            }
+            const nota = ((total.k + total.t) / Math.max(1, total.k + total.t + total.s + total.n)) * 100;
+            console.log(`## Mutação (${process.env.PACOTE}): ${nota.toFixed(1)}%\n`);
+            console.log("| Arquivo | Nota | Pegas | Sobreviveram | Sem teste |\n|---|---|---|---|---|");
+            console.log(linhas.join("\n"));
+          ' >> "$GITHUB_STEP_SUMMARY"
+        env:
+          PACOTE: ${{ matrix.pacote }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutacao-${{ matrix.pacote }}
+          path: ${{ matrix.pacote }}/reports/mutation/
+          retention-days: 14

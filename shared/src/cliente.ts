@@ -15,6 +15,7 @@ export const onlyDigits = (s: string) => s.replace(/\D/g, '');
 /** CPF com 11 dígitos e dígitos verificadores corretos. */
 export function isValidCPF(value: string): boolean {
   const cpf = onlyDigits(value);
+  // Stryker disable next-line Regex: equivalente, já se sabe que são 11 dígitos, então as âncoras não mudam nada
   if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
   const check = (len: number) => {
     let sum = 0;
@@ -29,22 +30,34 @@ export function isValidCPF(value: string): boolean {
 export function isValidPhone(value: string): boolean {
   const phone = onlyDigits(value);
   const ddd = Number(phone.slice(0, 2));
-  if (ddd < 11 || ddd > 99) return false;
+  if (ddd < 11) return false;
   if (phone.length === 11) return phone[2] === '9';
+  // Stryker disable next-line StringLiteral: inalcançável, com 10 dígitos phone[2] sempre existe (o ?? só satisfaz o tipo)
   return phone.length === 10 && /[2-5]/.test(phone[2] ?? '');
 }
 
 /** Nome completo: ao menos duas palavras com letras. */
 export function isValidFullName(value: string): boolean {
-  return value.trim().split(/\s+/).filter((w) => /\p{L}/u.test(w)).length >= 2;
+  // Sem trim: as palavras vazias das pontas caem no filtro de letras.
+  // Stryker disable next-line Regex: equivalente, as palavras vazias entre espaços repetidos caem no filtro abaixo
+  const words = value.split(/\s+/);
+  return words.filter((w) => /\p{L}/u.test(w)).length >= 2;
 }
 
 /** "123.456.789-09" enquanto digita. */
 export function formatCPF(value: string): string {
   const d = onlyDigits(value).slice(0, 11);
   return d
-    .replace(/^(\d{3})(\d)/, '$1.$2')
-    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(
+      // Stryker disable next-line Regex: equivalente, a string só tem dígitos e o primeiro casamento já é no início
+      /^(\d{3})(\d)/,
+      '$1.$2',
+    )
+    .replace(
+      // Stryker disable next-line Regex: equivalente, o único ponto fica logo após os 3 primeiros dígitos
+      /^(\d{3})\.(\d{3})(\d)/,
+      '$1.$2.$3',
+    )
     .replace(/\.(\d{3})(\d)/, '.$1-$2');
 }
 

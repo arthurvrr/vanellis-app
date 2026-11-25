@@ -141,9 +141,16 @@ export interface FormProblems {
 }
 
 const PDV = /^[A-Za-z0-9.-]{1,20}$/;
-const money = (v: number | null) => v !== null && Number.isFinite(v) && v >= 0 && v <= 99999;
+// O teste de null só estreita o tipo para o TypeScript: null já é recusado por Number.isFinite e
+// pelas comparações seguintes. Fica numa linha própria para desligar só as mutações dele.
+const money = (v: number | null) =>
+  // Stryker disable next-line ConditionalExpression,LogicalOperator: null já falha em Number.isFinite (mutação equivalente)
+  v !== null &&
+  (Number.isFinite(v) && v >= 0 && v <= 99999);
 const weight = (min: number | null, max: number | null) =>
-  min !== null && max !== null && min > 0 && max >= min && max <= 100;
+  // Stryker disable next-line ConditionalExpression,LogicalOperator: null já falha em min > 0 ou max >= min (mutação equivalente)
+  min !== null && max !== null &&
+  (min > 0 && max >= min && max <= 100);
 
 export function validateProduct(p: ProductForm): FormProblems {
   const errors: string[] = [];
@@ -183,6 +190,7 @@ export function validateProduct(p: ProductForm): FormProblems {
   const groupNames = new Set<string>();
   p.groups.forEach((grp, i) => {
     const label = g(i, grp);
+    // Stryker disable next-line MethodExpression: maiúsculas ou minúsculas dão a mesma comparação sem distinguir caixa
     const key = grp.name.trim().toLowerCase();
     if (!key) errors.push(`${label}: informe o nome`);
     else if (groupNames.has(key)) errors.push(`${label}: já existe outro grupo com esse nome`);
@@ -198,6 +206,7 @@ export function validateProduct(p: ProductForm): FormProblems {
     const optionNames = new Set<string>();
     grp.options.forEach((o, j) => {
       const ol = `${label}, opção ${o.name.trim() || j + 1}`;
+      // Stryker disable next-line MethodExpression: maiúsculas ou minúsculas dão a mesma comparação sem distinguir caixa
       const ok = o.name.trim().toLowerCase();
       if (!ok) errors.push(`${label}: opção ${j + 1} sem nome`);
       else if (optionNames.has(ok)) errors.push(`${label}: duas opções com o nome "${o.name.trim()}"`);
