@@ -14,7 +14,6 @@ import { SiteFooter } from './components/SiteFooter';
 import { fetchCatalogo } from './lib/api';
 import { useCart } from './lib/cart';
 import { useMediaQuery } from './lib/useMediaQuery';
-import { IS_DEMO } from './lib/demo';
 
 type View = 'inicio' | 'cardapio' | 'carrinho' | 'dados' | 'confirmacao';
 const FIXED: Record<string, View> = { '#carrinho': 'carrinho', '#dados': 'dados', '#confirmacao': 'confirmacao' };
@@ -73,11 +72,6 @@ export function App() {
 
   const header = (
     <>
-      {IS_DEMO && (
-        <p className="demo-banner" role="note">
-          <strong>Versão de teste.</strong> Os pedidos não são enviados para a padaria. Use dados fictícios.
-        </p>
-      )}
       <header className="header">
         <h1>
           <button type="button" className="header__logo" onClick={() => go('inicio')}>

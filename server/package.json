@@ -11,7 +11,6 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=.env src/db/migrate.ts",
     "db:seed": "tsx --env-file=.env src/db/seed/index.ts",
-    "demo:export": "tsx --env-file=.env scripts/exportar-demo.ts",
     "usuario:senha": "tsx --env-file=.env scripts/usuario-senha.ts",
     "test": "vitest run --coverage",
     "mutacao": "stryker run"

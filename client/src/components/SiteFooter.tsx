@@ -1,5 +1,4 @@
 import { mapsLink, weekSummary } from '@vanellis/shared';
-import { IS_DEMO } from '../lib/demo';
 import { useLoja } from '../lib/useLoja';
 import { useSettings } from '../lib/useSettings';
 
@@ -44,12 +43,9 @@ export function SiteFooter() {
           </div>
         )}
       </div>
-      {/* A versão de teste não tem servidor nem painel. */}
-      {!IS_DEMO && (
-        <a className="footer__team" href="/painel/">
-          Área da equipe
-        </a>
-      )}
+      <a className="footer__team" href="/painel/">
+        Área da equipe
+      </a>
     </footer>
   );
 }

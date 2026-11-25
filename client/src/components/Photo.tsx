@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { asset } from '../lib/demo';
 
 // Foto de produto ou categoria. Sem foto, ou se o arquivo não carregar, mostra um fundo
 // neutro do mesmo tamanho em vez do ícone de imagem quebrada.
@@ -19,7 +18,7 @@ export function Photo({
   return (
     <img
       className={className}
-      src={asset(src)}
+      src={src}
       alt={alt}
       loading={lazy ? 'lazy' : undefined}
       onError={() => setFailed(true)}

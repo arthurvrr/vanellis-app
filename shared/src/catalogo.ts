@@ -1,7 +1,6 @@
 // Tipos do catálogo trafegados entre servidor e site.
 // Espelham o esquema proposto no doc de requisitos (Modelo de produtos e banco de dados).
 
-import type { AgendaInput } from './agenda';
 import type { PublicSpecialMenu } from './cardapioEspecial';
 
 export type SaleUnit = 'UN' | 'KG';
@@ -92,13 +91,6 @@ export function mapsLink(s: Pick<PublicSettingsDTO, 'address' | 'mapsUrl'>): str
   if (s.mapsUrl) return s.mapsUrl;
   if (s.address) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address)}`;
   return null;
-}
-
-/** Dados da versão de teste estática (GitHub Pages), exportados do banco. */
-export interface DemoData {
-  catalogo: CatalogoDTO;
-  agenda: { input: AgendaInput; paused: boolean };
-  configuracoes: PublicSettingsDTO;
 }
 
 /**

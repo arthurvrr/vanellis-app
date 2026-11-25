@@ -16,8 +16,6 @@
     "db:generate": "npm run db:generate -w server",
     "db:migrate": "npm run db:migrate -w server",
     "db:seed": "npm run db:seed -w server",
-    "demo:export": "npm run demo:export -w server",
-    "demo:build": "npm run build:demo -w client",
     "usuario:senha": "npm run usuario:senha -w server --",
     "test:e2e": "playwright test",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",

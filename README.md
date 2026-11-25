@@ -76,8 +76,6 @@ O site fica em http://localhost:5173 e o painel em http://localhost:5173/painel/
 | `npm run db:migrate` | Aplica as migrações pendentes |
 | `npm run db:seed` | Carga inicial do catálogo, agenda e configurações (recusa se já houver produtos; para apagar e recarregar: `npm run db:seed -- --sobrescrever`) |
 | `npm run usuario:senha -- <usuário>` | Troca a senha de uma conta do painel e encerra as sessões dela (com `--papel`, cria a conta) |
-| `npm run demo:export` | Exporta catálogo, agenda e configurações do banco para a versão de teste |
-| `npm run demo:build` | Compila a versão de teste em `client/dist` |
 
 ## Testes
 
@@ -106,16 +104,6 @@ O site fica em http://localhost:5173 e o painel em http://localhost:5173/painel/
 O plano completo da esteira de qualidade, com os requisitos de cada etapa, está na aba
 "Qualidade e CI/CD" do doc de requisitos.
 
-## Versão de teste (GitHub Pages)
-
-Para a padaria validar o fluxo do cliente sem servidor. O GitHub Actions
-(`.github/workflows/pages.yml`) publica a cada push na `main`, em
-https://arthurvrr.github.io/vanellis-app/.
-
-- Os dados vêm de `client/src/demo/dados.json`. Depois de mudar o catálogo ou a agenda no
-  banco, rode `npm run demo:export` e faça o commit do arquivo.
-- Os horários são calculados no navegador, com as mesmas regras do servidor.
-- O pedido não abre o WhatsApp: a mensagem aparece na tela de confirmação.
 
 ## Catálogo inicial
 

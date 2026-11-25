@@ -51,7 +51,6 @@
   "ignorePatterns": [
     "**/dist/**",
     "**/node_modules/**",
-    "client/src/demo/**",
     "client/public/**",
     "server/drizzle/**",
     "playwright-report/**",

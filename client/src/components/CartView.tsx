@@ -8,7 +8,6 @@ import {
   type Selection,
 } from '@vanellis/shared';
 import { useEffect, useState } from 'react';
-import { asset } from '../lib/demo';
 import { useCart } from '../lib/cart';
 import { QuantityStepper } from './QuantityStepper';
 
@@ -80,7 +79,7 @@ export function CartView({
               const choices = describe(product, line.selection);
               return (
                 <li key={line.key} className="cart__item">
-                  {image && <img className="cart__img" src={asset(image)} alt="" />}
+                  {image && <img className="cart__img" src={image} alt="" />}
                   <div className="cart__info">
                     <p className="cart__name">{product.name}</p>
                     {choices && <p className="cart__choices">{choices}</p>}
