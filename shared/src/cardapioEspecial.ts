@@ -4,6 +4,7 @@
 // O painel, o servidor e a versão de teste usam estas mesmas regras.
 
 import type { CategoryDTO, ProductDTO } from './catalogo';
+import { shortDate } from './datas';
 
 /** Configuração de um cardápio especial, como o painel edita. Datas 'AAAA-MM-DD'. */
 export interface SpecialMenu {
@@ -45,7 +46,6 @@ export function specialMenuProblem(menu: Omit<SpecialMenu, 'hidden'>): string | 
 }
 
 /** '2026-12-24' → '24/12' */
-export const shortDate = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 
 /** ['2026-12-24'] → '24/12'; três datas → '24/12, 25/12 e 31/12'. */
 export function formatDates(dates: string[]): string {

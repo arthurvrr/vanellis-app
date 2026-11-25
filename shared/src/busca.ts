@@ -1,6 +1,8 @@
 // Busca do painel (RF42; cenários C92, C93): acha telas, ações e produtos pelo nome ou pelo
 // que fazem ("feriado" acha "Datas sem retirada"), sem diferenciar acentos nem maiúsculas.
 
+import { normalize } from './texto';
+
 export interface SearchEntry {
   title: string;
   /** Onde fica: "Agenda", "Produto"... */
@@ -10,11 +12,6 @@ export interface SearchEntry {
   keywords?: string;
 }
 
-export const normalize = (s: string) =>
-  s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
 
 /**
  * Entradas em que aparecem todas as palavras digitadas (no título, na seção ou nas palavras-
