@@ -1,6 +1,6 @@
 // Cenários C92, C93 (etapa 7): busca do painel.
 import { describe, expect, it } from 'vitest';
-import { searchEntries } from './busca';
+import { normalize, searchEntries } from './busca';
 
 const entries = [
   { title: 'Datas sem retirada', section: 'Agenda', href: '#agenda/bloqueadas', keywords: 'feriado folga bloquear' },
@@ -30,5 +30,60 @@ describe('searchEntries', () => {
   });
   it('vazio não lista nada', () => {
     expect(titulos('   ')).toEqual([]);
+  });
+});
+
+describe('normalize', () => {
+  it('tira acentos e deixa em minúsculas', () => {
+    expect(normalize('Ação PÃO Pé')).toBe('acao pao pe');
+  });
+});
+
+describe('searchEntries: ordem e limite', () => {
+  const e = (title: string, section = 'Produto', keywords?: string) => ({ title, section, href: '#', keywords });
+
+  it('ordena: começa pelo texto, contém o texto, tem todas as palavras, só nas palavras-chave', () => {
+    const lista = [
+      e('Bolo', 'Produto', 'torta doce'),
+      e('Doce torta de nozes'),
+      e('Mini torta doce'),
+      e('Torta doce'),
+    ];
+    expect(searchEntries(lista, 'torta doce').map((x) => x.title)).toEqual([
+      'Torta doce',
+      'Mini torta doce',
+      'Doce torta de nozes',
+      'Bolo',
+    ]);
+  });
+
+  it('título com só parte das palavras fica junto com quem só casa nas palavras-chave', () => {
+    const lista = [e('Torta salgada', 'Produto', 'doce'), e('Doce torta de nozes')];
+    expect(searchEntries(lista, 'torta doce').map((x) => x.title)).toEqual(['Doce torta de nozes', 'Torta salgada']);
+  });
+
+  it('mantém a ordem original entre entradas empatadas', () => {
+    const lista = [e('Torta B'), e('Torta A'), e('Torta C')];
+    expect(searchEntries(lista, 'torta').map((x) => x.title)).toEqual(['Torta B', 'Torta A', 'Torta C']);
+  });
+
+  it('acha pela seção e junta espaços repetidos da busca', () => {
+    expect(searchEntries([e('Coxinha', 'Salgados')], 'salgados').map((x) => x.title)).toEqual(['Coxinha']);
+    expect(searchEntries([e('Torta de Nozes')], '  torta   de  ').map((x) => x.title)).toEqual(['Torta de Nozes']);
+  });
+
+  it('entrada sem palavras-chave só casa pelo título e pela seção', () => {
+    expect(searchEntries([e('Pudim', 'Doce'), e('Coxinha', 'Salgados')], 'a').map((x) => x.title)).toEqual(['Coxinha']);
+  });
+
+  it('não junta palavras de campos diferentes', () => {
+    // "Coxinha" + "Produto" não pode virar "coxinhaproduto".
+    expect(searchEntries([e('Coxinha')], 'coxinhaproduto')).toEqual([]);
+  });
+
+  it('devolve no máximo 8 entradas, ou o limite pedido', () => {
+    const lista = Array.from({ length: 10 }, (_, i) => e(`Torta ${i}`));
+    expect(searchEntries(lista, 'torta')).toHaveLength(8);
+    expect(searchEntries(lista, 'torta', 3).map((x) => x.title)).toEqual(['Torta 0', 'Torta 1', 'Torta 2']);
   });
 });

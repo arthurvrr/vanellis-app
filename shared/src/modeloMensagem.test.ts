@@ -34,6 +34,47 @@ describe('C84: modelo personalizado', () => {
     expect(fillMessageTemplate('A\n\n{observacao}\n\nB', { ...SAMPLE_MESSAGE_VALUES, observacao: '' })).toBe('A\n\nB');
     expect(fillMessageTemplate('Obs: {observacao}', { ...SAMPLE_MESSAGE_VALUES, observacao: '' })).toBe('Obs:');
   });
+
+  it('a linha do campo vazio some mesmo sem brancos em volta ou com espaços nas pontas', () => {
+    const vazio = { ...SAMPLE_MESSAGE_VALUES, observacao: '', total: '' };
+    expect(fillMessageTemplate('A\n{observacao}\nB', vazio)).toBe('A\nB');
+    expect(fillMessageTemplate('A\n  {observacao}  \nB', vazio)).toBe('A\nB');
+  });
+
+  it('linha com dois campos vazios não é "só um campo": fica como linha em branco', () => {
+    const vazio = { ...SAMPLE_MESSAGE_VALUES, observacao: '', total: '' };
+    expect(fillMessageTemplate('A\n{total} {observacao}\nB', vazio)).toBe('A\n \nB');
+  });
+
+  it('linha só com espaços conta como branca ao juntar brancos repetidos', () => {
+    expect(fillMessageTemplate('A\n \n\nB', SAMPLE_MESSAGE_VALUES)).toBe('A\n \nB');
+    expect(fillMessageTemplate('A\n\n \nB', SAMPLE_MESSAGE_VALUES)).toBe('A\n\nB');
+  });
+
+  it('linhas em branco no começo do modelo somem', () => {
+    expect(fillMessageTemplate('\n\nA', SAMPLE_MESSAGE_VALUES)).toBe('A');
+  });
+});
+
+describe('C85: pré-visualização no painel', () => {
+  it('o modelo padrão preenchido com os valores de exemplo', () => {
+    expect(fillMessageTemplate(DEFAULT_MESSAGE_TEMPLATE, SAMPLE_MESSAGE_VALUES)).toBe(
+      [
+        '*Pedido VNL-7K3QX*',
+        '',
+        '*Itens*',
+        '• 25x Coxinha [cód. 1002] — R$ 40,00',
+        '• 1x Torta Macron (Mini) [cód. 2001] — R$ 79,90 a R$ 95,88 (estimado)',
+        'Total estimado: R$ 119,90 a R$ 135,88',
+        '',
+        '*Retirada:* Sáb 12/12 às 10:00',
+        '*Nome:* Maria da Silva',
+        '*CPF:* 123.456.789-09',
+        '*Telefone:* (51) 99999-9999',
+        '*Observação:* Sem cebola, por favor.',
+      ].join('\n'),
+    );
+  });
 });
 
 describe('C86: campos obrigatórios e desconhecidos', () => {
@@ -44,6 +85,14 @@ describe('C86: campos obrigatórios e desconhecidos', () => {
     for (const k of ['codigo', 'itens', 'recebimento', 'nome', 'cpf', 'telefone'])
       expect(messageTemplateProblem(DEFAULT_MESSAGE_TEMPLATE.replace(`{${k}}`, ''))).toMatch(`Falta o campo {${k}}`);
   });
+  it('diz o que é o campo que falta, com a descrição em minúscula', () => {
+    expect(messageTemplateProblem(DEFAULT_MESSAGE_TEMPLATE.replace('{codigo}', ''))).toBe(
+      'Falta o campo {codigo}: código do pedido, ex: VNL-7K3QX',
+    );
+    expect(messageTemplateProblem(DEFAULT_MESSAGE_TEMPLATE.replace('{telefone}', ''))).toBe(
+      'Falta o campo {telefone}: telefone do cliente',
+    );
+  });
   it('aceita sem os opcionais', () => {
     expect(messageTemplateProblem(DEFAULT_MESSAGE_TEMPLATE.replace('{total}', '').replace('{observacao}', ''))).toBeNull();
   });
@@ -51,5 +100,10 @@ describe('C86: campos obrigatórios e desconhecidos', () => {
     expect(messageTemplateProblem(`${DEFAULT_MESSAGE_TEMPLATE}\n{preco}`)).toMatch('O campo {preco} não existe');
     expect(messageTemplateProblem('   ')).toMatch(/Escreva/);
     expect(messageTemplateProblem(DEFAULT_MESSAGE_TEMPLATE + 'x'.repeat(1000))).toMatch(/até 1000/);
+  });
+  it('aceita o modelo com exatamente 1000 caracteres', () => {
+    const template = DEFAULT_MESSAGE_TEMPLATE + 'x'.repeat(1000 - DEFAULT_MESSAGE_TEMPLATE.length);
+    expect(template).toHaveLength(1000);
+    expect(messageTemplateProblem(template)).toBeNull();
   });
 });

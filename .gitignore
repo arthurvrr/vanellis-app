@@ -12,3 +12,7 @@ deploy/.env.teste
 test-results/
 playwright-report/
 coverage/
+
+# Testes de mutação (Stryker)
+reports/
+.stryker-tmp*/

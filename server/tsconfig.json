@@ -10,6 +10,7 @@
     "scripts",
     "drizzle.config.ts",
     "tsup.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.mutacao.config.ts"
   ]
 }

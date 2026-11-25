@@ -68,6 +68,7 @@ export function problemaPreco(price: number | null, priceMode: PriceMode | null 
 
 /** "Pães de Queijo" casa com "paes" e "QUEIJO" (C66): sem acento nem maiúsculas. */
 export function casaBusca(nome: string, busca: string): boolean {
+  // Stryker disable next-line MethodExpression: equivalente, nome e busca passam pela mesma normalização (só diferiria em letras como 'ß')
   const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   return norm(nome).includes(norm(busca.trim()));
 }
