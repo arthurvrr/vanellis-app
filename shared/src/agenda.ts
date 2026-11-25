@@ -2,6 +2,7 @@
 // cliente pode escolher. Datas em 'AAAA-MM-DD' e horas em 'HH:MM', no horário de Brasília.
 
 import { pickupRule, type PickupRule } from './cardapioEspecial';
+import { addDays, dateMs, DAY, dayAt, isoDate, onWeekday, shortDate, toMinutes, toTime, weekdayShort } from './datas';
 import type { CatalogoDTO } from './catalogo';
 
 /** Intervalo entre os horários oferecidos ao cliente (RN51). */
@@ -30,8 +31,6 @@ export function dayPeriods(hours: OpeningHours[], weekday: number): OpeningHours
   return hours.filter((h) => h.weekday === weekday).sort((a, b) => a.open.localeCompare(b.open));
 }
 
-const WEEKDAY_NAMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-
 /**
  * Problema no horário de uma semana, ou null: fechamento antes da abertura, ou dois períodos
  * do mesmo dia que se sobrepõem (C29, C68). O painel e o servidor usam a mesma regra.
@@ -43,7 +42,7 @@ export function weekHoursProblem(hours: OpeningHours[]): string | null {
     const ps = dayPeriods(hours, wd);
     for (let i = 1; i < ps.length; i++)
       if (ps[i]!.open < ps[i - 1]!.close)
-        return `Na ${WEEKDAY_NAMES[wd]}, os períodos se sobrepõem: o seguinte precisa começar depois que o anterior termina`;
+        return `${onWeekday(wd)}, os períodos se sobrepõem: o seguinte precisa começar depois que o anterior termina`;
   }
   return null;
 }
@@ -114,22 +113,6 @@ export interface AgendaDTO {
   rule?: PickupRule;
 }
 
-const MINUTE = 60_000;
-const DAY = 24 * 60 * MINUTE;
-
-export const toMinutes = (time: string) => {
-  const [h, m] = time.split(':').map(Number);
-  return h! * 60 + m!;
-};
-const toTime = (minutes: number) =>
-  `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-
-/** Data e hora de parede como milissegundos numa linha do tempo sem fuso. */
-function wallMs(date: string, minutes = 0): number {
-  const [y, m, d] = date.split('-').map(Number);
-  return Date.UTC(y!, m! - 1, d) + minutes * MINUTE;
-}
-
 /**
  * Última data que o cliente pode agendar: hoje + N meses de calendário (RN53).
  * Se o dia não existe no mês final (31/10 + 4 meses), vale o último dia desse mês.
@@ -137,7 +120,7 @@ function wallMs(date: string, minutes = 0): number {
 export function lastBookableDate(today: string, months: number): string {
   const [y, m, d] = today.split('-').map(Number);
   const lastDayOfTarget = new Date(Date.UTC(y!, m! - 1 + months + 1, 0)).getUTCDate();
-  return new Date(Date.UTC(y!, m! - 1 + months, Math.min(d!, lastDayOfTarget))).toISOString().slice(0, 10);
+  return isoDate(Date.UTC(y!, m! - 1 + months, Math.min(d!, lastDayOfTarget)));
 }
 
 /** Horário semanal que vale numa data: o de início mais recente entre os vigentes. */
@@ -194,14 +177,13 @@ export function availableDays(
   const allowed = allowedDates ? new Set(allowedDates) : null;
   const [today, time] = now.split('T') as [string, string];
   const leadMinutes = Math.max(input.minLeadHours, itemsLeadHours) * 60;
-  const earliest = wallMs(today, toMinutes(time) + leadMinutes);
+  const earliest = dateMs(today, toMinutes(time) + leadMinutes);
   const blocked = new Set(input.blockedDates);
-  const lastMs = wallMs(lastBookableDate(today, input.windowMonths));
+  const lastMs = dateMs(lastBookableDate(today, input.windowMonths));
   const days: AvailableDay[] = [];
 
-  for (let dayMs = wallMs(today); dayMs <= lastMs; dayMs += DAY) {
-    const date = new Date(dayMs).toISOString().slice(0, 10);
-    const weekday = new Date(dayMs).getUTCDay();
+  for (let dayMs = dateMs(today); dayMs <= lastMs; dayMs += DAY) {
+    const { date, weekday } = dayAt(dayMs);
     if (blocked.has(date)) continue;
     if (allowed && !allowed.has(date)) continue;
 
@@ -218,19 +200,16 @@ export function availableDays(
     if (!periods.length) continue;
     const closed = input.closedPeriods.filter((c) => c.date === date);
     const times = pickupTimes(periods, input.restrictions, closed).filter(
-      (t) => wallMs(date, toMinutes(t)) >= earliest,
+      (t) => dateMs(date, toMinutes(t)) >= earliest,
     );
     if (times.length) days.push({ date, weekday, special: null, times, delivery: deliveryOn(input.delivery, date) });
   }
   return days;
 }
 
-const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
 /** "Sáb 28/11" */
 export function formatDay(day: Pick<AvailableDay, 'date' | 'weekday'>): string {
-  const [, m, d] = day.date.split('-');
-  return `${WEEKDAYS[day.weekday]} ${d}/${m}`;
+  return `${weekdayShort(day.weekday)} ${shortDate(day.date)}`;
 }
 
 /** Data e hora de agora no horário de Brasília, como 'AAAA-MM-DDTHH:MM'. */
@@ -269,14 +248,13 @@ export function storeStatus(
   const minutes = toMinutes(time);
   const blocked = new Set(input.blockedDates);
   const periodsOn = (dayMs: number) => {
-    const date = new Date(dayMs).toISOString().slice(0, 10);
-    const weekday = new Date(dayMs).getUTCDay();
+    const { date, weekday } = dayAt(dayMs);
     if (blocked.has(date)) return { date, weekday, periods: [] };
     // Stryker disable next-line ArrayDeclaration: equivalente, dayPeriods filtra por dia da semana e descarta qualquer item sem weekday
     return { date, weekday, periods: dayPeriods(scheduleFor(input.schedules, date)?.hours ?? [], weekday) };
   };
 
-  const todayMs = wallMs(today);
+  const todayMs = dateMs(today);
   const t = periodsOn(todayMs);
   const current = t.periods.find((p) => minutes >= toMinutes(p.open) && minutes < toMinutes(p.close));
   if (current) return { open: true, closesAt: current.close, nextOpen: null };
@@ -291,8 +269,6 @@ export function storeStatus(
   }
   return { open: false, closesAt: null, nextOpen: null };
 }
-
-const WEEKDAYS_LOWER = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
 /** '07:30' → '7h30'; '19:00' → '19h'. */
 export function formatHour(time: string): string {
@@ -325,8 +301,8 @@ export function weekSummary(hours: OpeningHours[]): string {
     else if (periods.length) groups.push({ days: [wd], text });
   }
   const parts = groups.map((g) => {
-    const first = WEEKDAYS_LOWER[g.days[0]!]!;
-    const lastDay = WEEKDAYS_LOWER[g.days.at(-1)!]!;
+    const first = weekdayShort(g.days[0]!).toLowerCase();
+    const lastDay = weekdayShort(g.days.at(-1)!).toLowerCase();
     const days = g.days.length === 1 ? first : g.days.length === 2 ? `${first} e ${lastDay}` : `${first} a ${lastDay}`;
     return `${days} ${g.text}`;
   });
@@ -344,9 +320,9 @@ export function statusLabel(s: StoreStatus, today: string): string {
   const when =
     s.nextOpen.date === today
       ? 'hoje'
-      : s.nextOpen.date === new Date(wallMs(today) + DAY).toISOString().slice(0, 10)
+      : s.nextOpen.date === addDays(today, 1)
         ? 'amanhã'
-        : WEEKDAYS_LOWER[s.nextOpen.weekday];
+        : weekdayShort(s.nextOpen.weekday).toLowerCase();
   return `Fechado · abre ${when} às ${formatHour(s.nextOpen.time)}`;
 }
 

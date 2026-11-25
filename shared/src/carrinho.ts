@@ -1,7 +1,7 @@
 // Regras do carrinho (RF03, RF27, RN39): identidade dos itens, limites e total estimado.
 
 import type { ProductDTO, Selection } from './catalogo';
-import { itemEstimate, missingGroups, type Range } from './preco';
+import { cents, itemEstimate, missingGroups, type Range } from './preco';
 
 /** Limites herdados do protótipo: 999 por item e 100 itens diferentes. */
 export const MAX_QUANTITY = 999;
@@ -63,7 +63,7 @@ export function sumRanges(ranges: (Range | null)[]): Range | null {
     min += r.min;
     max += r.max;
   }
-  return { min: Math.round(min * 100) / 100, max: Math.round(max * 100) / 100 };
+  return { min: cents(min), max: cents(max) };
 }
 
 export interface ResolvedLine {

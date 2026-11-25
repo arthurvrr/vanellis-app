@@ -9,3 +9,5 @@ export * from './precos';
 export * from './cardapioEspecial';
 export * from './lembretes';
 export * from './busca';
+export * from './datas';
+export * from './texto';

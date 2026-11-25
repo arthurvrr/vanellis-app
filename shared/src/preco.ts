@@ -8,7 +8,8 @@ export interface Range {
   max: number;
 }
 
-const cents = (n: number) => Math.round(n * 100) / 100;
+/** Arredonda para centavos: 0.1 + 0.2 → 0.3. O único lugar dessa conta. */
+export const cents = (n: number) => Math.round(n * 100) / 100;
 
 function chosenOptions(product: ProductDTO, selection: Selection): OptionDTO[] {
   return product.groups.flatMap((g) =>
