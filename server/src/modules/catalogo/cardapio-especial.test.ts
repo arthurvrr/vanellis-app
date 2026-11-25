@@ -56,6 +56,23 @@ const nomes = async () => (await site()).categorias.map((c: { name: string }) =>
 const datas = async (...produtos: string[]) =>
   (await app.browser()('GET', `/api/agenda/disponibilidade?produtos=${produtos.map((p) => ids[p]).join(',')}`)).body;
 
+describe('Item de cardápio encerrado (C115, RN64, G36)', () => {
+  it('o item da ceia encerrada não vira item regular: nenhum dia e o item é apontado', async () => {
+    await especial('Ceia de Natal', NATAL);
+    now = '2026-12-22T18:55';
+    expect((await datas('Chester')).days.map((d: { date: string }) => d.date)).toEqual(['2026-12-24']);
+    // A ceia sai do site depois de 22/12; o cliente ainda tem o Chester no carrinho, com a página aberta.
+    now = '2026-12-23T08:00';
+    const agenda = await datas('Chester', 'Pão de Queijo');
+    expect(agenda.unavailable).toEqual([ids['Chester']]);
+    expect(agenda.days).toEqual([]);
+  });
+
+  it('sem itens encerrados, a lista vem vazia', async () => {
+    expect((await datas('Pão de Queijo')).unavailable).toEqual([]);
+  });
+});
+
 describe('Cadastro', () => {
   it('C70: aparece só dentro do período, antes das regulares, com as datas de retirada', async () => {
     const r = await especial('Ceia de Natal', NATAL);

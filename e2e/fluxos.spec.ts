@@ -127,3 +127,35 @@ test('5. pedidos pausados no painel bloqueiam o envio no site', async ({ page })
     await page.request.put('/api/painel/status', { data: { ordersPaused: false } });
   }
 });
+
+test('6. item que sai do cardápio com a página aberta bloqueia a retirada até sair do carrinho (C115)', async ({
+  page,
+}) => {
+  // Um produto novo, cópia da Coxinha, com nome próprio.
+  await entrarNoPainel(page);
+  const api = page.request;
+  const produtos = await (await api.get('/api/painel/catalogo/produtos')).json();
+  const coxinha = produtos.find((p: { name: string }) => p.name === 'Coxinha');
+  const { id } = await (await api.post(`/api/painel/catalogo/produtos/${coxinha.id}/duplicar`, { data: {} })).json();
+  const form = await (await api.get(`/api/painel/catalogo/produtos/${id}/cadastro`)).json();
+  expect((await api.put(`/api/painel/catalogo/produtos/${id}`, { data: { ...form, name: 'Pastel G36', available: true } })).ok()).toBeTruthy();
+
+  // O cliente monta o carrinho com o site aberto.
+  await page.goto('/');
+  await adicionar(page, 'salgados', 'Pastel G36');
+  await adicionar(page, 'salgados', 'Coxinha');
+
+  // Enquanto isso, o produto sai do cardápio (aqui: indisponível; vale igual para cardápio encerrado).
+  expect((await api.put(`/api/painel/catalogo/produtos/${id}/disponivel`, { data: { available: false } })).ok()).toBeTruthy();
+
+  // Sem recarregar a página, o cliente segue para a retirada.
+  await page.goto('/#dados');
+  const aviso = page.getByRole('alert').filter({ hasText: 'Pastel G36 não está mais disponível para pedido' });
+  await expect(aviso).toBeVisible();
+  await expect(page.getByRole('grid', { name: 'Dia da retirada' })).toHaveCount(0);
+
+  // Ao tirar o item, os dias voltam para o resto do pedido.
+  await aviso.getByRole('button', { name: 'Tirar do carrinho' }).click();
+  await expect(aviso).toHaveCount(0);
+  await expect(page.getByRole('grid', { name: 'Dia da retirada' }).getByRole('button').first()).toBeVisible();
+});

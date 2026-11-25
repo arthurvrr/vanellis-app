@@ -111,6 +111,11 @@ export interface AgendaDTO {
   days: AvailableDay[];
   /** Cardápios especiais no carrinho e as datas que eles permitem (RN19, RN29, RN30). */
   rule?: PickupRule;
+  /**
+   * Itens do carrinho que não estão mais no cardápio visível ou estão indisponíveis (RN64):
+   * enquanto houver algum, nenhum dia é oferecido e o site pede para tirá-los do carrinho.
+   */
+  unavailable: number[];
 }
 
 /**
@@ -362,10 +367,15 @@ export function agendaForCart(
   const ids = new Set(productIds);
   const lead = Math.max(0, ...catalogo.produtos.filter((p) => ids.has(p.id)).map((p) => p.leadTimeHours ?? 0));
   const rule = pickupRule(catalogo, productIds);
+  // Um item que saiu do cardápio (cardápio encerrado ou oculto, produto excluído) não pode virar
+  // item regular, liberado para qualquer dia (G36): ele bloqueia a retirada até sair do carrinho.
+  const visivel = new Map(catalogo.produtos.map((p) => [p.id, p]));
+  const unavailable = [...ids].filter((id) => !visivel.get(id)?.available).sort((a, b) => a - b);
   return {
     paused,
     leadHours: Math.max(input.minLeadHours, lead),
-    days: paused || rule.conflict ? [] : availableDays(input, now, lead, rule.dates),
+    days: paused || rule.conflict || unavailable.length ? [] : availableDays(input, now, lead, rule.dates),
     rule,
+    unavailable,
   };
 }
