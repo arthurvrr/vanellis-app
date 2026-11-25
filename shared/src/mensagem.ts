@@ -7,6 +7,7 @@ import type { ResolvedLine } from './carrinho';
 import { sumRanges } from './carrinho';
 import { formatBRL, type Range } from './preco';
 import { formatDay } from './agenda';
+import { onlyDigits } from './texto';
 
 /** Limite seguro de tamanho do link wa.me (o texto vai codificado na URL). */
 export const MAX_WHATSAPP_URL_LENGTH = 4000;
@@ -176,7 +177,7 @@ export function buildOrderMessage(input: OrderMessageInput, compact = false): st
 }
 
 export function whatsappUrl(number: string, text: string): string {
-  return `https://wa.me/${number.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+  return `https://wa.me/${onlyDigits(number)}?text=${encodeURIComponent(text)}`;
 }
 
 /**

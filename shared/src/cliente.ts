@@ -1,5 +1,7 @@
 // Dados do cliente no checkout (RN02): validados no navegador e nunca guardados.
 
+import { onlyDigits } from './texto';
+
 export interface CustomerData {
   name: string;
   cpf: string;
@@ -10,7 +12,6 @@ export interface CustomerData {
 export const NAME_MAX_LENGTH = 60;
 export const NOTE_MAX_LENGTH = 200;
 
-export const onlyDigits = (s: string) => s.replace(/\D/g, '');
 
 /** CPF com 11 dígitos e dígitos verificadores corretos. */
 export function isValidCPF(value: string): boolean {

@@ -2,6 +2,8 @@
 // integração com o PDV. Etapa 5 configura a frequência de cada um (RF37, C88); a etapa 7
 // mostra os vencidos ao entrar (RF36).
 
+import { addDays, daysBetween } from './datas';
+
 export type ReminderKind = 'cardapio' | 'horario' | 'precos';
 
 // Stryker disable StringLiteral: label, help e screen são textos de tela, conferidos a olho; kind e
@@ -64,9 +66,6 @@ export function reminderDaysProblem(days: number): string | null {
   return null;
 }
 
-const DAY_MS = 86_400_000;
-const dayMs = (d: string) => Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
-const toDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 export interface ReminderStatus {
   kind: ReminderKind;
@@ -80,8 +79,8 @@ export interface ReminderStatus {
 
 /** Situação de um lembrete hoje (RN35): vence `everyDays` depois da última revisão. */
 export function reminderStatus(r: ReminderDTO, today: string): ReminderStatus {
-  const dueDate = r.lastReviewed ? toDate(dayMs(r.lastReviewed) + r.everyDays * DAY_MS) : today;
-  const diff = Math.round((dayMs(dueDate) - dayMs(today)) / DAY_MS);
+  const dueDate = r.lastReviewed ? addDays(r.lastReviewed, r.everyDays) : today;
+  const diff = daysBetween(today, dueDate);
   return { kind: r.kind, dueDate, due: diff <= 0, days: Math.abs(diff) };
 }
 

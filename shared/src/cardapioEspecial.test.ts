@@ -5,7 +5,6 @@ import {
   formatDates,
   pickupLabel,
   pickupRule,
-  shortDate,
   specialMenuProblem,
   specialMenuState,
   type SpecialMenu,
@@ -135,7 +134,6 @@ describe('datas no formato curto', () => {
     expect(formatDates([])).toBe('');
     expect(formatDates(['2026-12-24'])).toBe('24/12');
     expect(formatDates(['2026-12-25', '2026-12-24'])).toBe('24/12 e 25/12');
-    expect(shortDate('2027-01-02')).toBe('02/01');
   });
 
   it('não altera a lista recebida ao ordenar', () => {

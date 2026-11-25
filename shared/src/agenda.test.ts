@@ -322,19 +322,19 @@ describe('C68: mensagens do horário semanal', () => {
   });
 
   it.each([
-    [0, 'domingo'],
-    [1, 'segunda'],
-    [2, 'terça'],
-    [3, 'quarta'],
-    [4, 'quinta'],
-    [5, 'sexta'],
-    [6, 'sábado'],
-  ])('sobreposição no dia %i diz qual é o dia (%s)', (weekday, nome) => {
+    [0, 'No domingo'],
+    [1, 'Na segunda'],
+    [2, 'Na terça'],
+    [3, 'Na quarta'],
+    [4, 'Na quinta'],
+    [5, 'Na sexta'],
+    [6, 'No sábado'],
+  ])('sobreposição no dia %i diz qual é o dia, com o artigo certo (%s)', (weekday, nome) => {
     const problema = weekHoursProblem([
       { weekday, open: '08:00', close: '12:00' },
       { weekday, open: '11:00', close: '18:00' },
     ]);
-    expect(problema).toContain(` ${nome},`);
+    expect(problema).toBe(`${nome}, os períodos se sobrepõem: o seguinte precisa começar depois que o anterior termina`);
   });
 });
 

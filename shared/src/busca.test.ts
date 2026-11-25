@@ -1,6 +1,6 @@
 // Cenários C92, C93 (etapa 7): busca do painel.
 import { describe, expect, it } from 'vitest';
-import { normalize, searchEntries } from './busca';
+import { searchEntries } from './busca';
 
 const entries = [
   { title: 'Datas sem retirada', section: 'Agenda', href: '#agenda/bloqueadas', keywords: 'feriado folga bloquear' },
@@ -30,12 +30,6 @@ describe('searchEntries', () => {
   });
   it('vazio não lista nada', () => {
     expect(titulos('   ')).toEqual([]);
-  });
-});
-
-describe('normalize', () => {
-  it('tira acentos e deixa em minúsculas', () => {
-    expect(normalize('Ação PÃO Pé')).toBe('acao pao pe');
   });
 });
 
