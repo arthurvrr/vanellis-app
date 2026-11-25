@@ -51,7 +51,7 @@ export function CheckoutView({
   onMenu: () => void;
   onSent: () => void;
 }) {
-  const { lines: cartLines, clear } = useCart();
+  const { lines: cartLines, clear, remove } = useCart();
   const { valid: lines } = resolveCart(cartLines, produtos);
   const {
     pickup,
@@ -221,6 +221,10 @@ export function CheckoutView({
       ) : (
         <>
           <PickupPicker
+            encerrados={[...new Set(lines.filter((l) => agenda?.unavailable.includes(l.product.id)).map((l) => l.product.name))]}
+            onTirarEncerrados={() => {
+              for (const l of lines) if (agenda?.unavailable.includes(l.product.id)) remove(l.line.key);
+            }}
             agenda={visibleAgenda}
             error={agendaError}
             value={pickup}
@@ -296,6 +300,8 @@ export function CheckoutView({
 }
 
 function PickupPicker({
+  encerrados,
+  onTirarEncerrados,
   agenda,
   error,
   value,
@@ -303,6 +309,9 @@ function PickupPicker({
   modo,
   onModo,
 }: {
+  /** Nomes dos itens que saíram do cardápio com a página aberta (RN64, G36). */
+  encerrados: string[];
+  onTirarEncerrados: () => void;
   agenda: AgendaDTO | null;
   error: string | null;
   value: Pickup | null;
@@ -344,6 +353,19 @@ function PickupPicker({
       {error && <p className="field__error">{error}</p>}
       {!agenda && !error && <p>Carregando os horários…</p>}
       {/* Cardápios especiais no carrinho: só as datas deles (RN19, RN29); sem data em comum, pedidos separados (RN30). */}
+      {/* Item que saiu do cardápio com a página aberta: bloqueia a retirada até sair do carrinho (RN64). */}
+      {encerrados.length > 0 && (
+        <div className="cart__notice" role="alert">
+          <p>
+            {new Intl.ListFormat('pt-BR').format(encerrados)} {encerrados.length === 1 ? 'não está' : 'não estão'} mais
+            disponíve{encerrados.length === 1 ? 'l' : 'is'} para pedido: o cardápio encerrou as encomendas ou o produto
+            saiu do cardápio. Tire do carrinho para escolher a retirada.
+          </p>
+          <button type="button" className="link" onClick={onTirarEncerrados}>
+            Tirar do carrinho
+          </button>
+        </div>
+      )}
       {agenda?.rule?.conflict ? (
         <p className="cart__notice" role="alert">
           {agenda.rule.menus.map((m) => `${m.name} (retirada em ${formatDates(m.pickupDates)})`).join(' e ')} não têm
@@ -358,7 +380,7 @@ function PickupPicker({
           </p>
         ))
       )}
-      {agenda && agenda.days.length === 0 && !agenda.rule?.conflict && (
+      {agenda && agenda.days.length === 0 && !agenda.rule?.conflict && encerrados.length === 0 && (
         <p>Não há horários de retirada disponíveis para estes itens nos próximos dias.</p>
       )}
       {agenda && agenda.days.length > 0 && (

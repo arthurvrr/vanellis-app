@@ -486,6 +486,26 @@ describe('agendaForCart: antecedência dos itens e pausa', () => {
     expect(agenda.days[0]?.times[0]).toBe('09:30');
   });
 
+  it('C115/RN64: item que não está mais no catálogo visível bloqueia a retirada e é apontado', () => {
+    // O item 9 saiu do catálogo (cardápio encerrado, oculto ou produto excluído) com a página aberta.
+    const agenda = agendaForCart(base, false, now, catalogo, [1, 9]);
+    expect(agenda.unavailable).toEqual([9]);
+    expect(agenda.days).toEqual([]);
+  });
+
+  it('RN64: item indisponível também bloqueia; sem itens assim, nada muda', () => {
+    const esgotado = { ...catalogo, produtos: [...catalogo.produtos, product({ id: 4, categoryId: 1, available: false })] };
+    expect(agendaForCart(base, false, now, esgotado, [4, 1, 3]).unavailable).toEqual([4]);
+    expect(agendaForCart(base, false, now, esgotado, [4, 1, 3]).days).toEqual([]);
+    const tudoOk = agendaForCart(base, false, now, catalogo, [1, 2]);
+    expect(tudoOk.unavailable).toEqual([]);
+    expect(tudoOk.days.length).toBeGreaterThan(0);
+  });
+
+  it('RN64: vários itens fora do catálogo vêm em ordem', () => {
+    expect(agendaForCart(base, false, now, catalogo, [12, 1, 9]).unavailable).toEqual([9, 12]);
+  });
+
   it('pedidos pausados: nenhum dia, mas a antecedência continua informada (RN11)', () => {
     const agenda = agendaForCart(base, true, now, catalogo, [2]);
     expect(agenda).toMatchObject({ paused: true, leadHours: 24, days: [] });
