@@ -2,13 +2,19 @@
 // disponibilidade, ordem e exclusão (RF15, RF53, RF54, RN41). Cenários C43–C51.
 // Etapa 6: uma categoria pode ser cardápio especial (RF16–RF19; cenários C70–C72).
 
-import { specialMenuProblem, specialMenuState, type SpecialMenu, type SpecialMenuState } from '@vanellis/shared';
+import {
+  normalize,
+  specialMenuProblem,
+  specialMenuState,
+  type SpecialMenu,
+  type SpecialMenuState,
+} from '@vanellis/shared';
 import { and, asc, count, eq, ne, sql } from 'drizzle-orm';
 import { Router, type Response } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
 import { requireUser } from '../acesso/sessao';
-import { deleteStoredImage } from '../imagens/imagens';
+import { deleteStoredImage, photoUrl } from '../imagens/imagens';
 import {
   createProduct,
   duplicate,
@@ -48,22 +54,13 @@ export interface ProdutoListaDTO {
 /** "Pães de Fermentação" → "paes-de-fermentacao" */
 export function slugify(name: string): string {
   return (
-    name
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
+    normalize(name)
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 50) || 'categoria'
   );
 }
 
-const fotoUrl = z
-  .string()
-  .trim()
-  .max(255)
-  .refine((u) => u.startsWith('/api/imagens/') || u.startsWith('/images/'), 'Foto inválida')
-  .nullable();
 
 const categoriaBody = z.object({
   name: z.string().trim().min(1, 'Informe o nome da categoria').max(50, 'Nome: até 50 caracteres'),
@@ -74,7 +71,7 @@ const categoriaBody = z.object({
     .transform((v) => v || null)
     .nullable()
     .default(null),
-  coverImageUrl: fotoUrl.default(null),
+  coverImageUrl: photoUrl.default(null),
 });
 /** Período e datas do cardápio especial; `null` volta a ser categoria regular. */
 const especialBody = z

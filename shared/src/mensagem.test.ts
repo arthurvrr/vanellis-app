@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lineKey, resolveCart, type CartLine } from './carrinho';
+import { resolveCart, type CartLine } from './carrinho';
 import {
   buildOrderMessage,
   describeSelection,
@@ -11,7 +11,7 @@ import {
   type OrderMessageInput,
 } from './mensagem';
 import { cardPrice, withoutPrices } from './preco';
-import { group, option, product } from './test-utils';
+import { group, line, option, product } from './test-utils';
 
 const coxinha = product({ id: 1, name: 'Coxinha', basePrice: 1.6, minQuantity: 25, pdvCode: '1001' });
 const cupcake = product({
@@ -36,13 +36,6 @@ const torta = product({
   saleUnit: 'KG',
   basePrice: 80,
   groups: [group({ id: 20, name: 'Tamanho', options: [option({ id: 200, name: 'Pequena', weightMinKg: 1.2, weightMaxKg: 1.5 })] })],
-});
-
-const line = (productId: number, selection: CartLine['selection'], quantity: number): CartLine => ({
-  key: lineKey(productId, selection),
-  productId,
-  selection,
-  quantity,
 });
 
 const customer = { name: ' Ana Souza ', cpf: '529.982.247-25', phone: '(51) 99528-4226', note: '' };

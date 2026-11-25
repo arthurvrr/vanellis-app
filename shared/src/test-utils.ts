@@ -1,5 +1,6 @@
-// Construtores de produtos para os testes.
-import type { OptionDTO, OptionGroupDTO, ProductDTO } from './catalogo';
+// Construtores de produtos, categorias e linhas do carrinho para os testes.
+import { lineKey, type CartLine } from './carrinho';
+import type { CategoryDTO, OptionDTO, OptionGroupDTO, ProductDTO } from './catalogo';
 
 export const option = (o: Partial<OptionDTO> & Pick<OptionDTO, 'id' | 'name'>): OptionDTO => ({
   pdvCode: null,
@@ -39,4 +40,21 @@ export const product = (p: Partial<ProductDTO>): ProductDTO => ({
   available: true,
   groups: [],
   ...p,
+});
+
+/** Categoria regular com os campos mínimos; passe `special` para um cardápio especial. */
+export const category = (c: Partial<CategoryDTO> & Pick<CategoryDTO, 'id' | 'name'>): CategoryDTO => ({
+  slug: c.name.toLowerCase(),
+  description: null,
+  coverImageUrl: null,
+  special: null,
+  ...c,
+});
+
+/** Linha do carrinho com a chave calculada como no site. */
+export const line = (productId: number, selection: CartLine['selection'], quantity: number): CartLine => ({
+  key: lineKey(productId, selection),
+  productId,
+  selection,
+  quantity,
 });

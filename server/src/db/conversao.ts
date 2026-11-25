@@ -2,7 +2,11 @@
 // O PostgreSQL devolve `numeric` como texto (para não perder precisão) e `time` com segundos.
 
 /** `numeric` do banco ('12.50') → número; null continua null. */
-export const num = (v: string | null): number | null => (v === null ? null : Number(v));
+export function num(v: string): number;
+export function num(v: string | null): number | null;
+export function num(v: string | null): number | null {
+  return v === null ? null : Number(v);
+}
 
 /** Valor em reais → `numeric` com 2 casas ('12.50'); sem valor → null. */
 export const money = (v: number | null | undefined): string | null => (v == null ? null : v.toFixed(2));

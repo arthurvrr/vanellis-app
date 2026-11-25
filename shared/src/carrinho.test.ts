@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cannotAdd, clampQuantity, lineKey, resolveCart, sumRanges, validSelection, type CartLine } from './carrinho';
-import { group, option, product } from './test-utils';
+import { group, line, option, product } from './test-utils';
 
 const tamanho = group({
   id: 10,
@@ -59,13 +59,6 @@ describe('cannotAdd', () => {
 });
 
 describe('resolveCart', () => {
-  const line = (productId: number, selection: CartLine['selection'], quantity: number): CartLine => ({
-    key: lineKey(productId, selection),
-    productId,
-    selection,
-    quantity,
-  });
-
   it('calcula o valor de cada item e soma em faixa quando há produto por quilo (RF27)', () => {
     const { valid, invalid } = resolveCart(
       [line(5, { 10: [101], 11: [110] }, 10), line(6, { 20: [200] }, 1)],

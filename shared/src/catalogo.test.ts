@@ -1,15 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { mapsLink, visibleCategories, type CategoryDTO } from './catalogo';
-import { product } from './test-utils';
+import { category, product } from './test-utils';
 
-const cat = (id: number, slug: string): CategoryDTO => ({
-  id,
-  name: slug,
-  slug,
-  description: null,
-  coverImageUrl: null,
-  special: null,
-});
+const cat = (id: number, slug: string): CategoryDTO => category({ id, name: slug, slug });
 
 describe('categorias visíveis para o cliente', () => {
   it('esconde categoria sem produtos e mantém a com produtos indisponíveis', () => {

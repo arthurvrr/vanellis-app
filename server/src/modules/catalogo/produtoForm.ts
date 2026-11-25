@@ -16,7 +16,7 @@ import { and, asc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
 import { kg, money, num } from '../../db/conversao';
-import { deleteStoredImage } from '../imagens/imagens';
+import { deleteStoredImage, photoUrl } from '../imagens/imagens';
 import { category, option, optionGroup, product, productTemplate } from './schema';
 
 const txt = (v: string | null) => (v && v.trim() ? v.trim() : null);
@@ -28,7 +28,7 @@ const optionSchema = z.object({
   id: z.number().int().positive().optional(),
   name: z.string().max(50, 'Nome da opção: até 50 caracteres'),
   description: z.string().max(300).nullable(),
-  imageUrl: z.string().max(255).nullable(),
+  imageUrl: photoUrl,
   price: nullableNumber,
   weightMinKg: nullableNumber,
   weightMaxKg: nullableNumber,
@@ -50,7 +50,7 @@ export const productFormSchema = z.object({
   categoryId: z.number().int().positive(),
   name: z.string().max(100),
   description: z.string().max(1000).nullable(),
-  imageUrl: z.string().max(255).nullable(),
+  imageUrl: photoUrl,
   imageAlt: z.string().max(200).nullable(),
   pdvCode: z.string().trim().max(20).nullable(),
   saleUnit: z.enum(['UN', 'KG']),

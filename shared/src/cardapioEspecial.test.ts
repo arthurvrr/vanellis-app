@@ -10,7 +10,7 @@ import {
   type SpecialMenu,
 } from './cardapioEspecial';
 import { visibleCategories, type CategoryDTO } from './catalogo';
-import { product } from './test-utils';
+import { category, product } from './test-utils';
 
 const natal: SpecialMenu = {
   visibleFrom: '2026-12-01',
@@ -19,14 +19,8 @@ const natal: SpecialMenu = {
   pickupDates: ['2026-12-24'],
 };
 
-const cat = (id: number, name: string, pickupDates?: string[]): CategoryDTO => ({
-  id,
-  name,
-  slug: name.toLowerCase(),
-  description: null,
-  coverImageUrl: null,
-  special: pickupDates ? { visibleUntil: '2026-12-22', pickupDates } : null,
-});
+const cat = (id: number, name: string, pickupDates?: string[]): CategoryDTO =>
+  category({ id, name, special: pickupDates ? { visibleUntil: '2026-12-22', pickupDates } : null });
 const categorias = [cat(1, 'Pães'), cat(2, 'Ceia de Natal', ['2026-12-24']), cat(3, 'Ceia de Ano Novo', ['2026-12-31'])];
 const produtos = [
   product({ id: 10, categoryId: 1 }),
