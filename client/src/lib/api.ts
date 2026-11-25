@@ -1,14 +1,4 @@
-import {
-  agendaForCart,
-  nowInBrasilia,
-  storeInfo,
-  type StoreInfoDTO,
-  type AgendaDTO,
-  type CatalogoDTO,
-  type DemoData,
-  type PublicSettingsDTO,
-} from '@vanellis/shared';
-import { IS_DEMO } from './demo';
+import { type StoreInfoDTO, type AgendaDTO, type CatalogoDTO, type PublicSettingsDTO } from '@vanellis/shared';
 
 async function getJSON<T>(url: string, what: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, { signal });
@@ -16,25 +6,13 @@ async function getJSON<T>(url: string, what: string, signal?: AbortSignal): Prom
   return res.json() as Promise<T>;
 }
 
-// Na versão de teste os dados vêm do JSON exportado. A comparação com MODE fica aqui, literal,
-// para o build normal descartar o JSON (o Vite troca MODE pelo texto do modo).
-let demoData: Promise<DemoData> | null = null;
-const demo = (): Promise<DemoData> =>
-  import.meta.env.MODE === 'demo'
-    ? (demoData ??= import('../demo/dados.json').then((m) => m.default as unknown as DemoData))
-    : Promise.reject(new Error('Dados de teste fora da versão de teste'));
 
 export function fetchCatalogo(): Promise<CatalogoDTO> {
-  if (IS_DEMO) return demo().then((d) => d.catalogo);
   return getJSON('/api/catalogo', 'o cardápio');
 }
 
 /** Dias e faixas de retirada para os produtos do carrinho (RF05). */
 export async function fetchDisponibilidade(productIds: number[], signal?: AbortSignal): Promise<AgendaDTO> {
-  if (IS_DEMO) {
-    const { catalogo, agenda } = await demo();
-    return agendaForCart(agenda.input, agenda.paused, nowInBrasilia(), catalogo, productIds);
-  }
   const ids = [...new Set(productIds)].sort((a, b) => a - b).join(',');
   return getJSON(`/api/agenda/disponibilidade?produtos=${ids}`, 'os horários de retirada', signal);
 }
@@ -51,15 +29,10 @@ export function loadSettings(): Promise<PublicSettingsDTO> {
 
 /** WhatsApp que recebe os pedidos e atalhos de contato (RF23, RF34). */
 export function fetchConfiguracoes(signal?: AbortSignal): Promise<PublicSettingsDTO> {
-  if (IS_DEMO) return demo().then((d) => d.configuracoes);
   return getJSON('/api/configuracoes/publicas', 'as configurações da loja', signal);
 }
 
 /** Situação da loja e horário da semana (entrada e rodapé). */
 export async function fetchLoja(): Promise<StoreInfoDTO> {
-  if (IS_DEMO) {
-    const { agenda } = await demo();
-    return storeInfo(agenda.input, agenda.paused, nowInBrasilia());
-  }
   return getJSON('/api/agenda/loja', 'o horário da loja');
 }

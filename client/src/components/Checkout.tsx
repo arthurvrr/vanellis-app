@@ -27,7 +27,6 @@ import {
 } from '@vanellis/shared';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { fetchConfiguracoes, fetchDisponibilidade } from '../lib/api';
-import { IS_DEMO } from '../lib/demo';
 import { useCart } from '../lib/cart';
 import { useCheckoutDraft, type AddressTouched, type Modo, type Pickup, type Touched } from '../lib/checkoutDraft';
 import { PickupCalendar } from './PickupCalendar';
@@ -176,8 +175,7 @@ export function CheckoutView({
     const code = generateOrderCode(cryptoRandom);
     const link = orderWhatsAppUrl(settings.whatsappNumber, { ...order, code });
     if (!link) return;
-    // Na versão de teste o pedido só aparece na tela, para não chegar ao WhatsApp da padaria.
-    if (!IS_DEMO) window.open(link.url, '_blank');
+    window.open(link.url, '_blank');
     finish({
       code,
       url: link.url,
@@ -286,12 +284,10 @@ export function CheckoutView({
             </p>
           )}
           <button type="button" className="primary primary--whatsapp" disabled={!settings || tooLong} onClick={send}>
-            {IS_DEMO ? 'Enviar pedido (teste)' : 'Enviar pedido pelo WhatsApp'}
+            Enviar pedido pelo WhatsApp
           </button>
           <p className="field__help send-help">
-            {IS_DEMO
-              ? 'Versão de teste: a mensagem aparece na tela e não é enviada para a padaria.'
-              : 'O WhatsApp abre com a mensagem pronta: é só apertar enviar. O pedido vale depois que a padaria confirmar.'}
+            {'O WhatsApp abre com a mensagem pronta: é só apertar enviar. O pedido vale depois que a padaria confirmar.'}
           </p>
         </>
       )}

@@ -1,5 +1,4 @@
 import { pickupLabel, shortDate, statusLabel, type CatalogoDTO } from '@vanellis/shared';
-import { asset } from '../lib/demo';
 import { useLoja } from '../lib/useLoja';
 import { Photo } from './Photo';
 
@@ -16,8 +15,8 @@ export function HomeView({ catalogo, onCategory }: { catalogo: CatalogoDTO; onCa
       <section className="hero" aria-labelledby="hero-title">
         <img
           className="hero__img"
-          src={asset('/images/destaque/salgados-1600.webp')}
-          srcSet={`${asset('/images/destaque/salgados-800.webp')} 800w, ${asset('/images/destaque/salgados-1600.webp')} 1600w`}
+          src="/images/destaque/salgados-1600.webp"
+          srcSet="/images/destaque/salgados-800.webp 800w, /images/destaque/salgados-1600.webp 1600w"
           sizes="(min-width: 900px) 55vw, 100vw"
           alt="Bandeja de salgados da Vanellis"
         />

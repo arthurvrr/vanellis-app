@@ -14,4 +14,3 @@ node_modules/
 coverage/
 playwright-report/
 test-results/
-client/src/demo/dados.json
