@@ -138,3 +138,13 @@ jobs:
       - name: Logs do contêiner
         if: always()
         run: docker logs app
+
+  # G06: o backup de verdade (deploy/backup.sh) na imagem do servidor, contra um Postgres de
+  # teste: backup bom conferido, banco fora do ar sem apagar nada, rotação que mantém 7.
+  backup:
+    name: backup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testa o backup
+        run: bash deploy/testar-backup.sh
