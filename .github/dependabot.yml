@@ -16,6 +16,11 @@ updates:
     groups:
       npm-pequenas:
         update-types: [minor, patch]
+    ignore:
+      # Os tipos do Node acompanham o Node que roda no servidor (22, LTS); a versão principal
+      # muda junto com ele, numa troca planejada, nunca sozinha.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: deps
 
@@ -41,6 +46,12 @@ updates:
       day: monday
       time: '06:00'
       timezone: America/Sao_Paulo
+    ignore:
+      # Produção fica numa versão LTS do Node (22; depois 24). O Dependabot proporia também as
+      # ímpares (23, 25), que têm poucos meses de suporte. A troca de versão principal é planejada
+      # à mão, junto com o node-version dos workflows e o @types/node.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: docker
 
