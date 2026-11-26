@@ -2,7 +2,9 @@
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { startTestApp } from '../../test/app';
-import { category, option, optionGroup, product } from './schema';
+import { and, eq } from 'drizzle-orm';
+import { category, option, optionGroup, product, productCategory } from './schema';
+import { inserirProdutos } from '../../test/produtos';
 
 let app: Awaited<ReturnType<typeof startTestApp>>;
 let op: ReturnType<typeof app.browser>;
@@ -25,15 +27,14 @@ beforeEach(async () => {
       { name: 'Doces', slug: 'doces', position: 1 },
     ])
     .returning({ id: category.id });
-  const prods = await app.db
-    .insert(product)
-    .values([
+  ids.Salgados = s!.id;
+  ids.Doces = d!.id;
+  const prods = await inserirProdutos(app.db, [
       { categoryId: s!.id, name: 'Coxinha', saleUnit: 'UN', basePrice: '1.60', position: 0 },
       { categoryId: d!.id, name: 'Brigadeiro', saleUnit: 'UN', basePrice: '1.70', position: 0 },
       { categoryId: d!.id, name: 'Cupcake', saleUnit: 'UN', basePrice: null, position: 1 },
       { categoryId: s!.id, name: 'Torta Macron', saleUnit: 'KG', basePrice: '79.90', position: 1 },
-    ])
-    .returning({ id: product.id, name: product.name });
+    ]);
   for (const p of prods) ids[p.name] = p.id;
 
   const [tamanho, adicional, sabor] = await app.db
@@ -81,6 +82,24 @@ describe('C62: lista de preços', () => {
       { id: ids.Tradicional, groupName: 'Tamanho', name: 'Tradicional', priceMode: 'replace', price: 8 },
       { id: ids.Granulado, groupName: 'Adicional', name: 'Granulado', priceMode: 'add', price: 1 },
     ]);
+  });
+
+  it('produto em vários cardápios aparece uma vez, no primeiro, na ordem dele; sem cardápio fica no fim (RF64)', async () => {
+    // O Brigadeiro também entra em Salgados (primeiro cardápio), no começo; a Coxinha vai para o fim.
+    await app.db.insert(productCategory).values({ productId: ids.Brigadeiro!, categoryId: ids.Salgados!, position: -1 });
+    await app.db
+      .update(productCategory)
+      .set({ position: 5 })
+      .where(and(eq(productCategory.productId, ids.Coxinha!), eq(productCategory.categoryId, ids.Salgados!)));
+    await inserirProdutos(app.db, [{ name: 'Pão Sovado', saleUnit: 'UN', basePrice: '9.00' }]);
+    const cats = await precos();
+    expect(cats.map((c: { id: number; name: string }) => [c.id, c.name])).toEqual([
+      [ids.Salgados, 'Salgados'],
+      [ids.Doces, 'Doces'],
+      [0, 'Sem cardápio'],
+    ]);
+    const nomes = cats.map((c: { produtos: { name: string }[] }) => c.produtos.map((p) => p.name));
+    expect(nomes).toEqual([['Brigadeiro', 'Torta Macron', 'Coxinha'], ['Cupcake'], ['Pão Sovado']]);
   });
 });
 

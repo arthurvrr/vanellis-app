@@ -1,11 +1,9 @@
-// Vínculos entre produto e cardápio (RF64): um produto pode estar em vários cardápios, cada um
-// com a sua ordem (product_category). Até o PR E4, o banco também guarda o cardápio principal do
-// produto (product.category_id, com a posição em product.position) e um gatilho mantém o vínculo
-// dele igual (migração 0018). Estas funções gravam os dois juntos, para eles nunca discordarem.
+// Vínculos entre produto e cardápio (RF64): um produto pode estar em vários cardápios, ou em
+// nenhum, cada um com a sua ordem. product_category é a única ligação entre os dois (PR E4).
 
 import { and, asc, eq, inArray, notInArray } from 'drizzle-orm';
 import type { DB } from '../../db/client';
-import { product, productCategory } from './schema';
+import { productCategory } from './schema';
 
 /** Produtos de um cardápio, na ordem dele. */
 export async function idsNoCardapio(tx: DB, categoryId: number): Promise<number[]> {
@@ -17,20 +15,13 @@ export async function idsNoCardapio(tx: DB, categoryId: number): Promise<number[
   return rows.map((r) => r.id);
 }
 
-/**
- * Grava a ordem de um cardápio: a posição de cada vínculo e, para quem tem este cardápio como
- * principal, product.position (o gatilho repete o mesmo valor no vínculo).
- */
+/** Grava a ordem de um cardápio: a posição de cada vínculo. */
 export async function ordenar(tx: DB, categoryId: number, ids: number[]): Promise<void> {
   for (const [position, productId] of ids.entries()) {
     await tx
       .insert(productCategory)
       .values({ productId, categoryId, position })
       .onConflictDoUpdate({ target: [productCategory.productId, productCategory.categoryId], set: { position } });
-    await tx
-      .update(product)
-      .set({ position })
-      .where(and(eq(product.id, productId), eq(product.categoryId, categoryId)));
   }
 }
 
@@ -71,7 +62,7 @@ export async function vincular(
   }
 }
 
-/** Cardápios de cada produto, na ordem dos cardápios na tela (o principal primeiro). */
+/** Cardápios de cada produto. */
 export async function cardapiosDe(tx: DB, productIds: number[]): Promise<Map<number, number[]>> {
   const out = new Map<number, number[]>();
   if (!productIds.length) return out;

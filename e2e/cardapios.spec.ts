@@ -156,7 +156,8 @@ test('pelo painel: o editor acrescenta e tira cardápios; excluir um cardápio d
     await page.getByRole('button', { name: 'Salvar', exact: true }).click();
     await expect(page.getByText('Chester E2E salvo.')).toBeVisible();
     let form = await (await page.request.get(`/api/painel/catalogo/produtos/${m.chester}/cadastro`)).json();
-    expect(form.categoryIds).toEqual([m.ceia, m.salgados]);
+    // Os cardápios vêm na ordem dos cardápios: Salgados antes da Ceia.
+    expect(form.categoryIds).toEqual([m.salgados, m.ceia]);
 
     // Tirar todos os cardápios é permitido (C135): o Chester sai do site.
     await page.goto(`/painel/#produto/${m.chester}`);

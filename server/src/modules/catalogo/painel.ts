@@ -26,7 +26,7 @@ import {
   loadProductForm,
   updateProduct,
 } from './produtoForm';
-import { cardapiosDe, idsNoCardapio, ordenar } from './cardapios';
+import { idsNoCardapio, ordenar } from './cardapios';
 import { productsMissingPdv, specialMenus } from './repository';
 import { category, option, optionGroup, product, productCategory } from './schema';
 
@@ -55,9 +55,7 @@ export interface CategoriaPainelDTO {
 
 export interface ProdutoListaDTO {
   id: number;
-  /** Cardápio principal (até o PR E4); vazio = produto sem cardápio. */
-  categoryId: number | null;
-  /** Todos os cardápios do produto (RF64). */
+  /** Os cardápios do produto (RF64); vazio = sem cardápio, fora do site. */
   categoryIds: number[];
   /** Posição do produto em cada cardápio dele, pelo id do cardápio (C134). */
   posicoes: Record<number, number>;
@@ -103,19 +101,17 @@ const ocultoBody = z.object({ hidden: z.boolean() });
 
 /** Colunas da categoria para gravar a configuração de cardápio especial. */
 function specialColumns(sp: z.infer<typeof especialBody>) {
-  if (!sp) return { special: false, visibleFrom: null, visibleUntil: null, pickupDates: [], hidden: false };
+  if (!sp) return { special: false, visibleFrom: null, pickupDates: [], hidden: false };
   const pickupDates = [...new Set(sp.pickupDates)].sort();
   return {
     special: true,
     visibleFrom: sp.visibleFrom,
-    // visible_until não é mais usado (RF60); guarda a última data de retirada só para que uma
-    // volta automática à versão anterior continue mostrando o cardápio. Sai numa migração futura.
-    visibleUntil: pickupDates.at(-1) ?? sp.visibleFrom,
     pickupDates,
   };
 }
-/** Subir ou descer um produto num cardápio dele (o principal, se não vier). */
-const moverBody = z.object({ direcao: z.enum(['subir', 'descer']), categoryId: z.number().int().positive().optional() });
+/** Subir ou descer um produto num cardápio dele. */
+const direcaoBody = z.object({ direcao: z.enum(['subir', 'descer']) });
+const moverBody = direcaoBody.extend({ categoryId: z.number().int().positive() });
 const disponivelBody = z.object({ available: z.boolean() });
 
 /**
@@ -261,7 +257,7 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
   });
 
   router.post('/categorias/:id/mover', async (req, res) => {
-    const parsed = moverBody.safeParse(req.body);
+    const parsed = direcaoBody.safeParse(req.body);
     if (!parsed.success) return fail(res, 400, 'Direção inválida');
     const ids = (await listCategorias()).map((c) => c.id);
     await move(db, ids, Number(req.params.id), parsed.data.direcao, (tx, cid, position) =>
@@ -276,26 +272,7 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
     const id = Number(req.params.id);
     const cat = (await listCategorias()).find((c) => c.id === id);
     if (!cat) return fail(res, 404, 'Categoria não encontrada');
-    const deCada = await cardapiosDe(db, cat.productIds);
     await inTransaction(db, async (tx) => {
-      // Quem tinha este cardápio como principal passa para o primeiro dos outros, sem sair do lugar
-      // nele; sem outro, fica sem cardápio.
-      const ordemCats = (await tx.select({ id: category.id }).from(category).orderBy(asc(category.position), asc(category.id))).map(
-        (c) => c.id,
-      );
-      const principais = await tx.select({ id: product.id }).from(product).where(eq(product.categoryId, id));
-      for (const { id: pid } of principais) {
-        const novo = ordemCats.find((c) => c !== id && (deCada.get(pid) ?? []).includes(c));
-        if (novo === undefined) {
-          await tx.update(product).set({ categoryId: null }).where(eq(product.id, pid));
-          continue;
-        }
-        const [v] = await tx
-          .select({ position: productCategory.position })
-          .from(productCategory)
-          .where(and(eq(productCategory.productId, pid), eq(productCategory.categoryId, novo)));
-        await tx.update(product).set({ categoryId: novo, position: v!.position }).where(eq(product.id, pid));
-      }
       await tx.delete(productCategory).where(eq(productCategory.categoryId, id));
       await tx.delete(category).where(eq(category.id, id));
     });
@@ -310,8 +287,6 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
     const rows = await db
       .select({
         id: product.id,
-        categoryId: product.categoryId,
-        position: product.position,
         name: product.name,
         pdvCode: product.pdvCode,
         available: product.available,
@@ -319,9 +294,8 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
         saleUnit: product.saleUnit,
       })
       .from(product)
-      // Produto sem cardápio também aparece no painel, para poder ser vinculado de novo (RF64).
-      .leftJoin(category, eq(category.id, product.categoryId))
-      .orderBy(sql`${category.position} asc nulls last`, asc(product.position), asc(product.id));
+      // A ordem de cada cardápio vem de `posicoes`; produto sem cardápio também aparece (RF64).
+      .orderBy(asc(product.id));
     const vinculos = await db.select().from(productCategory);
     const posicoes = new Map<number, Record<number, number>>();
     for (const v of vinculos) posicoes.set(v.productId, { ...posicoes.get(v.productId), [v.categoryId]: v.position });
@@ -352,10 +326,7 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
     const parsed = moverBody.safeParse(req.body);
     if (!parsed.success) return fail(res, 400, 'Direção inválida');
     const id = Number(req.params.id);
-    const [alvo] = await db.select({ categoryId: product.categoryId }).from(product).where(eq(product.id, id));
-    if (!alvo) return fail(res, 404, 'Produto não encontrado');
-    const cardapio = parsed.data.categoryId ?? alvo.categoryId;
-    if (cardapio === null) return fail(res, 400, 'Produto sem cardápio: não há ordem para mudar');
+    const cardapio = parsed.data.categoryId;
     await inTransaction(db, async (tx) => {
       const ids = await idsNoCardapio(tx, cardapio);
       const i = ids.indexOf(id);

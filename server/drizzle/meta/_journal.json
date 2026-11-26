@@ -141,6 +141,13 @@
       "when": 1795712197395,
       "tag": "0019_produto_sem_cardapio",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795731829401,
+      "tag": "0020_remover_cardapio_principal",
+      "breakpoints": true
     }
   ]
 }

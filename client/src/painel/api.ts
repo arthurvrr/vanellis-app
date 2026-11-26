@@ -90,8 +90,6 @@ export interface CategoriaPainel {
 }
 export interface ProdutoLista {
   id: number;
-  /** Cardápio principal (até o PR E4); vazio = sem cardápio. */
-  categoryId: number | null;
   /** Todos os cardápios do produto (RF64); vazio = fora do site. */
   categoryIds: number[];
   /** Posição em cada cardápio, pelo id do cardápio. */

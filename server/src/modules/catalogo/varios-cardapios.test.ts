@@ -7,6 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { startTestApp } from '../../test/app';
 import { openingHours, specialDate, weeklySchedule } from '../agenda/schema';
 import { category, product, productCategory } from './schema';
+import { inserirProdutos } from '../../test/produtos';
 
 let now = '2026-12-10T10:00';
 let app: Awaited<ReturnType<typeof startTestApp>>;
@@ -39,20 +40,16 @@ beforeEach(async () => {
         position: 1,
         special: true,
         visibleFrom: '2026-12-01',
-        visibleUntil: '2026-12-24',
         pickupDates: ['2026-12-24'],
       },
     ])
     .returning({ id: category.id, name: category.name });
   for (const c of cats) ids[c.name] = c.id;
-  const prods = await app.db
-    .insert(product)
-    .values([
+  const prods = await inserirProdutos(app.db, [
       { categoryId: ids.Tortas!, name: 'Torta de Limão', saleUnit: 'UN', basePrice: '50.00', position: 0 },
       { categoryId: ids.Tortas!, name: 'Quiche', saleUnit: 'UN', basePrice: '60.00', position: 1 },
       { categoryId: ids['Ceia de Natal']!, name: 'Chester', saleUnit: 'UN', basePrice: '120.00', position: 0 },
-    ])
-    .returning({ id: product.id, name: product.name });
+    ]);
   for (const p of prods) ids[p.name] = p.id;
 });
 
@@ -65,33 +62,6 @@ const datas = async (...nomes: string[]) =>
   );
 const naCeia = () =>
   app.db.insert(productCategory).values({ productId: ids.Quiche!, categoryId: ids['Ceia de Natal']!, position: 1 });
-
-describe('vínculo do cardápio principal (gatilho da migração 0018)', () => {
-  const vinculos = (productId: number) =>
-    app.db.select().from(productCategory).where(eq(productCategory.productId, productId));
-
-  it('produto novo ganha o vínculo do seu cardápio, na sua posição', async () => {
-    expect(await vinculos(ids.Quiche!)).toEqual([{ productId: ids.Quiche!, categoryId: ids.Tortas!, position: 1 }]);
-  });
-
-  it('mudar a posição ou o cardápio principal acompanha; os outros vínculos ficam', async () => {
-    await naCeia();
-    await app.db.update(product).set({ position: 5 }).where(eq(product.id, ids.Quiche!));
-    expect(await vinculos(ids.Quiche!)).toContainEqual({ productId: ids.Quiche!, categoryId: ids.Tortas!, position: 5 });
-    const [outra] = await app.db.insert(category).values({ name: 'Salgados', slug: 'salgados', position: 2 }).returning();
-    await app.db.update(product).set({ categoryId: outra!.id }).where(eq(product.id, ids.Quiche!));
-    const depois = await vinculos(ids.Quiche!);
-    const porNumero = (a: number, b: number) => a - b;
-    expect(depois.map((v) => v.categoryId).sort(porNumero)).toEqual([ids['Ceia de Natal']!, outra!.id].sort(porNumero));
-    expect(depois.find((v) => v.categoryId === ids['Ceia de Natal'])?.position).toBe(1);
-  });
-
-  it('excluir o produto apaga os vínculos dele', async () => {
-    await naCeia();
-    await app.db.delete(product).where(eq(product.id, ids.Quiche!));
-    expect(await vinculos(ids.Quiche!)).toEqual([]);
-  });
-});
 
 describe('produto em vários cardápios no site', () => {
   it('C128: a Quiche aparece em Tortas e na Ceia, com um cadastro só, na ordem de cada cardápio', async () => {
@@ -165,7 +135,7 @@ describe('painel: cardápios do produto, ordem e exclusão (RF64, RF65, RN70)', 
     expect((await cadastro('Chester')).categoryIds).toEqual([]);
     expect(await produtoNoSite('Chester')).toBeUndefined();
     const lista = (await op('GET', '/api/painel/catalogo/produtos')).body;
-    expect(lista.find((p: { name: string }) => p.name === 'Chester')).toMatchObject({ categoryId: null, categoryIds: [] });
+    expect(lista.find((p: { name: string }) => p.name === 'Chester')).toMatchObject({ categoryIds: [] });
     // Sem cardápio, não há ordem para mudar.
     expect((await op('POST', `/api/painel/catalogo/produtos/${ids.Chester}/mover`, { direcao: 'subir' })).status).toBe(400);
     // Vincular de novo traz de volta ao site.
@@ -185,12 +155,14 @@ describe('painel: cardápios do produto, ordem e exclusão (RF64, RF65, RN70)', 
     await op('POST', `/api/painel/catalogo/produtos/${ids.Quiche}/mover`, { direcao: 'subir', categoryId: ids['Ceia de Natal'] });
     expect(await ordem('Ceia de Natal')).toEqual([ids.Quiche, ids.Chester]);
     expect(await ordem('Tortas')).toEqual([ids['Torta de Limão'], ids.Quiche]);
-    // Sem dizer o cardápio, move no principal.
-    await op('POST', `/api/painel/catalogo/produtos/${ids.Quiche}/mover`, { direcao: 'subir' });
+    const emTortas = { direcao: 'subir', categoryId: ids.Tortas };
+    await op('POST', `/api/painel/catalogo/produtos/${ids.Quiche}/mover`, emTortas);
     expect(await ordem('Tortas')).toEqual([ids.Quiche, ids['Torta de Limão']]);
     // Na ponta, não sai do lugar.
-    await op('POST', `/api/painel/catalogo/produtos/${ids.Quiche}/mover`, { direcao: 'subir' });
+    await op('POST', `/api/painel/catalogo/produtos/${ids.Quiche}/mover`, emTortas);
     expect(await ordem('Tortas')).toEqual([ids.Quiche, ids['Torta de Limão']]);
+    // Sem dizer o cardápio, não há o que mover (não existe mais cardápio principal).
+    expect((await op('POST', `/api/painel/catalogo/produtos/${ids.Quiche}/mover`, { direcao: 'subir' })).status).toBe(400);
   });
 
   it('duplicar: a cópia vai para os mesmos cardápios, logo depois do original em cada um', async () => {
@@ -212,10 +184,10 @@ describe('painel: cardápios do produto, ordem e exclusão (RF64, RF65, RN70)', 
     expect(await app.db.select({ id: product.id }).from(product)).toHaveLength(3);
   });
 
-  it('C132: quem tinha o cardápio excluído como principal passa para o outro, sem sair do lugar nele', async () => {
-    // O Chester tem a Ceia como principal e também está em Tortas, no fim.
+  it('C132: o Chester, na Ceia e no fim de Tortas, fica em Tortas sem sair do lugar', async () => {
     await salvar('Chester', [ids['Ceia de Natal']!, ids.Tortas!]);
-    expect((await cadastro('Chester')).categoryIds).toEqual([ids['Ceia de Natal'], ids.Tortas]);
+    // Os cardápios do produto vêm na ordem dos cardápios, não na ordem em que foram escolhidos.
+    expect((await cadastro('Chester')).categoryIds).toEqual([ids.Tortas, ids['Ceia de Natal']]);
     const res = await op('DELETE', `/api/painel/catalogo/categorias/${ids['Ceia de Natal']}`, {});
     expect(res.status).toBe(200);
     expect((await cadastro('Chester')).categoryIds).toEqual([ids.Tortas]);

@@ -6,10 +6,11 @@ import type { PgTable } from 'drizzle-orm/pg-core';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { userSession } from '../modules/acesso/schema';
 import { resetAttempts } from '../modules/acesso/tentativas';
-import { category, product } from '../modules/catalogo/schema';
+import { category, product, productCategory } from '../modules/catalogo/schema';
 import { reviewReminder, storeSettings } from '../modules/configuracoes/schema';
 import { openingHours, weeklySchedule } from '../modules/agenda/schema';
 import { startTestApp } from '../test/app';
+import { inserirProdutos } from '../test/produtos';
 
 const NOW = '2026-11-22T10:00';
 let app: Awaited<ReturnType<typeof startTestApp>>;
@@ -142,11 +143,8 @@ describe('Duplicar produto', () => {
     await app.db.delete(product);
     await app.db.delete(category);
     const [cat] = await app.db.insert(category).values({ name: 'Pães', slug: 'paes', position: 0 }).returning();
-    const [orig] = await app.db
-      .insert(product)
-      .values({ categoryId: cat!.id, name: 'Pão de Queijo', saleUnit: 'UN', basePrice: '1.00', position: 0 })
-      .returning();
-    await falha(product, 'update', sql`new.position <> old.position`);
+    const [orig] = await inserirProdutos(app.db, [{ categoryId: cat!.id, name: 'Pão de Queijo', saleUnit: 'UN', basePrice: '1.00', position: 0 }]);
+    await falha(productCategory, 'update');
     const res = await op('POST', `/api/painel/catalogo/produtos/${orig!.id}/duplicar`, {});
     expect(res.status).toBe(500);
     expect(await app.db.select({ id: product.id }).from(product)).toEqual([{ id: orig!.id }]);
