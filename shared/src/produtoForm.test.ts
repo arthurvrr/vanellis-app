@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   duplicateProduct,
   emptyGroup,
+  pdvWarning,
   emptyOption,
   productFromTemplate,
   validateProduct,
@@ -229,17 +230,20 @@ describe('validação: dados gerais', () => {
     for (const h of [-1, 721, 2.5]) expect(erros({ leadTimeHours: h })).toEqual(['Antecedência: de 0 a 720 horas']);
   });
 
-  it('preço base de 0 a 99999, número finito', () => {
-    for (const v of [0, 99999]) expect(erros({ basePrice: v })).toEqual([]);
+  it('preço base pela mesma regra da tela de Preços: maior que zero, até 99999, dois dígitos (G03)', () => {
+    for (const v of [0.01, 99999, 12.9]) expect(erros({ basePrice: v })).toEqual([]);
     expect(erros({ basePrice: null })).toEqual(['Informe o preço do produto']);
-    for (const v of [-0.01, 100000, Infinity, NaN])
-      expect(erros({ basePrice: v })).toEqual(['Informe o preço do produto', 'Preço do produto inválido']);
+    expect(erros({ basePrice: 0 })).toEqual(['Preço do produto: o preço precisa ser maior que zero']);
+    expect(erros({ basePrice: 1.999 })).toEqual(['Preço do produto: use no máximo dois dígitos após a vírgula']);
+    expect(erros({ basePrice: -0.01 })).toEqual(['Preço do produto: o preço não pode ser negativo']);
+    expect(erros({ basePrice: 100000 })).toEqual(['Preço do produto: preço alto demais']);
+    for (const v of [Infinity, NaN]) expect(erros({ basePrice: v })).toEqual(['Preço do produto: use só números, ex: 12,90']);
   });
 
   it('com grupo que troca o preço, o preço base é opcional, mas se vier precisa ser válido', () => {
     const tamanho = grupo('Tamanho', { priceMode: 'replace' });
     expect(erros({ basePrice: null, groups: [tamanho] })).toEqual([]);
-    expect(erros({ basePrice: -1, groups: [tamanho] })).toEqual(['Preço do produto inválido']);
+    expect(erros({ basePrice: -1, groups: [tamanho] })).toEqual(['Preço do produto: o preço não pode ser negativo']);
     // Grupo que só soma não dispensa o preço base.
     expect(erros({ basePrice: null, groups: [grupo('Extra', { priceMode: 'add' })] })).toEqual(['Informe o preço do produto']);
   });
@@ -250,6 +254,9 @@ describe('validação: dados gerais', () => {
     expect(erros({ groups: [grupo('A', { priceMode: 'replace' }), grupo('B', { priceMode: 'replace' })] })).toEqual(['Só um grupo pode trocar o preço']);
     const peso = (n: string) => grupo(n, { hasWeight: true, options: [opt('Mini', { weightMinKg: 1, weightMaxKg: 2 })] });
     expect(erros({ saleUnit: 'KG', groups: [peso('A'), peso('B')] })).toEqual(['Só um grupo pode ter faixa de peso']);
+    // G18: com dois, a mensagem do pedido levaria só o código do primeiro grupo escolhido.
+    const pdv = (n: string, c: string) => grupo(n, { hasPdv: true, options: [opt('X', { pdvCode: c })] });
+    expect(erros({ groups: [pdv('A', '2001'), pdv('B', '2002')] })).toEqual(['Só um grupo pode ter código PDV']);
   });
 });
 
@@ -317,12 +324,17 @@ describe('validação: grupos e opções', () => {
     ]);
   });
 
-  it('preço das opções: exigido quando o grupo troca ou soma, válido de 0 a 99999', () => {
+  it('preço das opções pela mesma regra da tela de Preços: zero só no grupo que soma (G03)', () => {
     const r = (priceMode: GroupForm['priceMode'], price: number | null) => erros({ groups: [grupo('G', { priceMode, options: [opt('A', { price })] })] });
     expect(r(null, null)).toEqual([]);
     expect(r('add', 0)).toEqual([]);
     expect(r('add', null)).toEqual(['Grupo 1 (G), opção A: informe o preço']);
-    expect(r('add', -1)).toEqual(['Grupo 1 (G), opção A: informe o preço']);
+    expect(r('add', -1)).toEqual(['Grupo 1 (G), opção A: o preço não pode ser negativo']);
+    const troca = (price: number | null) =>
+      erros({ basePrice: null, groups: [grupo('G', { priceMode: 'replace', options: [opt('A', { price })] })] });
+    expect(troca(5)).toEqual([]);
+    expect(troca(0)).toEqual(['Grupo 1 (G), opção A: o preço precisa ser maior que zero']);
+    expect(troca(1.999)).toEqual(['Grupo 1 (G), opção A: use no máximo dois dígitos após a vírgula']);
   });
 
   it('grupo que troca a foto avisa sobre opção sem foto', () => {
@@ -372,6 +384,13 @@ describe('validação: avisos de código PDV e foto', () => {
     expect(avisos({ pdvCode: null, groups: [sabor('2001', null)] })).toEqual(['1 opção de Sabor sem código PDV']);
     expect(avisos({ groups: [sabor(null, null)] })).toEqual(['2 opções de Sabor sem código PDV']);
     expect(avisos({ groups: [{ ...sabor(null), name: '' }] })).toEqual(['1 opção de grupo sem código PDV']);
+  });
+
+  it('a mesma regra serve ao aviso do Início e da lista (pdvWarning, G35)', () => {
+    expect(pdvWarning(base({ pdvCode: null, groups: [sabor('2001', null)] }))).toBe('1 opção de Sabor sem código PDV');
+    expect(pdvWarning(base({ pdvCode: null, groups: [sabor('2001', '2002')] }))).toBeNull();
+    expect(pdvWarning(base({ pdvCode: '1001' }))).toBeNull();
+    expect(pdvWarning(base({ pdvCode: null }))).toBe('Produto sem código PDV');
   });
 
   it('produto por quilo usa o código do produto, mesmo com grupo marcado', () => {

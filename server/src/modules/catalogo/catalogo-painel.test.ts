@@ -1,6 +1,7 @@
 // Cenários C43–C51 (Etapa 3, parte 1): lista de produtos e categorias.
 
 import sharp from 'sharp';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { startTestApp } from '../../test/app';
 import { storedImage } from '../imagens/schema';
@@ -85,6 +86,28 @@ describe('Lista de produtos', () => {
       'Brigadeiro',
     ]);
     expect((await op('GET', '/api/painel/status')).body.pdvMissing).toBe(2);
+  });
+
+  it('G35: grupo com código PDV próprio e uma opção sem código: o produto conta como sem código no Início e na lista', async () => {
+    const id = await idOf('Bolinha de Queijo');
+    await app.db.update(product).set({ pdvCode: null }).where(eq(product.id, id));
+    const [g] = await app.db
+      .insert(optionGroup)
+      .values({ productId: id, name: 'Tamanho', hasPdv: true })
+      .returning({ id: optionGroup.id });
+    await app.db.insert(option).values([
+      { groupId: g!.id, name: 'Mini', pdvCode: '3001' },
+      { groupId: g!.id, name: 'Tradicional', pdvCode: '3002' },
+    ]);
+    const semCodigo = async () =>
+      (await op('GET', '/api/painel/catalogo/produtos')).body
+        .filter((p: { missingPdv: boolean }) => p.missingPdv)
+        .map((p: { name: string }) => p.name);
+    expect(await semCodigo()).not.toContain('Bolinha de Queijo');
+
+    await app.db.insert(option).values({ groupId: g!.id, name: 'Grande', pdvCode: null });
+    expect(await semCodigo()).toContain('Bolinha de Queijo');
+    expect((await op('GET', '/api/painel/status')).body.pdvMissing).toBe(3);
   });
 });
 

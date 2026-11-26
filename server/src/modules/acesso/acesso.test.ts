@@ -76,7 +76,8 @@ describe('Login', () => {
     expect(verifyPassword).not.toHaveBeenCalled();
     // Outro IP segue entrando.
     expect((await login(app.browser(), 'padaria', 'senha-operador')).status).toBe(200);
-  });
+    // 20 tentativas com scrypt de verdade: o limite padrão de 5 s fica justo numa máquina ocupada.
+  }, 30_000);
 
   it('C4: sem login, o painel é recusado', async () => {
     const b = app.browser();

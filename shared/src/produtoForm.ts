@@ -7,6 +7,7 @@
 //  - hasPdv: as opções têm código PDV próprio (ex: Cupcake Mini e Tradicional).
 
 import type { PriceMode, SaleUnit } from './catalogo';
+import { problemaPreco } from './precos';
 
 export interface OptionForm {
   /** Ausente em opção nova. Manter o id preserva os carrinhos dos clientes. */
@@ -141,12 +142,7 @@ export interface FormProblems {
 }
 
 const PDV = /^[A-Za-z0-9.-]{1,20}$/;
-// O teste de null só estreita o tipo para o TypeScript: null já é recusado por Number.isFinite e
-// pelas comparações seguintes. Fica numa linha própria para desligar só as mutações dele.
-const money = (v: number | null) =>
-  // Stryker disable next-line ConditionalExpression,LogicalOperator: null já falha em Number.isFinite (mutação equivalente)
-  v !== null &&
-  (Number.isFinite(v) && v >= 0 && v <= 99999);
+const minuscula = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
 const weight = (min: number | null, max: number | null) =>
   // Stryker disable next-line ConditionalExpression,LogicalOperator: null já falha em min > 0 ou max >= min (mutação equivalente)
   min !== null && max !== null &&
@@ -170,10 +166,17 @@ export function validateProduct(p: ProductForm): FormProblems {
   if (replaceGroups.length > 1) errors.push('Só um grupo pode trocar o preço');
   if (weightGroups.length > 1) errors.push('Só um grupo pode ter faixa de peso');
   if (p.groups.filter((x) => x.controlsImage).length > 1) errors.push('Só um grupo pode trocar a foto');
+  // G18: com dois, a mensagem do pedido levaria só o código do primeiro grupo escolhido.
+  if (p.groups.filter((x) => x.hasPdv).length > 1) errors.push('Só um grupo pode ter código PDV');
 
-  // Preço base: obrigatório, a menos que um grupo troque o preço
-  if (replaceGroups.length === 0 && !money(p.basePrice)) errors.push('Informe o preço do produto');
-  if (p.basePrice !== null && !money(p.basePrice)) errors.push('Preço do produto inválido');
+  // Preço base: obrigatório, a menos que um grupo troque o preço. A regra é a mesma da tela de
+  // Preços (problemaPreco, G03): maior que zero, até 99999 e no máximo dois dígitos.
+  if (p.basePrice === null) {
+    if (replaceGroups.length === 0) errors.push('Informe o preço do produto');
+  } else {
+    const problema = problemaPreco(p.basePrice);
+    if (problema) errors.push(`Preço do produto: ${minuscula(problema)}`);
+  }
 
   // Peso (RN23): só por quilo; por quilo precisa no produto ou num grupo
   if (p.saleUnit === 'UN') {
@@ -211,7 +214,9 @@ export function validateProduct(p: ProductForm): FormProblems {
       if (!ok) errors.push(`${label}: opção ${j + 1} sem nome`);
       else if (optionNames.has(ok)) errors.push(`${label}: duas opções com o nome "${o.name.trim()}"`);
       optionNames.add(ok);
-      if (grp.priceMode && !money(o.price)) errors.push(`${ol}: informe o preço`);
+      // Zero só no grupo que soma (um adicional grátis); a mesma regra da tela de Preços.
+      const problema = grp.priceMode && problemaPreco(o.price, grp.priceMode);
+      if (problema) errors.push(`${ol}: ${minuscula(problema)}`);
       if (grp.hasWeight && !weight(o.weightMinKg, o.weightMaxKg)) errors.push(`${ol}: informe a faixa de peso`);
       if (grp.controlsImage && !o.imageUrl) warnings.push(`${ol}: sem foto (o card usa a foto do produto)`);
     });
@@ -225,14 +230,30 @@ export function validateProduct(p: ProductForm): FormProblems {
   const dup = codes.find((c, i) => codes.indexOf(c) !== i);
   if (dup) errors.push(`Código PDV ${dup} repetido neste produto`);
 
-  const pdvGroup = p.groups.find((x) => x.hasPdv);
-  if (p.saleUnit === 'UN' && pdvGroup) {
-    const missing = pdvGroup.options.filter((o) => !o.pdvCode).length;
-    if (missing) warnings.push(`${missing} ${missing === 1 ? 'opção' : 'opções'} de ${pdvGroup.name || 'grupo'} sem código PDV`);
-  } else if (!p.pdvCode) {
-    warnings.push('Produto sem código PDV');
-  }
+  const pdv = pdvWarning(p);
+  if (pdv) warnings.push(pdv);
   if (!p.imageUrl) warnings.push('Produto sem foto');
 
   return { errors, warnings };
+}
+
+/** O que o código PDV precisa para um produto: o mínimo para ler os dados do banco também. */
+export interface PdvShape {
+  saleUnit: SaleUnit;
+  pdvCode: string | null;
+  groups: { name: string; hasPdv: boolean; options: { pdvCode: string | null }[] }[];
+}
+
+/**
+ * Falta de código PDV (RN41), ou `null` se o caixa tem código para tudo. Uma regra só para o
+ * aviso do editor e para o Início e a lista do painel (G35): com um grupo de código próprio,
+ * toda opção dele precisa de código; sem ele (ou por quilo), o produto precisa do seu.
+ */
+export function pdvWarning(p: PdvShape): string | null {
+  const pdvGroup = p.groups.find((x) => x.hasPdv);
+  if (p.saleUnit === 'UN' && pdvGroup) {
+    const missing = pdvGroup.options.filter((o) => !o.pdvCode).length;
+    return missing ? `${missing} ${missing === 1 ? 'opção' : 'opções'} de ${pdvGroup.name || 'grupo'} sem código PDV` : null;
+  }
+  return p.pdvCode ? null : 'Produto sem código PDV';
 }
