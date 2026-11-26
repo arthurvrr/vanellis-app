@@ -11,6 +11,8 @@ import {
   lastBookableDate,
   formatDay,
   pickupTimes,
+  specialClosing,
+  specialDateNotes,
   weekHoursProblem,
   type AgendaInput,
   type PickupRestriction,
@@ -117,8 +119,8 @@ describe('availableDays', () => {
     expect(days[1]?.times.at(-1)).toBe('11:30');
   });
 
-  it('data especial aparece sem horários, se der tempo até o início do dia (RN20)', () => {
-    const input: AgendaInput = { ...base, specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal' }] };
+  it('data especial aparece sem horários (RN20)', () => {
+    const input: AgendaInput = { ...base, specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline: null }] };
     expect(availableDays(input, '2026-12-22T10:00').find((d) => d.date === '2026-12-24')).toEqual({
       date: '2026-12-24',
       weekday: 4,
@@ -126,7 +128,6 @@ describe('availableDays', () => {
       times: [],
       delivery: false,
     });
-    expect(availableDays(input, '2026-12-22T10:00', 48).map((d) => d.date)).not.toContain('2026-12-24');
   });
 
   it('vai até 4 meses a partir de hoje, inclusive (RN53)', () => {
@@ -275,15 +276,8 @@ describe('availableDays: casos de borda', () => {
     expect(availableDays(base, '2026-11-23T09:01')[0]?.times[0]).toBe('11:30');
   });
 
-  it('data especial vale se a antecedência termina exatamente à meia-noite do dia (RN20)', () => {
-    const input: AgendaInput = { ...base, specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal' }] };
-    // 23/12 às 22h + 2h = 24/12 à 0h.
-    expect(availableDays(input, '2026-12-23T22:00').map((d) => d.date)).toContain('2026-12-24');
-    expect(availableDays(input, '2026-12-23T22:01').map((d) => d.date)).not.toContain('2026-12-24');
-  });
-
   it('só a data especial fica sem horários; os outros dias seguem normais', () => {
-    const input: AgendaInput = { ...base, specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal' }] };
+    const input: AgendaInput = { ...base, specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline: null }] };
     const [primeiro] = availableDays(input, '2026-12-22T10:00');
     expect(primeiro).toMatchObject({ date: '2026-12-22', special: null });
     expect(primeiro!.times[0]).toBe('12:00');
@@ -510,5 +504,153 @@ describe('agendaForCart: antecedência dos itens e pausa', () => {
     const agenda = agendaForCart(base, true, now, catalogo, [2]);
     expect(agenda).toMatchObject({ paused: true, leadHours: 24, days: [] });
     expect(agendaForCart(base, false, now, catalogo, [2]).days.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------- Datas especiais: prazo de encomenda (RF55, RN57–RN60, RN65; C94–C100, C116–C118, C123–C125) ----------
+// Semana de teste: segunda a sábado 7h30–19h, domingo fechado. 2026: 19/12 é sábado, 20/12 domingo,
+// 22/12 terça, 24/12 quinta.
+
+describe('data especial: prazo e fechamento efetivo', () => {
+  const natal = (deadline: string | null = '2026-12-22', extra: Partial<AgendaInput> = {}): AgendaInput => ({
+    ...base,
+    specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline }],
+    ...extra,
+  });
+  const oferece = (input: AgendaInput, now: string, lead = 0) =>
+    availableDays(input, now, lead).some((d) => d.date === '2026-12-24');
+
+  it('C94: o prazo libera produto de antecedência longa (a antecedência não vale na data especial, RN57)', () => {
+    expect(oferece(natal(), '2026-12-22T15:00', 72)).toBe(true);
+  });
+
+  it('C95: o prazo vai até o fechamento da loja no dia do prazo, exclusive (RN58)', () => {
+    expect(oferece(natal(), '2026-12-22T18:59')).toBe(true);
+    expect(oferece(natal(), '2026-12-22T19:00')).toBe(false);
+    expect(specialClosing(natal(), natal().specialDates[0]!)).toEqual({ date: '2026-12-22', time: '19:00' });
+  });
+
+  it('C96: depois do prazo, a data fecha para todos os produtos', () => {
+    expect(oferece(natal(), '2026-12-23T08:00')).toBe(false);
+    expect(oferece(natal(), '2026-12-23T08:00', 0)).toBe(false);
+  });
+
+  it('C97: sem prazo, fecha na véspera no fechamento; no próprio dia também não (RN59)', () => {
+    expect(oferece(natal(null), '2026-12-23T10:00', 72)).toBe(true);
+    expect(oferece(natal(null), '2026-12-23T19:00')).toBe(false);
+    expect(oferece(natal(null), '2026-12-24T08:00')).toBe(false);
+    expect(specialClosing(natal(null), natal(null).specialDates[0]!)).toEqual({ date: '2026-12-23', time: '19:00' });
+  });
+
+  it('C98: o bloqueio manual fecha a data especial antes do prazo (RN60)', () => {
+    expect(oferece(natal('2026-12-22', { blockedDates: ['2026-12-24'] }), '2026-12-21T10:00')).toBe(false);
+  });
+
+  it('C99: nos dias normais, a antecedência dos itens continua valendo', () => {
+    const dias = availableDays(natal(), '2026-11-23T10:00', 72).map((d) => d.date);
+    expect(dias).not.toContain('2026-11-25');
+    expect(dias).toContain('2026-11-26');
+  });
+
+  it('C100: o prazo vale para o carrinho misto (cardápio especial de 24/12 + produto de 72h)', () => {
+    const ceia = category({ id: 2, name: 'Ceia', special: { visibleUntil: '2026-12-22', pickupDates: ['2026-12-24'] } });
+    const catalogo = {
+      categorias: [category({ id: 1, name: 'Bolos' }), ceia],
+      produtos: [product({ id: 1, categoryId: 1, leadTimeHours: 72 }), product({ id: 2, categoryId: 2 })],
+    };
+    const agenda = agendaForCart(natal(), false, '2026-12-22T10:00', catalogo, [1, 2]);
+    expect(agenda.days.map((d) => d.date)).toEqual(['2026-12-24']);
+  });
+
+  it('C117: prazo num dia em que a loja não abre recua para o último dia aberto antes dele', () => {
+    const domingo = natal('2026-12-20');
+    expect(specialClosing(domingo, domingo.specialDates[0]!)).toEqual({ date: '2026-12-19', time: '19:00' });
+    expect(oferece(domingo, '2026-12-19T18:59')).toBe(true);
+    expect(oferece(domingo, '2026-12-19T19:01')).toBe(false);
+    // Dia do prazo bloqueado conta como fechado.
+    const bloqueado = natal('2026-12-22', { blockedDates: ['2026-12-22'] });
+    expect(specialClosing(bloqueado, bloqueado.specialDates[0]!)).toEqual({ date: '2026-12-21', time: '19:00' });
+  });
+
+  it('C118: no dia com intervalo de almoço, vale o fim do último período; o site aceita pedidos no almoço', () => {
+    const almoco: WeeklySchedule = {
+      validFrom: '2026-12-22',
+      validUntil: '2026-12-22',
+      hours: [
+        { weekday: 2, open: '07:30', close: '12:00' },
+        { weekday: 2, open: '14:00', close: '18:30' },
+      ],
+    };
+    const input = natal('2026-12-22', { schedules: [semana, almoco] });
+    expect(specialClosing(input, input.specialDates[0]!)).toEqual({ date: '2026-12-22', time: '18:30' });
+    expect(oferece(input, '2026-12-22T13:00')).toBe(true);
+    expect(oferece(input, '2026-12-22T18:31')).toBe(false);
+  });
+
+  it('sem nenhum dia aberto antes do prazo, vale o fim do dia do prazo', () => {
+    const fechada = natal('2026-12-22', { schedules: [] });
+    expect(specialClosing(fechada, fechada.specialDates[0]!)).toEqual({ date: '2026-12-22', time: null });
+    expect(oferece(fechada, '2026-12-22T23:59')).toBe(true);
+    expect(oferece(fechada, '2026-12-23T00:00')).toBe(false);
+  });
+
+  it('o recuo procura até 60 dias antes do prazo', () => {
+    // Loja aberta só até 22/10: 61 dias antes de 22/12 já é longe demais.
+    const curta: WeeklySchedule = { ...semana, validUntil: '2026-10-22' };
+    const longe = natal('2026-12-22', { schedules: [curta] });
+    expect(specialClosing(longe, longe.specialDates[0]!)).toEqual({ date: '2026-12-22', time: null });
+    const perto: WeeklySchedule = { ...semana, validUntil: '2026-10-23' };
+    const ok = natal('2026-12-22', { schedules: [perto] });
+    expect(specialClosing(ok, ok.specialDates[0]!)).toEqual({ date: '2026-10-23', time: '19:00' });
+  });
+
+  it('C124: a data especial ignora a janela de agendamento; os dias normais não (RN65)', () => {
+    const dias = availableDays(natal('2026-12-22', { windowMonths: 1 }), '2026-11-01T10:00').map((d) => d.date);
+    expect(dias).toContain('2026-12-24');
+    expect(dias.filter((d) => d !== '2026-12-24').at(-1)).toBe('2026-12-01');
+  });
+
+  it('data especial que já passou não aparece', () => {
+    expect(oferece(natal(null), '2026-12-25T08:00')).toBe(false);
+  });
+
+  it('a data especial respeita o cardápio especial do carrinho (só as datas dele)', () => {
+    const input = natal();
+    expect(availableDays(input, '2026-12-22T10:00', 0, ['2026-12-31']).map((d) => d.date)).toEqual(['2026-12-31']);
+  });
+});
+
+describe('specialDateNotes: o que o painel mostra de cada data especial (RF61)', () => {
+  const comPrazo = (deadline: string | null): AgendaInput => ({
+    ...base,
+    specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline }],
+  });
+  const notas = (input: AgendaInput) => specialDateNotes(input, input.specialDates[0]!);
+
+  it('com prazo num dia aberto: até quando vai, sem aviso', () => {
+    expect(notas(comPrazo('2026-12-22'))).toEqual({ closing: 'Encomendas até ter 22/12 às 19h', warnings: [] });
+  });
+
+  it('C117: prazo num dia fechado avisa que recua', () => {
+    expect(notas(comPrazo('2026-12-20'))).toEqual({
+      closing: 'Encomendas até sáb 19/12 às 19h',
+      warnings: ['A loja não abre em dom 20/12: o prazo recua para sáb 19/12 às 19h.'],
+    });
+  });
+
+  it('C123: sem prazo avisa a rede de segurança', () => {
+    expect(notas(comPrazo(null))).toEqual({
+      closing: 'Encomendas até qua 23/12 às 19h (véspera)',
+      warnings: [
+        'Sem prazo, qualquer produto do site, inclusive os de antecedência longa, poderá ser pedido até a véspera, no fechamento da loja.',
+      ],
+    });
+  });
+
+  it('sem nenhum dia aberto: até o fim do dia do prazo', () => {
+    expect(notas({ ...comPrazo('2026-12-22'), schedules: [] })).toEqual({
+      closing: 'Encomendas até o fim de ter 22/12',
+      warnings: ['A loja não abre em ter 22/12: o prazo recua para o fim de ter 22/12.'],
+    });
   });
 });

@@ -42,7 +42,8 @@ export interface AgendaPainel {
   upcoming: HorarioSemanal[];
   restrictions: { id: number; weekday: number | null; start: string; end: string; label: string | null }[];
   blockedDates: { date: string; reason: string | null }[];
-  specialDates: { date: string; name: string }[];
+  /** Com o prazo (RF55), até quando vai a encomenda e os avisos ao operador (RF61). */
+  specialDates: { date: string; name: string; deadline: string | null; closing: string; warnings: string[] }[];
   closedPeriods: { id: number; date: string; start: string; end: string }[];
   config: { minLeadHours: number; windowMonths: number };
   /** Tele-entrega (RF44). */

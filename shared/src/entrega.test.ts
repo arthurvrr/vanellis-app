@@ -15,7 +15,7 @@ const base: AgendaInput = {
   restrictions: [],
   blockedDates: [],
   closedPeriods: [],
-  specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal' }],
+  specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline: null }],
   minLeadHours: 2,
   windowMonths: 4,
 };

@@ -37,7 +37,7 @@ export async function getAgendaInput(db: DB): Promise<{ input: AgendaInput; paus
       restrictions: restrictions.map((r) => ({ weekday: r.weekday, start: hm(r.startTime), end: hm(r.endTime) })),
       blockedDates: blocked.map((b) => b.date),
       closedPeriods: closed.map((c) => ({ date: c.date, start: hm(c.startTime), end: hm(c.endTime) })),
-      specialDates: special.map((s) => ({ date: s.date, name: s.name })),
+      specialDates: special.map((s) => ({ date: s.date, name: s.name, deadline: s.deadline })),
     },
   };
 }

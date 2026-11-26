@@ -1,0 +1,2 @@
+ALTER TABLE "special_date" ADD COLUMN "deadline" date;--> statement-breakpoint
+ALTER TABLE "special_date" ADD CONSTRAINT "special_date_deadline_check" CHECK ("special_date"."deadline" is null or "special_date"."deadline" < "special_date"."date");
