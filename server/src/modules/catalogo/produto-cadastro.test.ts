@@ -1,6 +1,7 @@
 // Cenários C52–C61 (Etapa 3, parte 2): cadastro, grupos de opção, modelos e duplicação.
 
 import { productFromTemplate, emptyGroup, emptyOption, type ProductForm } from '@vanellis/shared';
+import sharp from 'sharp';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { startTestApp } from '../../test/app';
 import { agendaConfig, openingHours, weeklySchedule } from '../agenda/schema';
@@ -229,6 +230,62 @@ describe('Grupos de opção', () => {
     f.groups[0]!.options = [depois[0]!];
     await op('PUT', `/api/painel/catalogo/produtos/${id}`, f);
     expect((await cadastro(id)).groups[0]!.options.map((o) => o.id)).toEqual([grande!.id]);
+  });
+});
+
+describe('Foto compartilhada entre o produto e a cópia (G01)', () => {
+  const enviarFoto = async () => {
+    const png = await sharp({ create: { width: 400, height: 300, channels: 3, background: { r: 180, g: 120, b: 60 } } })
+      .png()
+      .toBuffer();
+    return (await op('POST', '/api/painel/imagens', png, { 'content-type': 'image/png' })).body.url as string;
+  };
+  const existe = async (url: string) => (await app.browser()('GET', url)).status === 200;
+  const duplicar = async (id: number) =>
+    (await op('POST', `/api/painel/catalogo/produtos/${id}/duplicar`, {})).body.id as number;
+
+  it('tirar a foto da cópia não apaga a foto do original', async () => {
+    const foto = await enviarFoto();
+    const original = await criar({ ...coxinha(), imageUrl: foto });
+    const copia = await duplicar(original);
+    expect((await cadastro(copia)).imageUrl).toBe(foto);
+
+    await op('PUT', `/api/painel/catalogo/produtos/${copia}`, { ...(await cadastro(copia)), imageUrl: null });
+    expect(await existe(foto)).toBe(true);
+    expect((await cadastro(original)).imageUrl).toBe(foto);
+  });
+
+  it('excluir a cópia não apaga a foto do original nem a das opções', async () => {
+    const foto = await enviarFoto();
+    const fotoOpcao = await enviarFoto();
+    const t = torta();
+    const original = await criar({
+      ...t,
+      imageUrl: foto,
+      groups: [{ ...t.groups[0]!, controlsImage: true, options: t.groups[0]!.options.map((o) => ({ ...o, imageUrl: fotoOpcao })) }],
+    });
+    const copia = await duplicar(original);
+
+    expect((await op('DELETE', `/api/painel/catalogo/produtos/${copia}`, {})).status).toBe(200);
+    expect(await existe(foto)).toBe(true);
+    expect(await existe(fotoOpcao)).toBe(true);
+  });
+
+  it('quando ninguém mais usa a foto, ela é apagada (não sobra arquivo)', async () => {
+    const foto = await enviarFoto();
+    const original = await criar({ ...coxinha(), imageUrl: foto });
+    const copia = await duplicar(original);
+    await op('DELETE', `/api/painel/catalogo/produtos/${copia}`, {});
+    await op('DELETE', `/api/painel/catalogo/produtos/${original}`, {});
+    expect(await existe(foto)).toBe(false);
+  });
+
+  it('trocar a capa da categoria não apaga a foto que um produto usa', async () => {
+    const foto = await enviarFoto();
+    await criar({ ...coxinha(), imageUrl: foto });
+    await op('PUT', `/api/painel/catalogo/categorias/${salgados}`, { coverImageUrl: foto });
+    await op('PUT', `/api/painel/catalogo/categorias/${salgados}`, { coverImageUrl: null });
+    expect(await existe(foto)).toBe(true);
   });
 });
 
