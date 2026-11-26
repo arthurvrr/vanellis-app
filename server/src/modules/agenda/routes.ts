@@ -26,7 +26,7 @@ export function agendaRouter(db: DB, now: () => string) {
     }
     const { input, paused } = await getAgendaInput(db);
     // Antecedência dos itens (RN14) e datas dos cardápios especiais (RN19, RN29, RN30).
-    const catalogo = await getCatalogo(db, now().slice(0, 10));
+    const catalogo = await getCatalogo(db, now());
     res.json(agendaForCart(input, paused, now(), catalogo, parsed.data.produtos));
   });
   // Situação da loja e horário da semana, para a entrada e o rodapé do site.

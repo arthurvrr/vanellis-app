@@ -33,6 +33,7 @@ export function clampQuantity(product: Pick<ProductDTO, 'minQuantity'>, quantity
 /** Por que um item não pode entrar no carrinho, ou `null` se pode. */
 export function cannotAdd(product: ProductDTO, selection: Selection): string | null {
   if (!product.available) return 'Indisponível no momento';
+  if (product.orderClosed) return 'Prazo encerrado para este item';
   const missing = missingGroups(product, selection);
   if (missing.length) {
     const names = product.groups.filter((g) => missing.includes(g.id)).map((g) => g.name);

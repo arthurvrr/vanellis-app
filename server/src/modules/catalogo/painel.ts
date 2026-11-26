@@ -3,11 +3,13 @@
 // Etapa 6: uma categoria pode ser cardápio especial (RF16–RF19; cenários C70–C72).
 
 import {
+  menuEnd,
   normalize,
   specialMenuProblem,
-  specialMenuState,
+  specialMenuWarnings,
   type SpecialMenu,
   type SpecialMenuState,
+  type Until,
 } from '@vanellis/shared';
 import { and, asc, count, eq, ne, sql } from 'drizzle-orm';
 import { Router, type Response } from 'express';
@@ -24,7 +26,7 @@ import {
   loadProductForm,
   updateProduct,
 } from './produtoForm';
-import { productsMissingPdv } from './repository';
+import { productsMissingPdv, specialMenus } from './repository';
 import { category, option, optionGroup, product } from './schema';
 
 export interface CategoriaPainelDTO {
@@ -36,8 +38,14 @@ export interface CategoriaPainelDTO {
   productCount: number;
   /** Configuração do cardápio especial; `null` = categoria regular. */
   special: SpecialMenu | null;
-  /** Situação hoje, para o painel mostrar se aparece no site. */
+  /** Situação agora, para o painel mostrar se aparece no site (Agendado, No site, Oculto, Encerrado). */
   specialState: SpecialMenuState | null;
+  /** Fim calculado: o prazo da última data de retirada (RF60, C113). */
+  specialEnd: Until | null;
+  /** O anúncio que o site mostra agora (RN62). */
+  specialAnnouncement: string | null;
+  /** Avisos do cadastro, como o de começar já encerrado (RF61, C125). */
+  specialWarnings: string[];
 }
 
 export interface ProdutoListaDTO {
@@ -74,11 +82,10 @@ const categoriaBody = z.object({
     .default(null),
   coverImageUrl: photoUrl.default(null),
 });
-/** Período e datas do cardápio especial; `null` volta a ser categoria regular. */
+/** Início e datas do cardápio especial; `null` volta a ser categoria regular. O fim vem do prazo das datas (RF60). */
 const especialBody = z
   .object({
     visibleFrom: z.string(),
-    visibleUntil: z.string(),
     pickupDates: z.array(z.string()).max(31, 'No máximo 31 datas de retirada'),
   })
   .nullable();
@@ -87,11 +94,14 @@ const ocultoBody = z.object({ hidden: z.boolean() });
 /** Colunas da categoria para gravar a configuração de cardápio especial. */
 function specialColumns(sp: z.infer<typeof especialBody>) {
   if (!sp) return { special: false, visibleFrom: null, visibleUntil: null, pickupDates: [], hidden: false };
+  const pickupDates = [...new Set(sp.pickupDates)].sort();
   return {
     special: true,
     visibleFrom: sp.visibleFrom,
-    visibleUntil: sp.visibleUntil,
-    pickupDates: [...new Set(sp.pickupDates)].sort(),
+    // visible_until não é mais usado (RF60); guarda a última data de retirada só para que uma
+    // volta automática à versão anterior continue mostrando o cardápio. Sai numa migração futura.
+    visibleUntil: pickupDates.at(-1) ?? sp.visibleFrom,
+    pickupDates,
   };
 }
 const moverBody = z.object({ direcao: z.enum(['subir', 'descer']) });
@@ -118,8 +128,8 @@ async function move(
   return true;
 }
 
-/** `today` devolve 'AAAA-MM-DD' no horário de Brasília (fixo nos testes). */
-export function catalogoPainelRouter(db: DB, today: () => string) {
+/** `now` devolve 'AAAA-MM-DDTHH:MM' no horário de Brasília (fixo nos testes). */
+export function catalogoPainelRouter(db: DB, now: () => string) {
   const router = Router();
   router.use(requireUser(db));
   const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -134,10 +144,10 @@ export function catalogoPainelRouter(db: DB, today: () => string) {
       .groupBy(product.categoryId);
     const byCat = new Map(counts.map((c) => [c.categoryId, Number(c.n)]));
     const rows = await db.select().from(category).orderBy(asc(category.position), asc(category.id));
+    const especiais = await specialMenus(db, now());
     return rows.map((c) => {
-      const special: SpecialMenu | null = c.special
-        ? { visibleFrom: c.visibleFrom!, visibleUntil: c.visibleUntil!, hidden: c.hidden, pickupDates: [...c.pickupDates].sort() }
-        : null;
+      const sp = c.special ? especiais.get(c.id) : undefined;
+      const special: SpecialMenu | null = sp?.menu ?? null;
       return {
         id: c.id,
         name: c.name,
@@ -146,7 +156,10 @@ export function catalogoPainelRouter(db: DB, today: () => string) {
         coverImageUrl: c.coverImageUrl,
         productCount: byCat.get(c.id) ?? 0,
         special,
-        specialState: special ? specialMenuState(special, today()) : null,
+        specialState: sp?.state ?? null,
+        specialEnd: sp ? menuEnd(sp.pickups) : null,
+        specialAnnouncement: sp && sp.state === 'visivel' ? sp.public.announcement : null,
+        specialWarnings: sp ? specialMenuWarnings(sp.menu, sp.pickups) : [],
       };
     });
   }

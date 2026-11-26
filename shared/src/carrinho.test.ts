@@ -47,6 +47,11 @@ describe('clampQuantity', () => {
 });
 
 describe('cannotAdd', () => {
+  it('C121: item com o prazo encerrado no cardápio não pode ser adicionado (RN67)', () => {
+    expect(cannotAdd({ ...cupcake, orderClosed: true }, { 10: [100], 11: [110] })).toBe('Prazo encerrado para este item');
+    expect(cannotAdd({ ...cupcake, orderClosed: false }, { 10: [100], 11: [110] })).toBeNull();
+  });
+
   it('diz quais escolhas obrigatórias faltam (RN27)', () => {
     expect(cannotAdd(cupcake, {})).toBe('Escolha: Tamanho, Sabor');
     expect(cannotAdd(cupcake, { 10: [100] })).toBe('Escolha: Sabor');
