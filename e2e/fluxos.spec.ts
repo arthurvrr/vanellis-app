@@ -223,3 +223,27 @@ test('8. item de antecedência longa: o card, a linha do limite e o motivo do di
     await api.delete(`/api/painel/catalogo/produtos/${id}`, { data: {} });
   }
 });
+
+test('9. tele-entrega só em algumas datas: o outro dia aparece com o motivo, em vez de sumir (C126)', async ({ page }) => {
+  await entrarNoPainel(page);
+  const api = page.request;
+  const antes = (await (await api.get('/api/painel/agenda')).json()).delivery;
+  const comEntrega = diaBrasilia(5);
+  await api.put('/api/painel/agenda/entrega', { data: { enabled: true, allDays: false, dates: [comEntrega] } });
+  try {
+    await page.goto('/');
+    await adicionar(page, 'salgados', 'Coxinha');
+    await page.goto('/#dados');
+    await page.getByRole('radio', { name: 'Tele-entrega' }).click();
+    const calendario = page.getByRole('grid', { name: 'Dia da retirada' });
+    await expect(calendario.getByRole('button', { disabled: false })).toHaveCount(1);
+    // Um dia que tem retirada, mas não entrega, continua no calendário e diz por quê.
+    const alvo = page.getByRole('button', { name: /indisponível, sem tele-entrega nesta data/ }).first();
+    await expect(alvo).toBeVisible();
+    await alvo.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('status').filter({ hasText: 'sem tele-entrega nesta data; disponível para retirada' })).toBeVisible();
+  } finally {
+    await api.put('/api/painel/agenda/entrega', { data: antes });
+  }
+});
