@@ -7,6 +7,9 @@ export default defineConfig({
     // Os testes usam PGlite (PostgreSQL em memória); a URL só satisfaz a validação do env.
     // Subir o PGlite e aplicar as migrações leva alguns segundos.
     hookTimeout: 60_000,
+    // Os testes de login rodam o scrypt de verdade, várias vezes por teste; numa máquina ocupada
+    // (o hook pre-push com outras coisas rodando) passavam do limite padrão de 5 s.
+    testTimeout: 20_000,
     env: { DATABASE_URL: 'postgresql://teste', NODE_ENV: 'test' },
     // Cobertura mínima (RQ04): o CI falha se cair abaixo do piso. Quando a cobertura subir,
     // o piso sobe junto e nunca desce. O piso fica no número inteiro abaixo do medido no GitHub,
