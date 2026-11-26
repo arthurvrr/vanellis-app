@@ -1,10 +1,12 @@
 import {
+  agendaForCart,
   closedMenuProducts,
   menuAnnouncement,
   menuPickups,
   pdvWarning,
   specialMenuState,
   withoutPrices,
+  type AgendaInput,
   type MenuPickup,
   type PublicSpecialMenu,
   type SpecialMenu,
@@ -57,8 +59,8 @@ export interface SpecialMenuNow {
  * Os cardápios especiais agora ('AAAA-MM-DDTHH:MM'): as datas de retirada que ainda aceitam
  * pedidos, o estado e o anúncio (RN62, RN63, RN67). Uma regra só para o site e para o painel.
  */
-export async function specialMenus(db: DB, now: string): Promise<Map<number, SpecialMenuNow>> {
-  const { input } = await getAgendaInput(db);
+export async function specialMenus(db: DB, now: string, agenda?: AgendaInput): Promise<Map<number, SpecialMenuNow>> {
+  const input = agenda ?? (await getAgendaInput(db)).input;
   const cats = await db.select().from(category).where(eq(category.special, true));
   const prods = await db
     .select({ id: product.id, categoryId: product.categoryId, leadTimeHours: product.leadTimeHours, available: product.available })
@@ -89,7 +91,8 @@ export async function specialMenus(db: DB, now: string): Promise<Map<number, Spe
  * tinha um item dele no carrinho é avisado para tirá-lo (C71, RN64).
  */
 export async function getCatalogo(db: DB, now: string): Promise<CatalogoDTO> {
-  const especiais = await specialMenus(db, now);
+  const { input } = await getAgendaInput(db);
+  const especiais = await specialMenus(db, now, input);
   const rows0 = await db.select().from(category).orderBy(asc(category.position), asc(category.id));
   const categorias = rows0
     .filter((c) => !c.special || especiais.get(c.id)?.state === 'visivel')
@@ -154,6 +157,12 @@ export async function getCatalogo(db: DB, now: string): Promise<CatalogoDTO> {
 
   const [settings] = await db.select({ pricesHidden: storeSettings.pricesHidden }).from(storeSettings).limit(1);
   const pricesHidden = settings?.pricesHidden ?? false;
+  // Primeira retirada no card (RF58): só para produto com antecedência própria maior que a da loja.
+  for (const p of produtos) {
+    if (!p.available || p.orderClosed || (p.leadTimeHours ?? 0) <= input.minLeadHours) continue;
+    const [dia] = agendaForCart(input, false, now, { categorias, produtos }, [p.id]).days;
+    if (dia) p.firstPickup = { date: dia.date, weekday: dia.weekday, time: dia.times[0] ?? null };
+  }
   // Preços ocultos (RF39): os valores nem saem do servidor.
   const catalogo: CatalogoDTO = { categorias, produtos, pricesHidden };
   return pricesHidden ? withoutPrices(catalogo) : catalogo;

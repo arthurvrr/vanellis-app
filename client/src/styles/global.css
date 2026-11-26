@@ -603,6 +603,36 @@ body {
 .calendar__day:hover {
   border-color: var(--marrom);
 }
+/* Dia indisponível (RF59): apagado, riscado e ainda clicável, para mostrar o motivo. */
+.calendar__day--off {
+  background: transparent;
+  border-style: dashed;
+  color: #a89a80;
+  font-weight: normal;
+  text-decoration: line-through;
+}
+.calendar__day--off:hover {
+  border-color: #a89a80;
+}
+/* Horário indisponível (RF59): o mesmo visual do dia indisponível. */
+.chip--off {
+  border-style: dashed;
+  background: transparent;
+  color: #a89a80;
+  text-decoration: line-through;
+}
+/* Motivo do dia ou horário indisponível: em texto e cor, sem bloquear a tela (RF59). */
+.calendar__motivo {
+  margin: 0.5rem 0 0;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid #b0651a;
+  background: #fbf1e4;
+  color: #6b3d0c;
+  font-size: 0.9rem;
+}
+.calendar__motivo:empty {
+  display: none;
+}
 .calendar__day--on {
   background: var(--marrom);
   border-color: var(--marrom);
@@ -1579,4 +1609,14 @@ body {
   .address .address__number {
     grid-column: 1 / -1;
   }
+}
+
+/* Antecedência própria do produto e a primeira retirada (RF58). */
+.card__lead {
+  margin: 0.4rem 0 0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  background: #fbf1e4;
+  color: #6b3d0c;
+  font-size: 0.85rem;
 }

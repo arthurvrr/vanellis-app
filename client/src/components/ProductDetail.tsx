@@ -5,6 +5,7 @@ import {
   cardPrice,
   formatBRL,
   formatRange,
+  leadNotice,
   type OptionGroupDTO,
   type ProductDTO,
   type Selection,
@@ -76,6 +77,8 @@ export function ProductDetail({ product, onAdded }: { product: ProductDTO; onAdd
           )}
         </div>
         {product.description && <p className="card__desc">{product.description}</p>}
+        {/* Antecedência própria do produto e a primeira retirada possível (RF58, C105). */}
+        {leadNotice(product) && <p className="card__lead">{leadNotice(product)}</p>}
 
         {product.groups.map((g) => (
           <fieldset key={g.id} className="group">

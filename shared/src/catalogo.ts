@@ -65,6 +65,11 @@ export interface ProductDTO {
    * "Prazo encerrado para este item" (RN67). Ausente = falso.
    */
   orderClosed?: boolean;
+  /**
+   * Primeira retirada possível, só para produto com antecedência própria maior que a da loja:
+   * "Encomende com 72h de antecedência: retirada a partir de sex 27/11, 10h" (RF58).
+   */
+  firstPickup?: { date: string; weekday: number; time: string | null };
   groups: OptionGroupDTO[];
 }
 

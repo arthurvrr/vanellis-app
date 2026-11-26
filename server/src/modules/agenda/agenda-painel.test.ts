@@ -253,6 +253,37 @@ describe('Exceções no calendário', () => {
     expect(day(await site(), '2026-12-24')!.times).toEqual([]);
   });
 
+  it('RF58, RF62 (C105–C107): primeira retirada no catálogo, item que limita e motivo de cada dia', async () => {
+    // "Agora" é domingo 22/11, 10h; a semana do teste abre todos os dias.
+    const [cat] = await app.db.insert(category).values({ name: 'Bolos RF58', slug: 'bolos-rf58', position: 98 }).returning();
+    const [bolo] = await app.db
+      .insert(product)
+      .values({ categoryId: cat!.id, name: 'Bolo de Nozes', saleUnit: 'UN', basePrice: '90.00', leadTimeHours: 72 })
+      .returning();
+    try {
+      await op('POST', '/api/painel/agenda/datas-bloqueadas', { date: '2026-11-26', reason: 'Folga' });
+      const catalogo = (await app.browser()('GET', '/api/catalogo')).body;
+      expect(catalogo.produtos.find((p: { id: number }) => p.id === bolo!.id).firstPickup).toEqual({
+        date: '2026-11-25',
+        weekday: 3,
+        time: '10:00',
+      });
+      const a = (await app.browser()('GET', `/api/agenda/disponibilidade?produtos=${bolo!.id}`)).body;
+      expect(a.limit).toEqual({ name: 'Bolo de Nozes', hours: 72, from: { date: '2026-11-25', weekday: 3, time: '10:00' } });
+      const motivo = (d: string) => a.blocked.find((b: { date: string }) => b.date === d)?.reason;
+      expect(motivo('2026-11-23')).toBe('Bolo de Nozes precisa de 72h de antecedência');
+      expect(motivo('2026-11-26')).toBe('a padaria não abre neste dia');
+      expect(a.blockedTimes.find((b: { date: string; time: string }) => b.date === '2026-11-25' && b.time === '09:30')).toEqual({
+        date: '2026-11-25',
+        time: '09:30',
+        reason: 'Bolo de Nozes precisa de 72h de antecedência',
+      });
+    } finally {
+      await app.db.delete(product).where(eq(product.id, bolo!.id));
+      await app.db.delete(category).where(eq(category.id, cat!.id));
+    }
+  });
+
   it('C125: o prazo precisa ser antes da própria data', async () => {
     for (const deadline of ['2026-12-24', '2026-12-25']) {
       const res = await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-12-24', name: 'Véspera de Natal', deadline });

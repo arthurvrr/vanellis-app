@@ -16,7 +16,10 @@ import {
   NAME_MAX_LENGTH,
   NOTE_MAX_LENGTH,
   buildOrderMessage,
+  conflictText,
+  limitText,
   orderWhatsAppUrl,
+  shortDate,
   resolveCart,
   sumRanges,
   validateCustomer,
@@ -107,11 +110,22 @@ export function CheckoutView({
     if (agenda && !deliveryAvailable && modo === 'entrega') setModo('retirada');
   }, [agenda, deliveryAvailable, modo, setModo]);
   const entrega = modo === 'entrega' && deliveryAvailable;
-  // Na entrega, o calendário mostra só os dias com entrega (C78).
-  const visibleAgenda = useMemo(
-    () => (agenda && entrega ? { ...agenda, days: agenda.days.filter((d) => d.delivery) } : agenda),
-    [agenda, entrega],
-  );
+  // Na entrega, só os dias com entrega podem ser escolhidos (C78); os outros aparecem com o
+  // motivo, em vez de sumir como se a loja estivesse fechada (C126).
+  const visibleAgenda = useMemo(() => {
+    if (!agenda || !entrega) return agenda;
+    const semEntrega = agenda.days.filter((d) => !d.delivery);
+    const fora = new Set(semEntrega.map((d) => d.date));
+    return {
+      ...agenda,
+      days: agenda.days.filter((d) => d.delivery),
+      blocked: [
+        ...agenda.blocked,
+        ...semEntrega.map((d) => ({ date: d.date, weekday: d.weekday, reason: 'sem tele-entrega nesta data; disponível para retirada' })),
+      ].sort((a, b) => a.date.localeCompare(b.date)),
+      blockedTimes: agenda.blockedTimes.filter((b) => !fora.has(b.date)),
+    };
+  }, [agenda, entrega]);
 
   // Se a escolha deixou de valer (carrinho mudou, horário lotou, trocou para entrega), o cliente
   // escolhe de novo.
@@ -323,6 +337,12 @@ function PickupPicker({
 }) {
   const day = agenda?.days.find((d) => d.date === value?.date);
   const entrega = modo === 'entrega';
+  // Por que um dia ou horário não dá (RF59): fica até o cliente escolher outro.
+  const [motivo, setMotivo] = useState<string | null>(null);
+  const horariosFora = new Map(
+    (agenda?.blockedTimes ?? []).filter((b) => b.date === day?.date).map((b) => [b.time, b.reason]),
+  );
+  const todosHorarios = day ? [...new Set([...day.times, ...horariosFora.keys()])].sort() : [];
 
   return (
     <section className="checkout-section" aria-labelledby="pickup-title">
@@ -369,9 +389,7 @@ function PickupPicker({
       )}
       {agenda?.rule?.conflict ? (
         <p className="cart__notice" role="alert">
-          {agenda.rule.menus.map((m) => `${m.name} (retirada em ${formatDates(m.pickupDates)})`).join(' e ')} não têm
-          data de retirada em comum. Faça um pedido para cada cardápio: tire do carrinho os itens de um deles e envie,
-          depois faça o outro.
+          {conflictText(agenda.rule)}: tire do carrinho os itens de um deles e envie, depois faça o outro.
         </p>
       ) : (
         agenda?.rule?.menus.map((m) => (
@@ -384,14 +402,24 @@ function PickupPicker({
       {agenda && agenda.days.length === 0 && !agenda.rule?.conflict && encerrados.length === 0 && (
         <p>Não há horários de retirada disponíveis para estes itens nos próximos dias.</p>
       )}
+      {/* Qual item limita as datas e desde quando (C106). */}
+      {agenda?.limit && agenda.days.length > 0 && <p className="checkout-info">{limitText(agenda.limit)}.</p>}
       {agenda && agenda.days.length > 0 && (
         <>
           <p className="checkout-label">Dia</p>
           <PickupCalendar
             days={agenda.days}
+            blocked={agenda.blocked}
             value={value?.date ?? null}
-            onChange={(date) => onChange({ date, time: null })}
+            onChange={(date) => {
+              setMotivo(null);
+              onChange({ date, time: null });
+            }}
+            onBlocked={(b) => setMotivo(`${shortDate(b.date)}: ${b.reason}`)}
           />
+          <p className="calendar__motivo" role="status" aria-live="polite">
+            {motivo}
+          </p>
           {day && (
             <p className="checkout-chosen">
               {entrega ? 'Entrega' : 'Retirada'} em {formatDay(day)}
@@ -415,8 +443,8 @@ function PickupPicker({
               <p className="checkout-label">Horário</p>
               {/* Horários de 30 em 30 minutos (RN51), separados em manhã e tarde para achar rápido. */}
               {[
-                { label: 'Manhã', times: day.times.filter((t) => t < '12:00') },
-                { label: 'Tarde', times: day.times.filter((t) => t >= '12:00') },
+                { label: 'Manhã', times: todosHorarios.filter((t) => t < '12:00') },
+                { label: 'Tarde', times: todosHorarios.filter((t) => t >= '12:00') },
               ]
                 .filter((g) => g.times.length)
                 .map((g) => (
@@ -428,6 +456,21 @@ function PickupPicker({
                       aria-label={`Horário da retirada, ${g.label.toLowerCase()}`}
                     >
                       {g.times.map((t) => {
+                        const fora = horariosFora.get(t);
+                        // Horário indisponível: apagado, mas clicável para dizer por quê (RF59, C107).
+                        if (fora)
+                          return (
+                            <button
+                              key={t}
+                              type="button"
+                              aria-disabled="true"
+                              aria-label={`${t}: indisponível, ${fora}`}
+                              className="chip chip--time chip--off"
+                              onClick={() => setMotivo(`${t}: ${fora}`)}
+                            >
+                              {t}
+                            </button>
+                          );
                         const on = value?.time === t;
                         return (
                           <button
@@ -436,7 +479,10 @@ function PickupPicker({
                             role="radio"
                             aria-checked={on}
                             className={on ? 'chip chip--on chip--time' : 'chip chip--time'}
-                            onClick={() => onChange({ date: day.date, time: t })}
+                            onClick={() => {
+                              setMotivo(null);
+                              onChange({ date: day.date, time: t });
+                            }}
                           >
                             {t}
                           </button>

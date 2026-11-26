@@ -1,9 +1,9 @@
 // Agenda de retirada (RN12–RN15, RN20, RN31, RN32, RN51, RN52): quais dias e horários o
 // cliente pode escolher. Datas em 'AAAA-MM-DD' e horas em 'HH:MM', no horário de Brasília.
 
-import { pickupRule, type PickupRule } from './cardapioEspecial';
+import { formatDates, pickupRule, type PickupRule } from './cardapioEspecial';
 import { addDays, dateMs, DAY, dayAt, isoDate, onWeekday, shortDate, toMinutes, toTime, weekdayShort } from './datas';
-import type { CatalogoDTO } from './catalogo';
+import type { CatalogoDTO, ProductDTO } from './catalogo';
 
 /** Intervalo entre os horários oferecidos ao cliente (RN51). */
 export const PICKUP_STEP_MINUTES = 30;
@@ -159,6 +159,12 @@ export interface AgendaDTO {
    * enquanto houver algum, nenhum dia é oferecido e o site pede para tirá-los do carrinho.
    */
   unavailable: number[];
+  /** Os outros dias da janela e o motivo de cada um (RF59, RF62). */
+  blocked: BlockedDay[];
+  /** Horários indisponíveis dentro dos dias disponíveis, com o motivo (RF59). */
+  blockedTimes: BlockedTime[];
+  /** O item que limita as datas e a primeira retirada (C106); null sem item acima da antecedência da loja. */
+  limit: { name: string; hours: number; from: FirstPickup } | null;
 }
 
 /**
@@ -287,56 +293,170 @@ export function specialDateNotes(
   return { closing: `Encomendas até ${when}${special.deadline === null ? ' (véspera)' : ''}`, warnings };
 }
 
+/** Um dia que não pode ser escolhido e por quê (RF59, RF62). */
+export interface BlockedDay {
+  date: string;
+  weekday: number;
+  reason: string;
+}
+
+/** Um horário que não pode ser escolhido num dia disponível, e por quê (RF59). */
+export interface BlockedTime {
+  date: string;
+  time: string;
+  reason: string;
+}
+
+/** O que os motivos precisam saber do carrinho. */
+export interface ScanContext {
+  /** O item de maior antecedência, quando ela passa a da loja (para dizer qual item limita). */
+  leadItem: { name: string; hours: number } | null;
+  /** Cardápios especiais do carrinho (para "fora das datas de retirada de ..."). */
+  menus: { name: string; pickupDates: string[] }[];
+}
+
 /**
- * Dias e horários disponíveis a partir de `now` ('AAAA-MM-DDTHH:MM', horário de Brasília).
- * A antecedência é a maior entre a padrão e a exigida pelos itens do carrinho (RN13, RN14):
- * um horário só aparece se é depois de `now` + antecedência. Na data especial, quem controla
- * é o prazo dela (RN57–RN59), não a antecedência dos itens, e a janela de agendamento não vale
+ * Dias e horários a partir de `now` ('AAAA-MM-DDTHH:MM', horário de Brasília): os disponíveis e,
+ * para os outros dias da janela, o motivo (RF62). Uma busca só, para as duas listas nunca
+ * discordarem.
+ *
+ * A antecedência é a maior entre a padrão e a exigida pelos itens do carrinho (RN13, RN14): um
+ * horário só aparece se é depois de `now` + antecedência. Na data especial, quem controla é o
+ * prazo dela (RN57–RN59), não a antecedência dos itens, e a janela de agendamento não vale
  * (RN65).
  */
-export function availableDays(
+export function scanDays(
   input: AgendaInput,
   now: string,
   itemsLeadHours = 0,
   /** Só estas datas, quando o carrinho tem cardápio especial (RN19); null = todas. */
   allowedDates: string[] | null = null,
-): AvailableDay[] {
+  // Stryker disable next-line ArrayDeclaration: equivalente, sem contexto o chamador (availableDays) descarta os motivos
+  why: ScanContext = { leadItem: null, menus: [] },
+): { days: AvailableDay[]; blocked: BlockedDay[]; blockedTimes: BlockedTime[] } {
   const allowed = allowedDates ? new Set(allowedDates) : null;
   const [today, time] = now.split('T') as [string, string];
   const leadMinutes = Math.max(input.minLeadHours, itemsLeadHours) * 60;
   const earliest = dateMs(today, toMinutes(time) + leadMinutes);
   const nowMs = dateMs(today, toMinutes(time));
-  const blocked = new Set(input.blockedDates);
+  const closedDates = new Set(input.blockedDates);
   const lastMs = dateMs(lastBookableDate(today, input.windowMonths));
   const lastSpecialMs = Math.max(lastMs, ...input.specialDates.map((s) => dateMs(s.date)));
+  const leadReason = why.leadItem
+    ? `${why.leadItem.name} precisa de ${why.leadItem.hours}h de antecedência`
+    : `é preciso encomendar com ${input.minLeadHours}h de antecedência`;
   const days: AvailableDay[] = [];
+  const blocked: BlockedDay[] = [];
+  const blockedTimes: BlockedTime[] = [];
 
   for (let dayMs = dateMs(today); dayMs <= lastSpecialMs; dayMs += DAY) {
     const { date, weekday } = dayAt(dayMs);
-    if (blocked.has(date)) continue;
-    if (allowed && !allowed.has(date)) continue;
-
     const special = input.specialDates.find((s) => s.date === date);
+    // Além da janela, só as datas especiais contam (RN65).
+    if (!special && dayMs > lastMs) continue;
+    const fora = (reason: string) => blocked.push({ date, weekday, reason });
+
+    if (allowed && !allowed.has(date)) {
+      fora(`fora das datas de retirada de ${why.menus.map((m) => m.name).join(' e ')} (${formatDates(allowedDates!)})`);
+      continue;
+    }
+    if (closedDates.has(date)) {
+      fora('a padaria não abre neste dia');
+      continue;
+    }
+    const closed = input.closedPeriods.filter((c) => c.date === date);
+    const busy = (t: string) => closed.some((c) => t >= c.start && t < c.end);
+
     if (special) {
+      const until = specialClosing(input, special);
+      if (nowMs >= untilMs(until)) {
+        fora(`as encomendas para ${shortDate(date)} se encerraram em ${shortDate(until.date)}`);
+        continue;
+      }
       // A antecedência dos itens não vale aqui (RN57): os pedidos fecham antes do dia.
       const times = special.chooseTime ? specialTimes(input, special, date, weekday) : [];
       // No modo "cliente escolhe", um dia sem nenhum horário não é oferecido (C104).
-      if (nowMs < untilMs(specialClosing(input, special)) && (!special.chooseTime || times.length))
-        days.push({ date, weekday, special: special.name, times, delivery: deliveryOn(input.delivery, date) });
+      if (special.chooseTime && !times.length) {
+        fora('não há horário para escolher neste dia');
+        continue;
+      }
+      days.push({ date, weekday, special: special.name, times, delivery: deliveryOn(input.delivery, date) });
+      if (special.chooseTime) {
+        const slots = special.window
+          ? // Stryker disable next-line ArrayDeclaration: equivalente, pickupTimes só usa restrições com weekday null ou igual ao do dia
+            pickupTimes({ weekday, open: special.window.start, close: special.window.end }, [], [])
+          : // Stryker disable next-line ArrayDeclaration: equivalente, como acima
+            pickupTimes(periodsOn(input.schedules, date, weekday), [], []);
+        for (const t of slots)
+          if (!times.includes(t)) blockedTimes.push({ date, time: t, reason: busy(t) ? 'horário lotado' : 'sem retirada neste horário' });
+      }
       continue;
     }
-    if (dayMs > lastMs) continue;
 
     const periods = periodsOn(input.schedules, date, weekday);
-    // Stryker disable next-line ConditionalExpression: equivalente, sem períodos pickupTimes devolve [] e o dia fica de fora
-    if (!periods.length) continue;
-    const closed = input.closedPeriods.filter((c) => c.date === date);
-    const times = pickupTimes(periods, input.restrictions, closed).filter(
-      (t) => dateMs(date, toMinutes(t)) >= earliest,
-    );
-    if (times.length) days.push({ date, weekday, special: null, times, delivery: deliveryOn(input.delivery, date) });
+    if (!periods.length) {
+      fora('a padaria está fechada');
+      continue;
+    }
+    const grid = pickupTimes(periods, input.restrictions, closed);
+    if (!grid.length) {
+      fora(pickupTimes(periods, input.restrictions, []).length ? 'os horários deste dia estão lotados' : 'não há retirada neste dia');
+      continue;
+    }
+    const times = grid.filter((t) => dateMs(date, toMinutes(t)) >= earliest);
+    if (!times.length) {
+      fora(leadReason);
+      continue;
+    }
+    days.push({ date, weekday, special: null, times, delivery: deliveryOn(input.delivery, date) });
+    // Stryker disable next-line ArrayDeclaration: equivalente, pickupTimes só usa restrições com weekday null ou igual ao do dia
+    for (const t of pickupTimes(periods, [], [])) {
+      if (times.includes(t)) continue;
+      const reason = busy(t) ? 'horário lotado' : grid.includes(t) ? leadReason : 'sem retirada neste horário';
+      blockedTimes.push({ date, time: t, reason });
+    }
   }
-  return days;
+  return { days, blocked, blockedTimes };
+}
+
+/** Só os dias disponíveis (ver scanDays). */
+export function availableDays(
+  input: AgendaInput,
+  now: string,
+  itemsLeadHours = 0,
+  allowedDates: string[] | null = null,
+): AvailableDay[] {
+  return scanDays(input, now, itemsLeadHours, allowedDates).days;
+}
+
+/** A primeira retirada possível: dia e o primeiro horário dele (ou só o dia, numa data especial sem horário). */
+export interface FirstPickup {
+  date: string;
+  weekday: number;
+  time: string | null;
+}
+
+/** "sex 27/11, 10h" ou "qui 24/12" */
+function describeFirst(f: FirstPickup): string {
+  return `${weekdayShort(f.weekday).toLowerCase()} ${shortDate(f.date)}${f.time ? `, ${formatHour(f.time)}` : ''}`;
+}
+
+/** Linha fixa acima do calendário (C106): qual item limita e desde quando dá para retirar. */
+export function limitText(limit: { name: string; hours: number; from: FirstPickup }): string {
+  return `${limit.name} precisa de ${limit.hours}h de antecedência: a retirada é a partir de ${describeFirst(limit.from)}`;
+}
+
+/** Card do produto (RF58, C105): só para produto com antecedência própria maior que a da loja. */
+export function leadNotice(product: Pick<ProductDTO, 'leadTimeHours' | 'firstPickup'>): string | null {
+  if (!product.firstPickup || !product.leadTimeHours) return null;
+  return `Encomende com ${product.leadTimeHours}h de antecedência: retirada a partir de ${describeFirst(product.firstPickup)}`;
+}
+
+/** Sem data em comum entre os cardápios do carrinho (C108): quais e o que fazer. */
+export function conflictText(rule: Pick<PickupRule, 'menus'>): string {
+  const parts = rule.menus.map((m, i) => `${m.name}${i === 0 ? ' é retirada' : ''} em ${formatDates(m.pickupDates)}`);
+  const pedidos = rule.menus.length === 2 ? 'faça dois pedidos' : 'faça pedidos separados';
+  return `${parts.slice(0, -1).join(', ')} e ${parts.at(-1)}: ${pedidos}`;
 }
 
 /** "Sáb 28/11" */
@@ -491,17 +611,33 @@ export function agendaForCart(
   productIds: number[],
 ): AgendaDTO {
   const ids = new Set(productIds);
-  const lead = Math.max(0, ...catalogo.produtos.filter((p) => ids.has(p.id)).map((p) => p.leadTimeHours ?? 0));
+  const itens = catalogo.produtos.filter((p) => ids.has(p.id));
+  const lead = Math.max(0, ...itens.map((p) => p.leadTimeHours ?? 0));
   const rule = pickupRule(catalogo, productIds);
   // Um item que saiu do cardápio (cardápio encerrado ou oculto, produto excluído) não pode virar
   // item regular, liberado para qualquer dia (G36): ele bloqueia a retirada até sair do carrinho.
   const visivel = new Map(catalogo.produtos.map((p) => [p.id, p]));
   const unavailable = [...ids].filter((id) => !visivel.get(id)?.available).sort((a, b) => a - b);
+  // O item que limita, quando a antecedência dele passa a da loja (C106, C107).
+  const limitante = lead > input.minLeadHours ? itens.find((p) => (p.leadTimeHours ?? 0) === lead)! : null;
+  const leadItem = limitante ? { name: limitante.name, hours: lead } : null;
+  const nada = { days: [], blocked: [], blockedTimes: [] };
+  const scan =
+    paused || rule.conflict || unavailable.length
+      ? nada
+      : scanDays(input, now, lead, rule.dates, { leadItem, menus: rule.menus });
+  const primeiro = scan.days.find((d) => !d.special);
   return {
     paused,
     leadHours: Math.max(input.minLeadHours, lead),
-    days: paused || rule.conflict || unavailable.length ? [] : availableDays(input, now, lead, rule.dates),
+    days: scan.days,
     rule,
     unavailable,
+    blocked: scan.blocked,
+    blockedTimes: scan.blockedTimes,
+    limit:
+      leadItem && primeiro
+        ? { ...leadItem, from: { date: primeiro.date, weekday: primeiro.weekday, time: primeiro.times[0]! } }
+        : null,
   };
 }
