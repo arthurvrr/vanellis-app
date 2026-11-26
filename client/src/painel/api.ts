@@ -165,15 +165,51 @@ export const api = {
 };
 
 /** Envia uma foto (JPG, PNG ou WebP); o servidor reduz, converte e devolve a URL (RN56). */
+/**
+ * Lado maior da foto enviada. O servidor reduz para 1200 px; mandar a foto original do celular
+ * (vários MB) só faz o envio demorar, ainda mais pela internet da padaria.
+ */
+const LADO_ENVIO = 1600;
+
+/**
+ * Reduz a foto no navegador antes de enviar: no máximo LADO_ENVIO px, em JPEG, respeitando a
+ * orientação da câmera. Fundo branco (o JPEG não tem transparência). Se o navegador não
+ * conseguir, ou o resultado ficar maior, vai a foto original.
+ */
+async function reduzirFoto(file: File): Promise<Blob> {
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const escala = Math.min(1, LADO_ENVIO / Math.max(bmp.width, bmp.height));
+    if (escala === 1 && file.size <= 1_500_000) {
+      bmp.close();
+      return file;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bmp.width * escala);
+    canvas.height = Math.round(bmp.height * escala);
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    bmp.close();
+    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.88));
+    return blob && blob.size < file.size ? blob : file;
+  } catch {
+    return file;
+  }
+}
+
 export async function enviaFoto(file: File): Promise<{ url: string }> {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
     throw new ApiError('Envie uma foto em JPG, PNG ou WebP', 400);
   }
-  if (file.size > 10 * 1024 * 1024) throw new ApiError('A foto pode ter até 10 MB', 400);
+  // O limite vale para o que vai pela rede: uma foto grande do celular, reduzida, passa.
+  const foto = await reduzirFoto(file);
+  if (foto.size > 10 * 1024 * 1024) throw new ApiError('A foto pode ter até 10 MB', 400);
   const res = await fetch('/api/painel/imagens', {
     method: 'POST',
-    headers: { 'content-type': file.type },
-    body: file,
+    headers: { 'content-type': foto.type },
+    body: foto,
   });
   const data = (await res.json().catch(() => ({}))) as { error?: string; url?: string };
   if (!res.ok) throw new ApiError(data.error ?? `Erro ${res.status}`, res.status);
