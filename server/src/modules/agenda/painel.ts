@@ -14,6 +14,7 @@ import { Router, type Response } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
 import { hm } from '../../db/conversao';
+import { inTransaction } from '../../db/transacao';
 import { requireUser } from '../acesso/sessao';
 import {
   agendaConfig,
@@ -163,12 +164,14 @@ export function agendaPainelRouter(db: DB, today: () => string) {
     const parsed = bodies.currentHours.safeParse(req.body);
     if (!parsed.success) return fail(res, 400, firstIssue(parsed.error));
     const { current } = await readAgenda(db, today());
-    if (current) {
-      await replaceHours(db, current.id, parsed.data.hours);
-    } else {
-      const [s] = await db.insert(weeklySchedule).values({ validFrom: today() }).returning({ id: weeklySchedule.id });
-      await replaceHours(db, s!.id, parsed.data.hours);
-    }
+    // Apagar os horários e gravar os novos numa transação só (G10): se a gravação falhar, o
+    // horário anterior continua valendo em vez de a loja ficar sem horário.
+    await inTransaction(db, async (tx) => {
+      const id =
+        current?.id ??
+        (await tx.insert(weeklySchedule).values({ validFrom: today() }).returning({ id: weeklySchedule.id }))[0]!.id;
+      await replaceHours(tx, id, parsed.data.hours);
+    });
     return respond(res);
   });
 
@@ -182,8 +185,11 @@ export function agendaPainelRouter(db: DB, today: () => string) {
     }
     const [same] = await db.select().from(weeklySchedule).where(eq(weeklySchedule.validFrom, validFrom)).limit(1);
     if (same) return fail(res, 409, 'Já existe uma mudança começando nessa data. Remova a outra antes.');
-    const [s] = await db.insert(weeklySchedule).values({ validFrom, validUntil }).returning({ id: weeklySchedule.id });
-    await replaceHours(db, s!.id, hours);
+    // A mudança e os horários dela juntos (G10): nunca uma mudança sem horário (loja fechada).
+    await inTransaction(db, async (tx) => {
+      const [s] = await tx.insert(weeklySchedule).values({ validFrom, validUntil }).returning({ id: weeklySchedule.id });
+      await replaceHours(tx, s!.id, hours);
+    });
     return respond(res);
   });
 

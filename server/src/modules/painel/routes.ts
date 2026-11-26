@@ -3,6 +3,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
+import { inTransaction } from '../../db/transacao';
 import { requireUser } from '../acesso/sessao';
 import { agendaConfig } from '../agenda/schema';
 import { productsMissingPdv } from '../catalogo/repository';
@@ -44,15 +45,18 @@ export function painelRouter(db: DB) {
       return;
     }
     const { ordersPaused, pricesHidden } = parsed.data;
-    if (ordersPaused !== undefined) {
-      await db
-        .insert(agendaConfig)
-        .values({ id: 1, ordersPaused })
-        .onConflictDoUpdate({ target: agendaConfig.id, set: { ordersPaused } });
-    }
-    if (pricesHidden !== undefined) {
-      await db.update(storeSettings).set({ pricesHidden });
-    }
+    // As duas mudanças pedidas juntas valem juntas, ou nenhuma (G10).
+    await inTransaction(db, async (tx) => {
+      if (ordersPaused !== undefined) {
+        await tx
+          .insert(agendaConfig)
+          .values({ id: 1, ordersPaused })
+          .onConflictDoUpdate({ target: agendaConfig.id, set: { ordersPaused } });
+      }
+      if (pricesHidden !== undefined) {
+        await tx.update(storeSettings).set({ pricesHidden });
+      }
+    });
     res.json(await readStatus(db));
   });
 
