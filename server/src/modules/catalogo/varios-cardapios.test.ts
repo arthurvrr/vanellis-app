@@ -159,10 +159,25 @@ describe('painel: cardápios do produto, ordem e exclusão (RF64, RF65, RN70)', 
     expect(await ordem('Ceia de Natal')).toEqual([ids.Chester, ids.Quiche]);
   });
 
-  it('C135: o editor recusa tirar o último cardápio', async () => {
+  it('C135: o produto pode ficar sem cardápio: continua cadastrado, fora do site, no grupo do painel', async () => {
     const res = await salvar('Chester', []);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toBe('Escolha ao menos um cardápio');
+    expect(res.status).toBe(200);
+    expect((await cadastro('Chester')).categoryIds).toEqual([]);
+    expect(await produtoNoSite('Chester')).toBeUndefined();
+    const lista = (await op('GET', '/api/painel/catalogo/produtos')).body;
+    expect(lista.find((p: { name: string }) => p.name === 'Chester')).toMatchObject({ categoryId: null, categoryIds: [] });
+    // Sem cardápio, não há ordem para mudar.
+    expect((await op('POST', `/api/painel/catalogo/produtos/${ids.Chester}/mover`, { direcao: 'subir' })).status).toBe(400);
+    // Vincular de novo traz de volta ao site.
+    await salvar('Chester', [ids['Ceia de Natal']!]);
+    expect(await produtoNoSite('Chester')).toBeDefined();
+  });
+
+  it('produto novo pode nascer sem cardápio', async () => {
+    const form = { ...(await cadastro('Chester')), name: 'Rabanada', categoryIds: [], pdvCode: null, groups: [] };
+    const res = await op('POST', '/api/painel/catalogo/produtos', form);
+    expect(res.status).toBe(201);
+    expect((await op('GET', `/api/painel/catalogo/produtos/${res.body.id}/cadastro`)).body.categoryIds).toEqual([]);
   });
 
   it('C134: subir a Quiche na Ceia não muda a ordem dela em Tortas', async () => {
@@ -207,12 +222,15 @@ describe('painel: cardápios do produto, ordem e exclusão (RF64, RF65, RN70)', 
     expect(await ordem('Tortas')).toEqual([ids['Torta de Limão'], ids.Quiche, ids.Chester]);
   });
 
-  it('C133: excluir a Ceia com o Chester só nela é recusado e diz quem; nada muda', async () => {
+  it('C133: excluir a Ceia com o Chester só nela: o Chester fica sem cardápio, a Quiche continua em Tortas', async () => {
     await salvar('Quiche', [ids.Tortas!, ids['Ceia de Natal']!]);
+    const antes = (await op('GET', '/api/painel/catalogo/categorias')).body.find((c: { name: string }) => c.name === 'Ceia de Natal');
+    expect(antes).toMatchObject({ productCount: 2, exclusiveCount: 1 });
     const res = await op('DELETE', `/api/painel/catalogo/categorias/${ids['Ceia de Natal']}`, {});
-    expect(res.status).toBe(409);
-    expect(res.body.error).toBe('Chester só está neste cardápio: vincule a outro cardápio ou exclua o produto antes.');
-    expect((await cadastro('Quiche')).categoryIds).toEqual([ids.Tortas, ids['Ceia de Natal']]);
+    expect(res.status).toBe(200);
+    expect((await cadastro('Chester')).categoryIds).toEqual([]);
+    expect((await cadastro('Quiche')).categoryIds).toEqual([ids.Tortas]);
+    expect(await app.db.select({ id: product.id }).from(product)).toHaveLength(3);
   });
 
   it('a lista de produtos do painel traz os cardápios e a posição em cada um', async () => {

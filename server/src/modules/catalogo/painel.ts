@@ -11,7 +11,7 @@ import {
   type SpecialMenuState,
   type Until,
 } from '@vanellis/shared';
-import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import { Router, type Response } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
@@ -39,6 +39,8 @@ export interface CategoriaPainelDTO {
   productCount: number;
   /** Os produtos do cardápio, na ordem dele (RF64). */
   productIds: number[];
+  /** Quantos produtos só estão neste cardápio: ao excluí-lo, ficam sem cardápio (RN70). */
+  exclusiveCount: number;
   /** Configuração do cardápio especial; `null` = categoria regular. */
   special: SpecialMenu | null;
   /** Situação agora, para o painel mostrar se aparece no site (Agendado, No site, Oculto, Encerrado). */
@@ -53,8 +55,8 @@ export interface CategoriaPainelDTO {
 
 export interface ProdutoListaDTO {
   id: number;
-  /** Cardápio principal (até o PR E4). */
-  categoryId: number;
+  /** Cardápio principal (até o PR E4); vazio = produto sem cardápio. */
+  categoryId: number | null;
   /** Todos os cardápios do produto (RF64). */
   categoryIds: number[];
   /** Posição do produto em cada cardápio dele, pelo id do cardápio (C134). */
@@ -154,6 +156,8 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
       .orderBy(asc(productCategory.position), asc(productCategory.productId));
     const ordens = new Map<number, number[]>();
     for (const v of vinculos) ordens.set(v.categoryId, [...(ordens.get(v.categoryId) ?? []), v.productId]);
+    const quantos = new Map<number, number>();
+    for (const v of vinculos) quantos.set(v.productId, (quantos.get(v.productId) ?? 0) + 1);
     const rows = await db.select().from(category).orderBy(asc(category.position), asc(category.id));
     const especiais = await specialMenus(db, now());
     return rows.map((c) => {
@@ -167,6 +171,7 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
         coverImageUrl: c.coverImageUrl,
         productCount: (ordens.get(c.id) ?? []).length,
         productIds: ordens.get(c.id) ?? [],
+        exclusiveCount: (ordens.get(c.id) ?? []).filter((pid) => (quantos.get(pid) ?? 0) === 1).length,
         special,
         specialState: sp?.state ?? null,
         specialEnd: sp ? menuEnd(sp.pickups) : null,
@@ -265,31 +270,26 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
     res.json(await listCategorias());
   });
 
-  // Excluir um cardápio desvincula os produtos dele, sem excluí-los (RF65, RN70). Produto que só
-  // está nele ficaria sem cardápio: aí a exclusão é recusada e diz quais vincular antes (C133).
+  // Excluir um cardápio desvincula os produtos dele, sem excluí-los (RF65, RN70). Quem só estava
+  // nele fica sem cardápio: continua cadastrado, fora do site, no grupo "Sem cardápio" do painel.
   router.delete('/categorias/:id', async (req, res) => {
     const id = Number(req.params.id);
     const cat = (await listCategorias()).find((c) => c.id === id);
     if (!cat) return fail(res, 404, 'Categoria não encontrada');
     const deCada = await cardapiosDe(db, cat.productIds);
-    const sozinhos = cat.productIds.filter((pid) => (deCada.get(pid) ?? []).length <= 1);
-    if (sozinhos.length) {
-      const nomes = await db.select({ name: product.name }).from(product).where(inArray(product.id, sozinhos));
-      const lista = new Intl.ListFormat('pt-BR').format(nomes.map((n) => n.name).sort((a, b) => a.localeCompare(b)));
-      const so = sozinhos.length === 1 ? 'só está' : 'só estão';
-      return fail(res, 409, `${lista} ${so} neste cardápio: vincule a outro cardápio ou exclua o produto antes.`);
-    }
     await inTransaction(db, async (tx) => {
-      // Quem tinha este cardápio como principal passa a ter o primeiro dos outros, mantendo o lugar.
+      // Quem tinha este cardápio como principal passa para o primeiro dos outros, sem sair do lugar
+      // nele; sem outro, fica sem cardápio.
       const ordemCats = (await tx.select({ id: category.id }).from(category).orderBy(asc(category.position), asc(category.id))).map(
         (c) => c.id,
       );
-      const principais = await tx
-        .select({ id: product.id })
-        .from(product)
-        .where(eq(product.categoryId, id));
+      const principais = await tx.select({ id: product.id }).from(product).where(eq(product.categoryId, id));
       for (const { id: pid } of principais) {
-        const novo = ordemCats.find((c) => c !== id && deCada.get(pid)!.includes(c))!;
+        const novo = ordemCats.find((c) => c !== id && (deCada.get(pid) ?? []).includes(c));
+        if (novo === undefined) {
+          await tx.update(product).set({ categoryId: null }).where(eq(product.id, pid));
+          continue;
+        }
         const [v] = await tx
           .select({ position: productCategory.position })
           .from(productCategory)
@@ -319,13 +319,14 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
         saleUnit: product.saleUnit,
       })
       .from(product)
-      .innerJoin(category, eq(category.id, product.categoryId))
-      .orderBy(asc(category.position), asc(product.position), asc(product.id));
+      // Produto sem cardápio também aparece no painel, para poder ser vinculado de novo (RF64).
+      .leftJoin(category, eq(category.id, product.categoryId))
+      .orderBy(sql`${category.position} asc nulls last`, asc(product.position), asc(product.id));
     const vinculos = await db.select().from(productCategory);
     const posicoes = new Map<number, Record<number, number>>();
     for (const v of vinculos) posicoes.set(v.productId, { ...posicoes.get(v.productId), [v.categoryId]: v.position });
     return rows.map((p) => {
-      const pos = posicoes.get(p.id) ?? { [p.categoryId]: p.position };
+      const pos = posicoes.get(p.id) ?? {};
       return { ...p, categoryIds: Object.keys(pos).map(Number), posicoes: pos, missingPdv: missing.has(p.id) };
     });
   }
@@ -354,6 +355,7 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
     const [alvo] = await db.select({ categoryId: product.categoryId }).from(product).where(eq(product.id, id));
     if (!alvo) return fail(res, 404, 'Produto não encontrado');
     const cardapio = parsed.data.categoryId ?? alvo.categoryId;
+    if (cardapio === null) return fail(res, 400, 'Produto sem cardápio: não há ordem para mudar');
     await inTransaction(db, async (tx) => {
       const ids = await idsNoCardapio(tx, cardapio);
       const i = ids.indexOf(id);

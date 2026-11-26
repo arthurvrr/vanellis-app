@@ -36,8 +36,9 @@ export interface GroupForm {
 
 export interface ProductForm {
   /**
-   * Cardápios do produto (RF64), ao menos um. O primeiro é o principal, o que o produto usa
-   * enquanto o banco guarda um cardápio principal (product.category_id, até o PR E4).
+   * Cardápios do produto (RF64). Pode ficar vazio: o produto continua cadastrado, mas fora do
+   * site, até ser vinculado (decidido em 26/11/2026). O primeiro é o principal, o que o banco
+   * guarda em product.category_id até o PR E4.
    */
   categoryIds: number[];
   name: string;
@@ -96,9 +97,13 @@ export const emptyGroup = (): GroupForm => ({
 });
 
 /** Produto novo a partir de um modelo (RF40): grupos montados, faltando as opções. */
-export function productFromTemplate(t: Pick<TemplateDTO, 'saleUnit' | 'groups'> | null, categoryId: number): ProductForm {
+export function productFromTemplate(
+  t: Pick<TemplateDTO, 'saleUnit' | 'groups'> | null,
+  /** Cardápio inicial; `null` = sem cardápio por enquanto. */
+  categoryId: number | null,
+): ProductForm {
   return {
-    categoryIds: [categoryId],
+    categoryIds: categoryId === null ? [] : [categoryId],
     name: '',
     description: null,
     imageUrl: null,
@@ -158,8 +163,7 @@ export function validateProduct(p: ProductForm): FormProblems {
   const g = (i: number, grp: GroupForm) => `Grupo ${i + 1}${grp.name.trim() ? ` (${grp.name.trim()})` : ''}`;
 
   // Dados gerais
-  // Todo produto fica com ao menos um cardápio (RF64, C135).
-  if (!p.categoryIds.length) errors.push('Escolha ao menos um cardápio');
+  // Sem cardápio é permitido (C135); o mesmo cardápio duas vezes, não.
   if (new Set(p.categoryIds).size !== p.categoryIds.length) errors.push('O mesmo cardápio foi escolhido duas vezes');
   if (!p.name.trim()) errors.push('Informe o nome do produto');
   if (p.name.trim().length > 100) errors.push('Nome: até 100 caracteres');

@@ -144,34 +144,61 @@ test('"Prazo encerrado" não vale para quem também está num cardápio regular 
   }
 });
 
-test('C128 e C133 pelo painel: o editor vincula a outro cardápio; excluir um cardápio com produto só nele é recusado', async ({
+test('pelo painel: o editor acrescenta e tira cardápios; excluir um cardápio deixa quem só estava nele sem cardápio (C128, C132, C133, C135)', async ({
   page,
 }) => {
   const m = await montar(page);
   try {
-    // O Chester ganha Salgados pelo editor (caixa de seleção), sem sair da Ceia.
+    // O Chester ganha Salgados pelo menu "Adicionar a um cardápio", sem sair da Ceia.
     await page.goto(`/painel/#produto/${m.chester}`);
-    await page.getByRole('group', { name: 'Cardápios' }).getByLabel('Salgados', { exact: true }).check();
+    await page.getByLabel('Adicionar a um cardápio').selectOption({ label: 'Salgados' });
+    await expect(page.getByRole('button', { name: 'Tirar de Salgados' })).toBeVisible();
     await page.getByRole('button', { name: 'Salvar', exact: true }).click();
     await expect(page.getByText('Chester E2E salvo.')).toBeVisible();
-    const form = await (await page.request.get(`/api/painel/catalogo/produtos/${m.chester}/cadastro`)).json();
+    let form = await (await page.request.get(`/api/painel/catalogo/produtos/${m.chester}/cadastro`)).json();
     expect(form.categoryIds).toEqual([m.ceia, m.salgados]);
 
-    // A Ceia 2 tem o Panetone, que também está na Ceia: excluir desvincula, com confirmação (C132).
+    // Tirar todos os cardápios é permitido (C135): o Chester sai do site.
+    await page.goto(`/painel/#produto/${m.chester}`);
+    await page.getByRole('button', { name: 'Tirar de Ceia E2E' }).click();
+    await page.getByRole('button', { name: 'Tirar de Salgados' }).click();
+    await expect(page.getByText('Sem cardápio: o produto fica fora do site até ser vinculado.')).toBeVisible();
+    // A mensagem "salvo" da primeira gravação ainda está na tela: espera a resposta desta.
+    const gravou = page.waitForResponse((r) => r.request().method() === 'PUT' && r.url().endsWith(`/produtos/${m.chester}`));
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+    expect((await gravou).ok()).toBeTruthy();
+    form = await (await page.request.get(`/api/painel/catalogo/produtos/${m.chester}/cadastro`)).json();
+    expect(form.categoryIds).toEqual([]);
+    const site = await (await page.request.get('/api/catalogo')).json();
+    expect(site.produtos.some((p: { name: string }) => p.name === 'Chester E2E')).toBe(false);
+
+    // Excluir a Ceia: Quiche e Panetone estão em outros cardápios e continuam (C132).
     await page.goto('/painel/#categorias');
     page.once('dialog', (d) => {
-      expect(d.message()).toContain('1 produto será desvinculado');
+      expect(d.message()).toContain('2 produtos continuam nos outros cardápios');
+      expect(d.message()).not.toContain('sem cardápio');
+      void d.accept();
+    });
+    await page.getByRole('listitem').filter({ hasText: 'Ceia E2E' }).getByRole('button', { name: 'Excluir' }).click();
+    await expect(page.getByText('Categoria Ceia E2E excluída.')).toBeVisible();
+    const quiche = await (await page.request.get(`/api/painel/catalogo/produtos/${m.quiche}/cadastro`)).json();
+    expect(quiche.categoryIds).toEqual([m.salgados]);
+
+    // Agora o Panetone só está na Ceia 2: excluí-la o deixa sem cardápio, com aviso (C133).
+    page.once('dialog', (d) => {
+      expect(d.message()).toContain('1 produto fica sem cardápio e sai do site');
       void d.accept();
     });
     await page.getByRole('listitem').filter({ hasText: 'Ceia 2 E2E' }).getByRole('button', { name: 'Excluir' }).click();
     await expect(page.getByText('Categoria Ceia 2 E2E excluída.')).toBeVisible();
     const panetone = await (await page.request.get(`/api/painel/catalogo/produtos/${m.panetone}/cadastro`)).json();
-    expect(panetone.categoryIds).toEqual([m.ceia]);
+    expect(panetone.categoryIds).toEqual([]);
 
-    // Agora o Panetone só está na Ceia: excluir a Ceia é recusado e diz quem (C133).
-    page.once('dialog', (d) => void d.accept());
-    await page.getByRole('listitem').filter({ hasText: 'Ceia E2E' }).getByRole('button', { name: 'Excluir' }).click();
-    await expect(page.getByText(/Panetone E2E só está neste cardápio/)).toBeVisible();
+    // Os sem cardápio aparecem num grupo próprio da lista de produtos.
+    await page.goto('/painel/#produtos');
+    const sem = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Sem cardápio' }) });
+    await expect(sem.getByText('Chester E2E')).toBeVisible();
+    await expect(sem.getByText('Panetone E2E')).toBeVisible();
   } finally {
     await desmontar(page, m);
   }

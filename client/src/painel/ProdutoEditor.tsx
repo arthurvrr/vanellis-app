@@ -116,11 +116,13 @@ function EscolheModelo({
   onBack,
 }: {
   categorias: CategoriaPainel[];
-  onPick: (t: TemplateDTO, categoryId: number) => void;
+  /** `categoryId` null = sem cardápio por enquanto (RF64). */
+  onPick: (t: TemplateDTO, categoryId: number | null) => void;
   onBack: () => void;
 }) {
   const [modelos, setModelos] = useState<TemplateDTO[] | null>(null);
-  const [cat, setCat] = useState(categorias[0]?.id ?? 0);
+  // '' = sem cardápio por enquanto: o produto fica fora do site até ser vinculado.
+  const [cat, setCat] = useState<number | ''>(categorias[0]?.id ?? '');
   useEffect(() => {
     api
       .modelos()
@@ -134,13 +136,14 @@ function EscolheModelo({
       </button>
       <h2>Novo produto</h2>
       <div className="field">
-        <label htmlFor="novo-cat">Categoria</label>
-        <select id="novo-cat" value={cat} onChange={(e) => setCat(Number(e.target.value))}>
+        <label htmlFor="novo-cat">Cardápio</label>
+        <select id="novo-cat" value={cat} onChange={(e) => setCat(e.target.value === '' ? '' : Number(e.target.value))}>
           {categorias.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
           ))}
+          <option value="">Sem cardápio por enquanto (fora do site)</option>
         </select>
       </div>
       <p className="field__help">
@@ -148,7 +151,7 @@ function EscolheModelo({
       </p>
       <div className="modelos">
         {(modelos ?? []).map((m) => (
-          <button key={m.id} type="button" className="modelo" onClick={() => onPick(m, cat)}>
+          <button key={m.id} type="button" className="modelo" onClick={() => onPick(m, cat === '' ? null : cat)}>
             <strong>{m.name}</strong>
             <span className="tag">{m.saleUnit === 'KG' ? 'Por quilo' : 'Por unidade'}</span>
             <span className="modelo__groups">
@@ -240,6 +243,9 @@ export function ProdutoEditor({
   // Sempre sobre o formulário mais recente: a foto chega depois do envio, e o que foi mudado
   // nesse meio-tempo não pode se perder.
   const set = (patch: Partial<ProductForm>) => setForm((f) => (f ? { ...f, ...patch } : f));
+  // Cliques seguidos em "×" ou no menu: cada um parte da lista mais recente.
+  const setCardapios = (fn: (ids: number[]) => number[]) =>
+    setForm((f) => (f ? { ...f, categoryIds: fn(f.categoryIds) } : f));
   const setGroup = (gi: number, patch: Partial<GroupForm>) =>
     setForm((f) => (f ? { ...f, groups: f.groups.map((g, i) => (i === gi ? { ...g, ...patch } : g)) } : f));
   const setOption = (gi: number, oi: number, patch: Partial<OptionForm>) =>
@@ -316,31 +322,57 @@ export function ProdutoEditor({
           <label htmlFor="p-nome">Nome</label>
           <input id="p-nome" maxLength={100} value={form.name} onChange={(e) => set({ name: e.target.value })} />
         </div>
-        {/* Um produto pode estar em vários cardápios, regulares ou especiais (RF64); ao menos um (C135). */}
-        <fieldset className="field cardapios">
-          <legend>Cardápios</legend>
-          {categorias.map((c) => (
-            <label key={c.id} className="check">
-              <input
-                type="checkbox"
-                checked={form.categoryIds.includes(c.id)}
-                onChange={(e) =>
-                  set({
-                    categoryIds: e.target.checked
-                      ? [...form.categoryIds, c.id]
-                      : form.categoryIds.filter((id) => id !== c.id),
-                  })
-                }
-              />
-              {c.name}
-              {c.special && ' (especial)'}
-            </label>
-          ))}
+        {/* Um produto pode estar em vários cardápios, regulares ou especiais, ou em nenhum (RF64). */}
+        <div className="field cardapios">
+          <span className="cardapios__titulo">Cardápios</span>
+          {form.categoryIds.length ? (
+            <ul className="cardapios__lista">
+              {form.categoryIds.map((id) => {
+                const c = categorias.find((x) => x.id === id);
+                return (
+                  <li key={id} className="cardapios__item">
+                    {c?.name ?? 'Cardápio excluído'}
+                    {c?.special && ' (especial)'}
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-label={`Tirar de ${c?.name ?? 'cardápio'}`}
+                      onClick={() => setCardapios((ids) => ids.filter((x) => x !== id))}
+                    >
+                      ×
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="cardapios__vazio">Sem cardápio: o produto fica fora do site até ser vinculado.</p>
+          )}
+          {categorias.some((c) => !form.categoryIds.includes(c.id)) && (
+            <select
+              aria-label="Adicionar a um cardápio"
+              value=""
+              onChange={(e) => {
+                const id = Number(e.target.value);
+                if (id) setCardapios((ids) => (ids.includes(id) ? ids : [...ids, id]));
+              }}
+            >
+              <option value="">Adicionar a um cardápio…</option>
+              {categorias
+                .filter((c) => !form.categoryIds.includes(c.id))
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                    {c.special ? ' (especial)' : ''}
+                  </option>
+                ))}
+            </select>
+          )}
           <p className="field__help">
             O cadastro é um só: preço, fotos e opções valem em todos. Num cardápio especial, o produto que também está
             num regular continua com a retirada normal.
           </p>
-        </fieldset>
+        </div>
         <div className="field">
           <label htmlFor="p-desc">Descrição</label>
           <textarea

@@ -104,15 +104,16 @@ export async function loadProductForm(db: DB, id: number): Promise<ProductForm |
     },
   });
   if (!p) return null;
-  // Cardápios do produto: o principal primeiro, os outros na ordem da tela (RF64).
-  const outros = await db
+  // Cardápios do produto: o principal primeiro, os outros na ordem da tela (RF64); pode não haver.
+  const vinculos = await db
     .select({ id: productCategory.categoryId })
     .from(productCategory)
     .innerJoin(category, eq(category.id, productCategory.categoryId))
-    .where(and(eq(productCategory.productId, id), ne(productCategory.categoryId, p.categoryId)))
+    .where(eq(productCategory.productId, id))
     .orderBy(asc(category.position), asc(category.id));
+  const outros = vinculos.map((v) => v.id).filter((c) => c !== p.categoryId);
   return {
-    categoryIds: [p.categoryId, ...outros.map((o) => o.id)],
+    categoryIds: p.categoryId === null ? outros : [p.categoryId, ...outros],
     name: p.name,
     description: p.description,
     imageUrl: p.imageUrl,
@@ -202,8 +203,8 @@ async function check(db: DB, raw: unknown, productId: number | null): Promise<{ 
 
 // ---------- gravação ----------
 
-/** Colunas do produto; `categoryId` é o cardápio principal (até o PR E4). */
-const productValues = (f: ProductForm, categoryId: number) => ({
+/** Colunas do produto; `categoryId` é o cardápio principal (até o PR E4), ou vazio. */
+const productValues = (f: ProductForm, categoryId: number | null) => ({
   categoryId,
   name: f.name,
   description: f.description,
@@ -303,7 +304,7 @@ export async function createProduct(db: DB, raw: unknown): Promise<{ id: number;
     const antes = await ordensAntes(tx, form.categoryIds);
     const [row] = await tx
       .insert(product)
-      .values({ ...productValues(form, form.categoryIds[0]!), position: 0 })
+      .values({ ...productValues(form, form.categoryIds[0] ?? null), position: 0 })
       .returning({ id: product.id });
     await vincular(tx, row!.id, form.categoryIds, antes);
     await saveGroups(tx, row!.id, form.groups);
@@ -318,7 +319,8 @@ export async function updateProduct(db: DB, id: number, raw: unknown): Promise<{
   const { form, warnings } = await check(db, raw, id);
   const removed = await inTransaction(db, async (tx) => {
     // O principal continua o mesmo se ainda estiver entre os escolhidos; senão, o primeiro.
-    const principal = form.categoryIds.includes(atual.categoryId) ? atual.categoryId : form.categoryIds[0]!;
+    const principal =
+      atual.categoryId !== null && form.categoryIds.includes(atual.categoryId) ? atual.categoryId : (form.categoryIds[0] ?? null);
     const atuais = (await cardapiosDe(tx, [id])).get(id) ?? [];
     const antes = await ordensAntes(tx, [...form.categoryIds, ...atuais]);
     await tx.update(product).set(productValues(form, principal)).where(eq(product.id, id));
@@ -342,7 +344,7 @@ export async function duplicate(db: DB, id: number): Promise<{ id: number }> {
     const antes = await ordensAntes(tx, copy.categoryIds);
     const [row] = await tx
       .insert(product)
-      .values({ ...productValues(copy, copy.categoryIds[0]!), position: 0 })
+      .values({ ...productValues(copy, copy.categoryIds[0] ?? null), position: 0 })
       .returning({ id: product.id });
     const newId = row!.id;
     await saveGroups(tx, newId, copy.groups);

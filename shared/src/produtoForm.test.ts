@@ -22,8 +22,8 @@ const base = (p: Partial<ProductForm> = {}): ProductForm => ({
 const opt = (name: string, o: Partial<ReturnType<typeof emptyOption>> = {}) => ({ ...emptyOption(), name, ...o });
 
 describe('validação do cadastro de produto', () => {
-  it('C135: o produto precisa de ao menos um cardápio; repetidos contam uma vez (RF64)', () => {
-    expect(validateProduct(base({ categoryIds: [] })).errors).toEqual(['Escolha ao menos um cardápio']);
+  it('C135: o produto pode ficar sem cardápio; o mesmo cardápio duas vezes, não (RF64)', () => {
+    expect(validateProduct(base({ categoryIds: [] })).errors).toEqual([]);
     expect(validateProduct(base({ categoryIds: [1, 2] })).errors).toEqual([]);
     expect(validateProduct(base({ categoryIds: [1, 1] })).errors).toEqual(['O mesmo cardápio foi escolhido duas vezes']);
   });
@@ -150,6 +150,10 @@ describe('formulários vazios e modelo de produto', () => {
       hasPdv: false,
       options: [],
     });
+  });
+
+  it('produto novo sem cardápio por enquanto', () => {
+    expect(productFromTemplate(null, null).categoryIds).toEqual([]);
   });
 
   it('sem modelo, o produto novo é por unidade, disponível e sem grupos', () => {

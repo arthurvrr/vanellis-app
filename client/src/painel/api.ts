@@ -75,6 +75,8 @@ export interface CategoriaPainel {
   productCount: number;
   /** Os produtos do cardápio, na ordem dele (RF64). */
   productIds: number[];
+  /** Quantos só estão neste cardápio: ao excluí-lo, ficam sem cardápio (RN70). */
+  exclusiveCount: number;
   /** Cardápio especial (RF16–RF19); `null` = categoria regular. */
   special: SpecialMenu | null;
   /** Agendado (em-breve), No site (visivel), Oculto ou Encerrado (RN63). */
@@ -88,9 +90,9 @@ export interface CategoriaPainel {
 }
 export interface ProdutoLista {
   id: number;
-  /** Cardápio principal (até o PR E4). */
-  categoryId: number;
-  /** Todos os cardápios do produto (RF64). */
+  /** Cardápio principal (até o PR E4); vazio = sem cardápio. */
+  categoryId: number | null;
+  /** Todos os cardápios do produto (RF64); vazio = fora do site. */
   categoryIds: number[];
   /** Posição em cada cardápio, pelo id do cardápio. */
   posicoes: Record<number, number>;

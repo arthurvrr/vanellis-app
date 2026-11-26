@@ -1397,19 +1397,30 @@
   flex-shrink: 0;
 }
 
-/* Cardápios do produto (RF64): uma caixa por cardápio, lado a lado. */
-.cardapios {
+/* Cardápios do produto (RF64): os escolhidos como etiquetas, com "×"; o menu acrescenta outro. */
+.cardapios__titulo {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+}
+.cardapios__lista {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 1rem;
-  border: 0;
+  gap: 0.4rem;
+  margin: 0 0 0.5rem;
   padding: 0;
+  list-style: none;
 }
-.cardapios legend {
-  flex-basis: 100%;
-  font-weight: bold;
-  margin-bottom: 0.25rem;
+.cardapios__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.7rem;
+  border: 1px solid var(--borda, #e5d6b8);
+  border-radius: 999px;
+  background: var(--creme, #fbf6ec);
 }
-.cardapios .field__help {
-  flex-basis: 100%;
+.cardapios__vazio {
+  margin: 0 0 0.5rem;
+  color: #8a4b12;
 }
