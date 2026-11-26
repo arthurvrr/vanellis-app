@@ -23,24 +23,28 @@ export const group = (
   ...g,
 });
 
-export const product = (p: Partial<ProductDTO>): ProductDTO => ({
-  id: 1,
-  categoryId: 1,
-  pdvCode: null,
-  name: 'Produto',
-  description: null,
-  imageUrl: '/p.jpg',
-  imageAlt: null,
-  saleUnit: 'UN',
-  basePrice: null,
-  weightMinKg: null,
-  weightMaxKg: null,
-  minQuantity: 1,
-  leadTimeHours: null,
-  available: true,
-  groups: [],
-  ...p,
-});
+/** Produto com os campos mínimos; `categoryIds` vem de `categoryId` se não for passado. */
+export const product = (p: Partial<ProductDTO>): ProductDTO => {
+  const base: Omit<ProductDTO, 'categoryIds'> & { categoryIds?: number[] } = {
+    id: 1,
+    categoryId: 1,
+    pdvCode: null,
+    name: 'Produto',
+    description: null,
+    imageUrl: '/p.jpg',
+    imageAlt: null,
+    saleUnit: 'UN',
+    basePrice: null,
+    weightMinKg: null,
+    weightMaxKg: null,
+    minQuantity: 1,
+    leadTimeHours: null,
+    available: true,
+    groups: [],
+    ...p,
+  };
+  return { ...base, categoryIds: p.categoryIds ?? [base.categoryId] };
+};
 
 /** Categoria regular com os campos mínimos; passe `special` para um cardápio especial. */
 export const category = (c: Partial<CategoryDTO> & Pick<CategoryDTO, 'id' | 'name'>): CategoryDTO => ({

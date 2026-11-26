@@ -164,22 +164,29 @@ export interface PickupRule {
 }
 
 /**
- * Datas de retirada permitidas para os produtos do carrinho: com itens de cardápio especial,
- * só as datas comuns a todos eles; os itens regulares acompanham (RN28, RN29).
+ * Datas de retirada permitidas para os produtos do carrinho (RN28, RN29, RN68). Um produto que
+ * está em algum cardápio regular visível segue a retirada normal: o especial só dá destaque.
+ * Um produto que está só em cardápios especiais pode ser retirado nas datas de qualquer um
+ * deles. O pedido fica com as datas comuns a todos esses produtos; os outros acompanham.
  */
 export function pickupRule(
-  catalogo: { categorias: CategoryDTO[]; produtos: Pick<ProductDTO, 'id' | 'categoryId'>[] },
+  catalogo: { categorias: CategoryDTO[]; produtos: Pick<ProductDTO, 'id' | 'categoryIds'>[] },
   productIds: number[],
 ): PickupRule {
   const ids = new Set(productIds);
-  const catIds = new Set(catalogo.produtos.filter((p) => ids.has(p.id)).map((p) => p.categoryId));
+  const byId = new Map(catalogo.categorias.map((c) => [c.id, c]));
+  // Para cada produto preso a cardápios especiais: as datas de qualquer um deles.
+  const presos = catalogo.produtos
+    .filter((p) => ids.has(p.id))
+    .map((p) => p.categoryIds.map((id) => byId.get(id)).filter((c): c is CategoryDTO => c !== undefined))
+    .filter((cats) => cats.length > 0 && cats.every((c) => c.special));
+  const usados = new Set(presos.flat().map((c) => c.id));
   const menus = catalogo.categorias
-    .filter((c) => catIds.has(c.id) && c.special)
+    .filter((c) => usados.has(c.id))
     .map((c) => ({ name: c.name, pickupDates: [...c.special!.pickupDates].sort() }));
-  if (!menus.length) return { menus, dates: null, conflict: false };
-  const dates = menus.reduce<string[]>(
-    (acc, m) => acc.filter((d) => m.pickupDates.includes(d)),
-    menus[0]!.pickupDates,
-  );
+  if (!presos.length) return { menus, dates: null, conflict: false };
+  const datasDe = (cats: CategoryDTO[]) => new Set(cats.flatMap((c) => c.special!.pickupDates));
+  const todas = [...datasDe(presos.flat())].sort();
+  const dates = presos.reduce((acc, cats) => acc.filter((d) => datasDe(cats).has(d)), todas);
   return { menus, dates, conflict: dates.length === 0 };
 }

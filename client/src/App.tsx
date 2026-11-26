@@ -1,4 +1,4 @@
-import { visibleCategories, type CatalogoDTO, type ProductDTO } from '@vanellis/shared';
+import { productsOf, visibleCategories, type CatalogoDTO, type ProductDTO } from '@vanellis/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { CartView } from './components/CartView';
@@ -171,7 +171,8 @@ export function App() {
   }
 
   const categoria = catalogo.categorias.find((c) => c.slug === route.slug) ?? catalogo.categorias[0];
-  const produtos = catalogo.produtos.filter((p) => p.categoryId === categoria?.id);
+  // Um produto pode estar em vários cardápios, cada um na sua ordem (RF64).
+  const produtos = categoria ? productsOf(catalogo, categoria.id) : [];
   // Computador: ao abrir a categoria, o primeiro produto disponível já aparece no painel.
   const selecionado =
     (aberto && produtos.some((p) => p.id === aberto.id) ? aberto : null) ?? produtos.find((p) => p.available) ?? null;

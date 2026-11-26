@@ -12,6 +12,7 @@ import {
   type SpecialMenu,
   type SpecialMenuState,
   type CatalogoDTO,
+  type CategoryDTO,
   type PriceMode,
   type ProductDTO,
   type SaleUnit,
@@ -21,7 +22,7 @@ import type { DB } from '../../db/client';
 import { num } from '../../db/conversao';
 import { getAgendaInput } from '../agenda/repository';
 import { storeSettings } from '../configuracoes/schema';
-import { category, option, optionGroup, product } from './schema';
+import { category, option, optionGroup, product, productCategory } from './schema';
 
 /**
  * Produtos sem código PDV para o caixa (RN41, C46), pela mesma regra do aviso do editor
@@ -62,9 +63,16 @@ export interface SpecialMenuNow {
 export async function specialMenus(db: DB, now: string, agenda?: AgendaInput): Promise<Map<number, SpecialMenuNow>> {
   const input = agenda ?? (await getAgendaInput(db)).input;
   const cats = await db.select().from(category).where(eq(category.special, true));
+  // Os itens de cada cardápio vêm dos vínculos (RF64): um produto pode estar em vários.
   const prods = await db
-    .select({ id: product.id, categoryId: product.categoryId, leadTimeHours: product.leadTimeHours, available: product.available })
-    .from(product);
+    .select({
+      id: product.id,
+      categoryId: productCategory.categoryId,
+      leadTimeHours: product.leadTimeHours,
+      available: product.available,
+    })
+    .from(productCategory)
+    .innerJoin(product, eq(product.id, productCategory.productId));
   const out = new Map<number, SpecialMenuNow>();
   for (const c of cats) {
     const menu: SpecialMenu = { visibleFrom: c.visibleFrom ?? '', hidden: c.hidden, pickupDates: [...c.pickupDates].sort() };
@@ -105,8 +113,26 @@ export async function getCatalogo(db: DB, now: string): Promise<CatalogoDTO> {
       special: c.special ? especiais.get(c.id)!.public : null,
     }));
   const shown = new Set(categorias.map((c) => c.id));
-  // Itens de cardápio especial com o prazo encerrado (RN67).
-  const fechados = new Set(categorias.flatMap((c) => c.special?.closedProducts ?? []));
+  // Cardápios visíveis de cada produto, e a ordem de cada cardápio (RF64, RN69).
+  const vinculos = await db
+    .select()
+    .from(productCategory)
+    .orderBy(asc(productCategory.position), asc(productCategory.productId));
+  const cardapiosDe = new Map<number, number[]>();
+  for (const v of vinculos) {
+    if (!shown.has(v.categoryId)) continue;
+    cardapiosDe.set(v.productId, [...(cardapiosDe.get(v.productId) ?? []), v.categoryId]);
+  }
+  for (const c of categorias as CategoryDTO[]) {
+    c.productIds = vinculos.filter((v) => v.categoryId === c.id).map((v) => v.productId);
+  }
+  // "Prazo encerrado" (RN67): só se o item não chega a nenhuma data de nenhum cardápio especial
+  // visível dele e não está em nenhum cardápio regular (RN68).
+  const porId = new Map(categorias.map((c) => [c.id, c]));
+  const fechado = (productId: number) => {
+    const cats = (cardapiosDe.get(productId) ?? []).map((id) => porId.get(id)!);
+    return cats.length > 0 && cats.every((c) => c.special?.closedProducts.includes(productId));
+  };
 
   const rows = await db.query.product.findMany({
     orderBy: [asc(product.position), asc(product.id)],
@@ -118,9 +144,11 @@ export async function getCatalogo(db: DB, now: string): Promise<CatalogoDTO> {
     },
   });
 
-  const produtos: ProductDTO[] = rows.filter((p) => shown.has(p.categoryId)).map((p) => ({
+  // O produto aparece enquanto algum cardápio dele estiver visível (RN69).
+  const produtos: ProductDTO[] = rows.filter((p) => cardapiosDe.has(p.id)).map((p) => ({
     id: p.id,
     categoryId: p.categoryId,
+    categoryIds: cardapiosDe.get(p.id)!,
     pdvCode: p.pdvCode,
     name: p.name,
     description: p.description,
@@ -133,7 +161,7 @@ export async function getCatalogo(db: DB, now: string): Promise<CatalogoDTO> {
     minQuantity: p.minQuantity,
     leadTimeHours: p.leadTimeHours,
     available: p.available,
-    orderClosed: fechados.has(p.id),
+    orderClosed: fechado(p.id),
     groups: p.groups.map((g) => ({
       id: g.id,
       name: g.name,

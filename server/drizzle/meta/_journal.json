@@ -127,6 +127,13 @@
       "when": 1795699578840,
       "tag": "0017_datas_especiais_horario",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795710265102,
+      "tag": "0018_produto_varios_cardapios",
+      "breakpoints": true
     }
   ]
 }

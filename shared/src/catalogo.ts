@@ -16,6 +16,8 @@ export interface CategoryDTO {
   coverImageUrl: string | null;
   /** Cardápio especial visível hoje (RF02, RN19); `null` = categoria regular. */
   special: PublicSpecialMenu | null;
+  /** Os produtos do cardápio, na ordem dele (RF64); ausente = a ordem do catálogo. */
+  productIds?: number[];
 }
 
 export interface OptionDTO {
@@ -46,7 +48,10 @@ export interface OptionGroupDTO {
 
 export interface ProductDTO {
   id: number;
+  /** Cardápio principal (o do painel até o PR E3). */
   categoryId: number;
+  /** Todos os cardápios visíveis em que o produto está (RF64); inclui o principal, se visível. */
+  categoryIds: number[];
   pdvCode: string | null;
   name: string;
   description: string | null;
@@ -109,7 +114,21 @@ export function mapsLink(s: Pick<PublicSettingsDTO, 'address' | 'mapsUrl'>): str
  * Os cardápios especiais vêm antes, em destaque (RF02).
  */
 export function visibleCategories(catalogo: Pick<CatalogoDTO, 'categorias' | 'produtos'>): CategoryDTO[] {
-  const used = new Set(catalogo.produtos.map((p) => p.categoryId));
+  const used = new Set(catalogo.produtos.flatMap((p) => p.categoryIds));
   const shown = catalogo.categorias.filter((c) => used.has(c.id));
   return [...shown.filter((c) => c.special), ...shown.filter((c) => !c.special)];
+}
+
+/**
+ * Produtos de um cardápio (RF64), na ordem dele (`productIds`, quando vem); sem ela, na ordem do
+ * catálogo. Um produto pode estar em mais de um cardápio.
+ */
+export function productsOf(catalogo: Pick<CatalogoDTO, 'categorias' | 'produtos'>, categoryId: number): ProductDTO[] {
+  const doCardapio = catalogo.produtos.filter((p) => p.categoryIds.includes(categoryId));
+  const ordem = catalogo.categorias.find((c) => c.id === categoryId)?.productIds;
+  if (!ordem) return doCardapio;
+  const pos = new Map(ordem.map((id, i) => [id, i]));
+  // Produto que não está na ordem (não deveria acontecer) vai para o fim.
+  const lugar = (id: number) => pos.get(id) ?? ordem.length;
+  return [...doCardapio].sort((a, b) => lugar(a.id) - lugar(b.id));
 }
