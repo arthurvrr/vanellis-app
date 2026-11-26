@@ -16,6 +16,7 @@ import { and, asc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
 import { kg, money, num } from '../../db/conversao';
+import { inTransaction } from '../../db/transacao';
 import { deleteStoredImage, photoUrl } from '../imagens/imagens';
 import { category, option, optionGroup, product, productTemplate } from './schema';
 
@@ -288,8 +289,7 @@ async function saveGroups(tx: DB, productId: number, groups: GroupForm[]): Promi
 
 export async function createProduct(db: DB, raw: unknown): Promise<{ id: number; warnings: string[] }> {
   const { form, warnings } = await check(db, raw, null);
-  const id = await db.transaction(async (t) => {
-    const tx = t as unknown as DB;
+  const id = await inTransaction(db, async (tx) => {
     const [last] = await tx
       .select({ max: sql<number>`coalesce(max(${product.position}), -1)` })
       .from(product)
@@ -308,8 +308,7 @@ export async function updateProduct(db: DB, id: number, raw: unknown): Promise<{
   const [atual] = await db.select().from(product).where(eq(product.id, id)).limit(1);
   if (!atual) throw new FormError(404, ['Produto não encontrado']);
   const { form, warnings } = await check(db, raw, id);
-  const removed = await db.transaction(async (t) => {
-    const tx = t as unknown as DB;
+  const removed = await inTransaction(db, async (tx) => {
     const values: Record<string, unknown> = productValues(form);
     if (form.categoryId !== atual.categoryId) {
       const [last] = await tx
@@ -332,25 +331,23 @@ export async function duplicate(db: DB, id: number): Promise<{ id: number }> {
   const form = await loadProductForm(db, id);
   if (!form) throw new FormError(404, ['Produto não encontrado']);
   const copy = duplicateProduct(form);
-  const { id: newId } = await db.transaction(async (t) => {
-    const tx = t as unknown as DB;
+  // Uma transação só (G10): se a cópia não puder ir para o lugar certo, ela não fica criada.
+  return inTransaction(db, async (tx) => {
     const [row] = await tx
       .insert(product)
       .values({ ...productValues(copy), position: 0 })
       .returning({ id: product.id });
-    await saveGroups(tx, row!.id, copy.groups);
-    return { id: row!.id };
+    const newId = row!.id;
+    await saveGroups(tx, newId, copy.groups);
+    // A cópia entra logo depois do original na lista.
+    const irmaos = await tx
+      .select({ id: product.id })
+      .from(product)
+      .where(eq(product.categoryId, form.categoryId))
+      .orderBy(asc(product.position), asc(product.id));
+    const ids = irmaos.map((p) => p.id).filter((x) => x !== newId);
+    ids.splice(ids.indexOf(id) + 1, 0, newId);
+    for (const [pos, pid] of ids.entries()) await tx.update(product).set({ position: pos }).where(eq(product.id, pid));
+    return { id: newId };
   });
-  // A cópia entra logo depois do original na lista.
-  const irmaos = await db
-    .select({ id: product.id })
-    .from(product)
-    .where(eq(product.categoryId, form.categoryId))
-    .orderBy(asc(product.position), asc(product.id));
-  const ids = irmaos.map((p) => p.id).filter((x) => x !== newId);
-  ids.splice(ids.indexOf(id) + 1, 0, newId);
-  await db.transaction(async (t) => {
-    for (const [pos, pid] of ids.entries()) await t.update(product).set({ position: pos }).where(eq(product.id, pid));
-  });
-  return { id: newId };
 }
