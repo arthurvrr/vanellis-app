@@ -1389,3 +1389,10 @@
 .especial__modo {
   flex-basis: 100%;
 }
+
+/* Editar e Remover lado a lado num item da Agenda (RF63). */
+.agenda__acoes {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
