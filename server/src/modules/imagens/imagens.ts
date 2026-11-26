@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
 import { requireUser } from '../acesso/sessao';
+import { category, option, product } from '../catalogo/schema';
 import { storedImage } from './schema';
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -48,10 +49,25 @@ export const photoUrl = z
   .refine((u) => u.startsWith(URL_PREFIX) || u.startsWith('/images/'), 'Foto inválida')
   .nullable();
 
-/** Apaga uma foto guardada que deixou de ser usada (trocada ou do produto excluído). */
+/**
+ * Apaga uma foto guardada que deixou de ser usada (trocada, ou do produto ou categoria excluídos),
+ * mas só se nada mais a usa: duplicar um produto faz a cópia apontar para a mesma foto (G01), e o
+ * operador pode usar a mesma foto como capa de categoria. Chame depois de tirar a referência.
+ */
 export async function deleteStoredImage(db: DB, url: string | null | undefined): Promise<void> {
   const id = storedImageId(url);
-  if (id) await db.delete(storedImage).where(eq(storedImage.id, id));
+  if (!id || (await photoInUse(db, url!))) return;
+  await db.delete(storedImage).where(eq(storedImage.id, id));
+}
+
+/** Algum produto, opção ou capa de categoria ainda aponta para esta foto? */
+async function photoInUse(db: DB, url: string): Promise<boolean> {
+  const [p] = await db.select({ id: product.id }).from(product).where(eq(product.imageUrl, url)).limit(1);
+  if (p) return true;
+  const [o] = await db.select({ id: option.id }).from(option).where(eq(option.imageUrl, url)).limit(1);
+  if (o) return true;
+  const [c] = await db.select({ id: category.id }).from(category).where(eq(category.coverImageUrl, url)).limit(1);
+  return c !== undefined;
 }
 
 /** GET público: a foto em si. */
