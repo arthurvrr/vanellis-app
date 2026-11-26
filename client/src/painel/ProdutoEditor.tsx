@@ -11,6 +11,9 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, ApiError, type CategoriaPainel } from './api';
 import { FotoUpload } from './FotoUpload';
+import { avisarAoSair, podeSair } from './saida';
+
+const SAIR = 'Sair sem salvar? As mudanças serão perdidas.';
 
 // Cadastro completo de produto (etapa 3: RF14, RF29, RF30, RF40, RF46; cenários C52–C61).
 // Os erros (impedem salvar) e avisos (não impedem) aparecem na hora, pelas mesmas regras
@@ -205,8 +208,15 @@ export function ProdutoEditor({
     setServerErrors(e instanceof ApiError ? e.errors : [e instanceof Error ? e.message : String(e)]);
   };
 
+  // G22 (C65): com mudança não salva, a barra lateral, a busca do painel, o Voltar e fechar a aba
+  // perguntam antes de sair.
+  useEffect(() => {
+    avisarAoSair(dirty ? SAIR : null);
+    return () => avisarAoSair(null);
+  }, [dirty]);
+
   const sair = () => {
-    if (!dirty || window.confirm('Sair sem salvar? As mudanças serão perdidas.')) onDone();
+    if (podeSair()) onDone();
   };
 
   if (produtoId === null && !form) {
@@ -235,12 +245,15 @@ export function ProdutoEditor({
     if (problems.errors.length) return;
     setSalvando(true);
     try {
+      // Gravado: nada mais a perder. Desliga o aviso antes de trocar de tela (a troca é imediata).
       if (produtoId === null) {
         const { id } = await api.criaProduto(form);
+        avisarAoSair(null);
         onOpen(id, `${form.name} criado.`);
       } else {
         await api.salvaProduto(produtoId, form);
         setInicial(JSON.stringify(form));
+        avisarAoSair(null);
         onDone(`${form.name} salvo.`);
       }
     } catch (e) {
@@ -254,6 +267,7 @@ export function ProdutoEditor({
     if (dirty && !window.confirm('Duplicar sem salvar as mudanças? A cópia é feita do produto salvo.')) return;
     try {
       const { id } = await api.duplicaProduto(produtoId!);
+      avisarAoSair(null); // o operador já aceitou deixar as mudanças para trás
       onOpen(id, 'Cópia criada, indisponível e sem códigos PDV. Ajuste e deixe disponível quando estiver pronta.');
     } catch (e) {
       erro(e);
