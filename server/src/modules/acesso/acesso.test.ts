@@ -1,8 +1,15 @@
 // Cenários C1–C8 (aba Cenários do doc de requisitos).
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startTestApp } from '../../test/app';
+import { verifyPassword } from './senha';
 import { resetAttempts } from './tentativas';
+
+// A verificação de senha de verdade, contando as chamadas (G07: IP bloqueado não roda o scrypt).
+vi.mock('./senha', async (original) => {
+  const real = await original<typeof import('./senha')>();
+  return { ...real, verifyPassword: vi.fn(real.verifyPassword) };
+});
 
 let app: Awaited<ReturnType<typeof startTestApp>>;
 beforeAll(async () => {
@@ -45,6 +52,30 @@ describe('Login', () => {
     expect(blocked.body.error).toContain('15 min');
     // O bloqueio é por usuário: o superusuário continua entrando.
     expect((await login(b, 'arthur', 'senha-admin')).status).toBe(200);
+  });
+
+  it('G07: 5 erros de um IP não bloqueiam o mesmo usuário vindo de outro IP', async () => {
+    const deFora = { 'x-forwarded-for': '203.0.113.7' };
+    const daLoja = { 'x-forwarded-for': '198.51.100.9' };
+    for (let i = 0; i < 5; i++) {
+      expect((await app.browser()('POST', '/api/auth/login', { usuario: 'padaria', senha: 'errada' }, deFora)).status).toBe(401);
+    }
+    expect((await app.browser()('POST', '/api/auth/login', { usuario: 'padaria', senha: 'senha-operador' }, deFora)).status).toBe(429);
+    expect((await app.browser()('POST', '/api/auth/login', { usuario: 'padaria', senha: 'senha-operador' }, daLoja)).status).toBe(200);
+  });
+
+  it('G07: muitas tentativas de um IP, em usuários inventados, são recusadas antes de verificar a senha', async () => {
+    const ip = { 'x-forwarded-for': '203.0.113.50' };
+    for (let i = 0; i < 20; i++) {
+      expect((await app.browser()('POST', '/api/auth/login', { usuario: `inventado${i}`, senha: 'x' }, ip)).status).toBe(401);
+    }
+    vi.mocked(verifyPassword).mockClear();
+    const res = await app.browser()('POST', '/api/auth/login', { usuario: 'padaria', senha: 'senha-operador' }, ip);
+    expect(res.status).toBe(429);
+    expect(res.body.error).toContain('15 min');
+    expect(verifyPassword).not.toHaveBeenCalled();
+    // Outro IP segue entrando.
+    expect((await login(app.browser(), 'padaria', 'senha-operador')).status).toBe(200);
   });
 
   it('C4: sem login, o painel é recusado', async () => {

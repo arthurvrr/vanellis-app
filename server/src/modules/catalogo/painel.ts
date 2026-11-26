@@ -13,6 +13,7 @@ import { and, asc, count, eq, ne, sql } from 'drizzle-orm';
 import { Router, type Response } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
+import { inTransaction } from '../../db/transacao';
 import { requireUser } from '../acesso/sessao';
 import { deleteStoredImage, photoUrl } from '../imagens/imagens';
 import {
@@ -111,8 +112,8 @@ async function move(
   const j = direcao === 'subir' ? i - 1 : i + 1;
   if (i < 0 || j < 0 || j >= ids.length) return false;
   [ids[i], ids[j]] = [ids[j]!, ids[i]!];
-  await db.transaction(async (tx) => {
-    for (const [pos, itemId] of ids.entries()) await setPosition(tx as unknown as DB, itemId, pos);
+  await inTransaction(db, async (tx) => {
+    for (const [pos, itemId] of ids.entries()) await setPosition(tx, itemId, pos);
   });
   return true;
 }

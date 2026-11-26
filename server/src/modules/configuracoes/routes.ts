@@ -1,7 +1,7 @@
 import { REMINDERS, reminderStatus, type ReminderKind, type ReminderWithStatus } from '@vanellis/shared';
-import { eq } from 'drizzle-orm';
 import { Router } from 'express';
 import type { DB } from '../../db/client';
+import { inTransaction } from '../../db/transacao';
 import { requireUser, type SessionUser } from '../acesso/sessao';
 import { getSettings, toPublicSettings } from './repository';
 import { reviewReminder, storeSettings } from './schema';
@@ -75,12 +75,11 @@ export function configuracoesPainelRouter(db: DB, today: () => string) {
       res.status(404).json({ error: 'Lembrete não encontrado' });
       return;
     }
-    const done = await db
-      .update(reviewReminder)
-      .set({ lastReviewed: today() })
-      .where(eq(reviewReminder.kind, kind))
-      .returning();
-    if (!done.length) await db.insert(reviewReminder).values({ kind, everyDays: def.defaultDays, lastReviewed: today() });
+    // Insere ou atualiza num comando só (G10): sem a janela entre o update e o insert.
+    await db
+      .insert(reviewReminder)
+      .values({ kind, everyDays: def.defaultDays, lastReviewed: today() })
+      .onConflictDoUpdate({ target: reviewReminder.kind, set: { lastReviewed: today() } });
     res.json(await listReminders(db, today()));
   });
   router.put('/lembretes', async (req, res) => {
@@ -89,10 +88,15 @@ export function configuracoesPainelRouter(db: DB, today: () => string) {
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Dados inválidos' });
       return;
     }
-    for (const [kind, everyDays] of Object.entries(parsed.data) as [ReminderKind, number][]) {
-      const done = await db.update(reviewReminder).set({ everyDays }).where(eq(reviewReminder.kind, kind)).returning();
-      if (!done.length) await db.insert(reviewReminder).values({ kind, everyDays });
-    }
+    // Todos os lembretes mudados juntos, ou nenhum (G10).
+    await inTransaction(db, async (tx) => {
+      for (const [kind, everyDays] of Object.entries(parsed.data) as [ReminderKind, number][]) {
+        await tx
+          .insert(reviewReminder)
+          .values({ kind, everyDays })
+          .onConflictDoUpdate({ target: reviewReminder.kind, set: { everyDays } });
+      }
+    });
     res.json(await listReminders(db, today()));
   });
 

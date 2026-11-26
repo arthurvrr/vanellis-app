@@ -11,6 +11,7 @@ import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
 import { parseArgs } from 'node:util';
 import { db, pool } from '../src/db/client';
+import { inTransaction } from '../src/db/transacao';
 import { appUser } from '../src/modules/acesso/schema';
 import { hashPassword, MIN_PASSWORD_LENGTH } from '../src/modules/acesso/senha';
 import { deleteUserSessions } from '../src/modules/acesso/sessao';
@@ -70,8 +71,11 @@ if ((await askHidden('Repita a senha: ')) !== senha) fail('As senhas não confer
 rl.close();
 const passwordHash = await hashPassword(senha);
 if (existing) {
-  await db.update(appUser).set({ passwordHash }).where(eq(appUser.id, existing.id));
-  await deleteUserSessions(db, existing.id);
+  // Senha nova e sessões encerradas juntas (G10).
+  await inTransaction(db, async (tx) => {
+    await tx.update(appUser).set({ passwordHash }).where(eq(appUser.id, existing.id));
+    await deleteUserSessions(tx, existing.id);
+  });
   console.log(`Senha de "${username}" trocada. As sessões abertas dessa conta foram encerradas.`);
 } else {
   await db.insert(appUser).values({ username, passwordHash, role: role as 'admin' | 'operador' });

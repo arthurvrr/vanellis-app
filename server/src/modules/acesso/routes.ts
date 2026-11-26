@@ -5,6 +5,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { env } from '../../config/env';
 import type { DB } from '../../db/client';
+import { inTransaction } from '../../db/transacao';
 import { appUser } from './schema';
 import { DUMMY_HASH, hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from './senha';
 import {
@@ -48,8 +49,11 @@ export function acessoRouter(db: DB) {
       return;
     }
     const { usuario, senha } = parsed.data;
+    // Com o Caddy na frente, o Express lê o IP do cliente no X-Forwarded-For (trust proxy, app.ts).
+    const ip = req.ip ?? '';
 
-    const wait = lockedMinutes(usuario);
+    // Antes de verificar a senha: um IP ou usuário bloqueado não chega a rodar o scrypt (G07).
+    const wait = lockedMinutes(ip, usuario);
     if (wait) {
       res.status(429).json({ error: `Muitas tentativas erradas. Tente de novo em ${wait} min.` });
       return;
@@ -59,12 +63,12 @@ export function acessoRouter(db: DB) {
     // Mesmo sem usuário, verifica uma senha qualquer: a resposta demora igual e não revela quem existe.
     const ok = await verifyPassword(senha, user?.passwordHash ?? DUMMY_HASH);
     if (!user || !ok) {
-      registerFailure(usuario);
+      registerFailure(ip, usuario);
       res.status(401).json({ error: 'Usuário ou senha incorretos' });
       return;
     }
 
-    registerSuccess(usuario);
+    registerSuccess(ip, usuario);
     const { token, expiresAt } = await createSession(db, user.id);
     setSessionCookie(res, token, expiresAt, secure);
     res.json(toDTO(user));
@@ -93,11 +97,13 @@ export function acessoRouter(db: DB) {
       res.status(404).json({ error: 'Conta de operador não cadastrada (use npm run usuario:senha)' });
       return;
     }
-    await db
-      .update(appUser)
-      .set({ passwordHash: await hashPassword(parsed.data.senha) })
-      .where(eq(appUser.id, operador.id));
-    await deleteUserSessions(db, operador.id);
+    const passwordHash = await hashPassword(parsed.data.senha);
+    // Senha nova e sessões antigas encerradas juntas (G10): nunca a senha trocada com as sessões
+    // de antes ainda valendo.
+    await inTransaction(db, async (tx) => {
+      await tx.update(appUser).set({ passwordHash }).where(eq(appUser.id, operador.id));
+      await deleteUserSessions(tx, operador.id);
+    });
     res.json({ usuario: operador.username });
   });
 
