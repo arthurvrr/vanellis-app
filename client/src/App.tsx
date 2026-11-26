@@ -1,4 +1,4 @@
-import { pickupLabel, shortDate, visibleCategories, type CatalogoDTO, type ProductDTO } from '@vanellis/shared';
+import { visibleCategories, type CatalogoDTO, type ProductDTO } from '@vanellis/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { CartView } from './components/CartView';
@@ -190,7 +190,7 @@ export function App() {
           {categoria.description && <p className="menu-intro__text">{categoria.description}</p>}
           {categoria.special && (
             <p className="menu-intro__especial">
-              ★ {pickupLabel(categoria.special)}. Encomendas até {shortDate(categoria.special.visibleUntil)}.
+              ★ {categoria.special.announcement}.
             </p>
           )}
         </div>

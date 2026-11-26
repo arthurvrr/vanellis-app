@@ -7,6 +7,7 @@ import type {
   SpecialMenu,
   SpecialMenuState,
   TemplateDTO,
+  Until,
 } from '@vanellis/shared';
 // Chamadas do painel. O cookie de sessão vai sozinho (mesmo site); mudanças vão como JSON,
 // que o servidor exige (proteção contra CSRF).
@@ -74,7 +75,14 @@ export interface CategoriaPainel {
   productCount: number;
   /** Cardápio especial (RF16–RF19); `null` = categoria regular. */
   special: SpecialMenu | null;
+  /** Agendado (em-breve), No site (visivel), Oculto ou Encerrado (RN63). */
   specialState: SpecialMenuState | null;
+  /** Fim calculado: o prazo da última data de retirada (RF60). */
+  specialEnd: Until | null;
+  /** O anúncio que o site mostra agora (RN62). */
+  specialAnnouncement: string | null;
+  /** Avisos do cadastro (RF61). */
+  specialWarnings: string[];
 }
 export interface ProdutoLista {
   id: number;
@@ -90,7 +98,7 @@ export type CategoriaForm = {
   name: string;
   description: string | null;
   coverImageUrl: string | null;
-  /** Período e datas do cardápio especial; `null` = regular. */
+  /** Início e datas do cardápio especial; `null` = regular. O fim vem do prazo das datas (RF60). */
   special: Omit<SpecialMenu, 'hidden'> | null;
 };
 

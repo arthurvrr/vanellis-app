@@ -60,6 +60,11 @@ export interface ProductDTO {
   minQuantity: number;
   leadTimeHours: number | null;
   available: boolean;
+  /**
+   * Num cardápio especial, a antecedência do item não alcança mais nenhuma data aberta:
+   * "Prazo encerrado para este item" (RN67). Ausente = falso.
+   */
+  orderClosed?: boolean;
   groups: OptionGroupDTO[];
 }
 

@@ -72,7 +72,7 @@ test('3. cardápio especial só deixa retirar na data dele', async ({ page }) =>
       name: 'Ceia E2E',
       description: 'Ceia de teste',
       coverImageUrl: null,
-      special: { visibleFrom: diaBrasilia(0), visibleUntil: diaBrasilia(8), pickupDates: [retirada] },
+      special: { visibleFrom: diaBrasilia(0), pickupDates: [retirada] },
     },
   });
   expect(cats.ok()).toBeTruthy();
@@ -88,14 +88,17 @@ test('3. cardápio especial só deixa retirar na data dele', async ({ page }) =>
   });
   expect(salvo.ok()).toBeTruthy();
 
-  // O cliente vê a ceia em destaque e só consegue escolher a data dela.
+  // O cliente vê a ceia em destaque, com o anúncio pela data de retirada (dia normal: só o dia,
+  // RN62), e só consegue escolher a data dela.
   await page.goto('/');
-  await expect(page.getByRole('button', { name: /Cardápio especial.*Ceia E2E/ })).toBeVisible();
+  const [, mes, dia] = retirada.split('-');
+  const cartao = page.getByRole('button', { name: /Cardápio especial.*Ceia E2E/ });
+  await expect(cartao).toBeVisible();
+  await expect(cartao).toContainText(`Retirada em ${dia}/${mes}`);
   await adicionar(page, 'ceia-e2e', 'Chester E2E');
   await adicionar(page, 'salgados', 'Coxinha');
   await page.goto('/#dados');
 
-  const [, mes, dia] = retirada.split('-');
   await expect(page.getByText(`Ceia E2E: retirada só em ${dia}/${mes}`)).toBeVisible();
   const dias = page.getByRole('grid', { name: 'Dia da retirada' }).getByRole('button');
   await expect(dias).toHaveCount(1);

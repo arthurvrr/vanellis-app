@@ -1,4 +1,4 @@
-import { pickupLabel, shortDate, statusLabel, type CatalogoDTO } from '@vanellis/shared';
+import { statusLabel, type CatalogoDTO } from '@vanellis/shared';
 import { useLoja } from '../lib/useLoja';
 import { Photo } from './Photo';
 
@@ -75,7 +75,7 @@ export function HomeView({ catalogo, onCategory }: { catalogo: CatalogoDTO; onCa
                 <span className="cat__name">{c.name}</span>
                 {c.special && (
                   <span className="cat__especial">
-                    {pickupLabel(c.special)} · encomendas até {shortDate(c.special.visibleUntil)}
+                    {c.special.announcement}
                   </span>
                 )}
                 {c.description && <span className="cat__text">{c.description}</span>}

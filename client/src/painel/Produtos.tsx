@@ -1,4 +1,4 @@
-import { formatDates, shortDate, specialMenuProblem } from '@vanellis/shared';
+import { formatDates, shortDate, specialMenuProblem, type Until } from '@vanellis/shared';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, type CategoriaPainel, type ProdutoLista } from './api';
 import { useEnvioFoto } from './FotoUpload';
@@ -318,29 +318,42 @@ function FotoCapa({
   );
 }
 
-type Especial = { visibleFrom: string; visibleUntil: string; pickupDates: string[] };
+type Especial = { visibleFrom: string; pickupDates: string[] };
 const vazio = {
   name: '',
   description: '',
   coverImageUrl: null as string | null,
   /** Cardápio especial ligado e sua configuração (RF16–RF19). */
   especial: false,
-  special: { visibleFrom: '', visibleUntil: '', pickupDates: [] } as Especial,
+  special: { visibleFrom: '', pickupDates: [] } as Especial,
 };
 
-/** Situação do cardápio especial na lista: aparece no site agora ou não, e por quê. */
+/** "No site até 29/12" ou "No site até o fim de 29/12": o fim calculado (RF60, C113). */
+const ate = (u: Until | null) => (u ? `${u.time === null ? 'o fim de ' : ''}${shortDate(u.date)}` : null);
+
+/**
+ * Situação do cardápio especial na lista (RF60, C112, C113): Agendado, No site, Oculto ou
+ * Encerrado, com o fim calculado pelo prazo da última data de retirada.
+ */
 function situacaoEspecial(c: CategoriaPainel): { texto: string; aviso: boolean } {
   const sp = c.special!;
   const retirada = `retirada em ${formatDates(sp.pickupDates)}`;
+  const fim = ate(c.specialEnd);
   switch (c.specialState) {
     case 'oculto':
       return { texto: `Oculto: não aparece no site · ${retirada}`, aviso: true };
     case 'em-breve':
-      return { texto: `Aparece no site a partir de ${shortDate(sp.visibleFrom)} · ${retirada}`, aviso: false };
+      return {
+        texto: `Agendado: aparece no site a partir de ${shortDate(sp.visibleFrom)}${fim ? ` e fica até ${fim}` : ''} · ${retirada}`,
+        aviso: false,
+      };
     case 'encerrado':
-      return { texto: `Encerrado em ${shortDate(sp.visibleUntil)}: não aparece no site`, aviso: true };
+      return { texto: `Encerrado: nenhuma data de retirada aceita mais pedidos, não aparece no site · ${retirada}`, aviso: true };
     default:
-      return { texto: `No site até ${shortDate(sp.visibleUntil)} · ${retirada}`, aviso: false };
+      return {
+        texto: `No site até ${fim}, prazo da última data de retirada · ${c.specialAnnouncement ?? retirada}`,
+        aviso: false,
+      };
   }
 }
 
@@ -364,16 +377,11 @@ function CamposEspecial({ value, onChange }: { value: Especial; onChange: (v: Es
             onChange={(e) => onChange({ ...value, visibleFrom: e.target.value })}
           />
         </div>
-        <div className="field">
-          <label htmlFor="esp-ate">até (último dia de encomendas)</label>
-          <input
-            id="esp-ate"
-            type="date"
-            value={value.visibleUntil}
-            onChange={(e) => onChange({ ...value, visibleUntil: e.target.value })}
-          />
-        </div>
       </div>
+      <p className="field__help">
+        Não há data de fim: o cardápio sai do site sozinho quando nenhuma data de retirada aceita mais pedidos. Numa
+        data especial, vale o prazo dela (Agenda &gt; Datas especiais); num dia normal, vale a antecedência dos itens.
+      </p>
       <div className="field">
         <label htmlFor="esp-data">Datas de retirada (os produtos só podem ser retirados nelas)</label>
         <div className="especial__linha">
@@ -433,7 +441,7 @@ function ListaCategorias({
             coverImageUrl: c.coverImageUrl,
             especial: c.special !== null,
             special: c.special
-              ? { visibleFrom: c.special.visibleFrom, visibleUntil: c.special.visibleUntil, pickupDates: c.special.pickupDates }
+              ? { visibleFrom: c.special.visibleFrom, pickupDates: c.special.pickupDates }
               : vazio.special,
           }
         : vazio,
@@ -538,6 +546,11 @@ function ListaCategorias({
                     ★ Especial · {situacaoEspecial(c).texto}
                   </span>
                 )}
+                {c.specialWarnings.map((w) => (
+                  <span key={w} className="tag tag--warn">
+                    {w}
+                  </span>
+                ))}
               </div>
               {c.special && (
                 <button
