@@ -9,6 +9,7 @@ import {
   formatCPF,
   formatDates,
   formatDay,
+  formatPickup,
   formatPhone,
   formatRange,
   generateOrderCode,
@@ -144,7 +145,9 @@ export function CheckoutView({
   const missing: string[] = [];
   const recebe = entrega ? 'entrega' : 'retirada';
   if (!day) missing.push(`escolha o dia da ${recebe}`);
-  else if (!day.special && !pickup?.time) missing.push(`escolha o horário da ${recebe}`);
+  // Data especial "a combinar" não tem horários; nos outros dias (e na especial em que o cliente
+  // escolhe, RF56), o horário é obrigatório.
+  else if (day.times.length && !pickup?.time) missing.push(`escolha o horário da ${recebe}`);
   if (Object.keys(addressErrors).length) missing.push('preencha o endereço de entrega');
   if (Object.keys(errors).length) missing.push('confira seus dados');
   if (!agreed) missing.push('marque "Li e concordo"');
@@ -157,7 +160,7 @@ export function CheckoutView({
           pickup: {
             date: day.date,
             weekday: day.weekday,
-            time: day.special ? null : pickup.time,
+            time: day.times.length ? pickup.time : null,
             special: day.special,
           },
           customer,
@@ -180,9 +183,7 @@ export function CheckoutView({
       code,
       url: link.url,
       message: buildOrderMessage({ ...order, code }, link.compact),
-      pickup: day!.special
-        ? `${formatDay(day!)} (${day!.special}), horário a combinar`
-        : `${formatDay(day!)} às ${pickup!.time}`,
+      pickup: formatPickup(order.pickup),
       modo: entrega ? 'Entrega' : 'Retirada',
       address: entrega ? formatAddress(address) : null,
       items: lines.map(({ line, product }) => {
@@ -398,14 +399,18 @@ function PickupPicker({
             </p>
           )}
 
-          {day?.special && (
+          {day?.special && !day.times.length && (
             <p className="checkout-info">
               {day.special}: escolha só o dia. O horário {entrega ? 'da entrega' : 'de retirada'} será informado pela
               padaria no próprio dia.
             </p>
           )}
 
-          {day && !day.special && (
+          {day?.special && day.times.length > 0 && (
+            <p className="checkout-info">{day.special}: escolha o horário {entrega ? 'da entrega' : 'da retirada'}.</p>
+          )}
+
+          {day && day.times.length > 0 && (
             <>
               <p className="checkout-label">Horário</p>
               {/* Horários de 30 em 30 minutos (RN51), separados em manhã e tarde para achar rápido. */}

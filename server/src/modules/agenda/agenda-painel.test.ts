@@ -204,6 +204,55 @@ describe('Exceções no calendário', () => {
     });
   });
 
+  it('C119: o cliente escolhe o horário, com intervalo próprio que ignora as restrições gerais', async () => {
+    await op('POST', '/api/painel/agenda/restricoes', { weekday: null, start: '00:00', end: '08:30', label: null });
+    const res = await op('POST', '/api/painel/agenda/datas-especiais', {
+      date: '2026-12-24',
+      name: 'Véspera de Natal',
+      deadline: '2026-12-22',
+      chooseTime: true,
+      window: { start: '07:00', end: '13:00' },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.specialDates[0]).toMatchObject({ chooseTime: true, window: { start: '07:00', end: '13:00' } });
+    const d = day(await site(), '2026-12-24')!;
+    expect(d.special).toBe('Véspera de Natal');
+    expect(d.times[0]).toBe('07:00');
+    expect(d.times.at(-1)).toBe('12:30');
+  });
+
+  it('C116: bloquear e desbloquear mantém o modo de horário e o intervalo', async () => {
+    await op('POST', '/api/painel/agenda/datas-especiais', {
+      date: '2026-12-24',
+      name: 'Véspera de Natal',
+      deadline: '2026-12-22',
+      chooseTime: true,
+      window: { start: '08:00', end: '12:00' },
+    });
+    await op('POST', '/api/painel/agenda/datas-bloqueadas', { date: '2026-12-24' });
+    await op('DELETE', '/api/painel/agenda/datas-bloqueadas/2026-12-24', {});
+    expect(day(await site(), '2026-12-24')!.times[0]).toBe('08:00');
+  });
+
+  it('intervalo próprio: o fim depois do início; no modo "a combinar" ele não é guardado', async () => {
+    const ruim = await op('POST', '/api/painel/agenda/datas-especiais', {
+      date: '2026-12-24',
+      name: 'Véspera de Natal',
+      chooseTime: true,
+      window: { start: '12:00', end: '08:00' },
+    });
+    expect(ruim.status).toBe(400);
+    expect(ruim.body.error).toBe('O fim do intervalo precisa ser depois do início');
+    const combinar = await op('POST', '/api/painel/agenda/datas-especiais', {
+      date: '2026-12-24',
+      name: 'Véspera de Natal',
+      chooseTime: false,
+      window: { start: '08:00', end: '12:00' },
+    });
+    expect(combinar.body.specialDates[0]).toMatchObject({ chooseTime: false, window: null });
+    expect(day(await site(), '2026-12-24')!.times).toEqual([]);
+  });
+
   it('C125: o prazo precisa ser antes da própria data', async () => {
     for (const deadline of ['2026-12-24', '2026-12-25']) {
       const res = await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-12-24', name: 'Véspera de Natal', deadline });

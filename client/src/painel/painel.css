@@ -1384,3 +1384,8 @@
     right: 0.5rem;
   }
 }
+
+/* Modo de horário da data especial (RF56): ocupa a linha inteira do formulário. */
+.especial__modo {
+  flex-basis: 100%;
+}

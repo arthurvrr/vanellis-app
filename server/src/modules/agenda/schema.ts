@@ -96,8 +96,19 @@ export const specialDate = pgTable(
     date: date('date', { mode: 'string' }).primaryKey(),
     name: varchar('name', { length: 60 }).notNull(),
     deadline: date('deadline', { mode: 'string' }),
+    /** Modo de horário (RF56): o cliente escolhe o horário; falso = "a combinar" (RN20). */
+    chooseTime: boolean('choose_time').notNull().default(false),
+    /** Intervalo próprio (RF57, RN66), só no modo em que o cliente escolhe; os dois ou nenhum. */
+    windowStart: time('window_start'),
+    windowEnd: time('window_end'),
   },
-  (t) => [check('special_date_deadline_check', sql`${t.deadline} is null or ${t.deadline} < ${t.date}`)],
+  (t) => [
+    check('special_date_deadline_check', sql`${t.deadline} is null or ${t.deadline} < ${t.date}`),
+    check(
+      'special_date_window_check',
+      sql`(${t.windowStart} is null and ${t.windowEnd} is null) or (${t.windowEnd} > ${t.windowStart})`,
+    ),
+  ],
 );
 
 /** Configuração da agenda: linha única (id = 1). */

@@ -65,6 +65,39 @@ export interface SpecialDate {
   date: string;
   name: string;
   deadline: string | null;
+  /**
+   * Modo de horário (RF56): `false` = "horário a combinar com a padaria" (o padrão, RN20);
+   * `true` = o cliente escolhe o horário.
+   */
+  chooseTime: boolean;
+  /**
+   * Intervalo próprio, quando o cliente escolhe o horário (RF57, RN66): dentro dele as
+   * restrições gerais não valem. `null` = o horário de funcionamento normal daquele dia.
+   */
+  window: { start: string; end: string } | null;
+}
+
+/** Problema no intervalo próprio de uma data especial, ou null. O painel e o servidor usam a mesma regra. */
+export function specialWindowProblem(w: { start: string; end: string }): string | null {
+  return w.end > w.start ? null : 'O fim do intervalo precisa ser depois do início';
+}
+
+/**
+ * Horários de uma data especial em que o cliente escolhe o horário (RN66): com intervalo
+ * próprio, só os horários lotados valem; sem ele, o horário e as restrições normais do dia.
+ */
+function specialTimes(
+  input: AgendaInput,
+  special: SpecialDate,
+  date: string,
+  weekday: number,
+): string[] {
+  const closed = input.closedPeriods.filter((c) => c.date === date);
+  if (special.window) {
+    // Stryker disable next-line ArrayDeclaration: equivalente, pickupTimes só usa restrições com weekday null ou igual ao do dia
+    return pickupTimes({ weekday, open: special.window.start, close: special.window.end }, [], closed);
+  }
+  return pickupTimes(periodsOn(input.schedules, date, weekday), input.restrictions, closed);
 }
 
 export interface AgendaInput {
@@ -147,6 +180,12 @@ export function scheduleFor(schedules: WeeklySchedule[], date: string): WeeklySc
   );
 }
 
+/** Períodos de funcionamento numa data, pelo horário semanal que vale nela; sem horário, nenhum. */
+export function periodsOn(schedules: WeeklySchedule[], date: string, weekday: number): OpeningHours[] {
+  // Stryker disable next-line ArrayDeclaration: equivalente, dayPeriods filtra por dia da semana e descarta qualquer item sem weekday
+  return dayPeriods(scheduleFor(schedules, date)?.hours ?? [], weekday);
+}
+
 /**
  * Horários de retirada de um dia, sem considerar a antecedência: de 30 em 30 minutos, em cada
  * período, da abertura até 30 minutos antes do fechamento (RN51, C67), fora das restrições
@@ -194,8 +233,7 @@ export function specialClosing(
   for (let i = 0; i <= CLOSING_SEARCH_DAYS; i++) {
     const { date, weekday } = dayAt(dateMs(base) - i * DAY);
     if (blocked.has(date)) continue;
-    // Stryker disable next-line ArrayDeclaration: equivalente, dayPeriods filtra por dia da semana e descarta qualquer item sem weekday
-    const last = dayPeriods(scheduleFor(input.schedules, date)?.hours ?? [], weekday).at(-1);
+    const last = periodsOn(input.schedules, date, weekday).at(-1);
     if (last) return { date, time: last.close };
   }
   return { date: base, time: null };
@@ -222,7 +260,7 @@ function describeClosing(c: { date: string; time: string | null }): string {
  */
 export function specialDateNotes(
   input: Pick<AgendaInput, 'schedules' | 'blockedDates'>,
-  special: Pick<SpecialDate, 'date' | 'deadline'>,
+  special: Pick<SpecialDate, 'date' | 'deadline' | 'chooseTime' | 'window'>,
 ): { closing: string; warnings: string[] } {
   const c = specialClosing(input, special);
   const base = special.deadline ?? addDays(special.date, -1);
@@ -233,6 +271,12 @@ export function specialDateNotes(
   if (special.deadline === null)
     warnings.push(
       'Sem prazo, qualquer produto do site, inclusive os de antecedência longa, poderá ser pedido até a véspera, no fechamento da loja.',
+    );
+  // C104: o cliente escolheria o horário num dia em que a loja não abre, sem intervalo próprio.
+  const weekday = dayAt(dateMs(special.date)).weekday;
+  if (special.chooseTime && !special.window && !periodsOn(input.schedules, special.date, weekday).length)
+    warnings.push(
+      `A loja não abre em ${dayLabel(special.date)}: sem intervalo próprio, não haverá horário para escolher. Cadastre um intervalo.`,
     );
   return { closing: `Encomendas até ${when}${special.deadline === null ? ' (véspera)' : ''}`, warnings };
 }
@@ -268,14 +312,16 @@ export function availableDays(
 
     const special = input.specialDates.find((s) => s.date === date);
     if (special) {
-      if (nowMs < closingMs(specialClosing(input, special)))
-        days.push({ date, weekday, special: special.name, times: [], delivery: deliveryOn(input.delivery, date) });
+      // A antecedência dos itens não vale aqui (RN57): os pedidos fecham antes do dia.
+      const times = special.chooseTime ? specialTimes(input, special, date, weekday) : [];
+      // No modo "cliente escolhe", um dia sem nenhum horário não é oferecido (C104).
+      if (nowMs < closingMs(specialClosing(input, special)) && (!special.chooseTime || times.length))
+        days.push({ date, weekday, special: special.name, times, delivery: deliveryOn(input.delivery, date) });
       continue;
     }
     if (dayMs > lastMs) continue;
 
-    // Stryker disable next-line ArrayDeclaration: equivalente, dayPeriods filtra por dia da semana e descarta qualquer item sem weekday
-    const periods = dayPeriods(scheduleFor(input.schedules, date)?.hours ?? [], weekday);
+    const periods = periodsOn(input.schedules, date, weekday);
     // Stryker disable next-line ConditionalExpression: equivalente, sem períodos pickupTimes devolve [] e o dia fica de fora
     if (!periods.length) continue;
     const closed = input.closedPeriods.filter((c) => c.date === date);
@@ -327,15 +373,14 @@ export function storeStatus(
   const [today, time] = now.split('T') as [string, string];
   const minutes = toMinutes(time);
   const blocked = new Set(input.blockedDates);
-  const periodsOn = (dayMs: number) => {
+  const diaDe = (dayMs: number) => {
     const { date, weekday } = dayAt(dayMs);
     if (blocked.has(date)) return { date, weekday, periods: [] };
-    // Stryker disable next-line ArrayDeclaration: equivalente, dayPeriods filtra por dia da semana e descarta qualquer item sem weekday
-    return { date, weekday, periods: dayPeriods(scheduleFor(input.schedules, date)?.hours ?? [], weekday) };
+    return { date, weekday, periods: periodsOn(input.schedules, date, weekday) };
   };
 
   const todayMs = dateMs(today);
-  const t = periodsOn(todayMs);
+  const t = diaDe(todayMs);
   const current = t.periods.find((p) => minutes >= toMinutes(p.open) && minutes < toMinutes(p.close));
   if (current) return { open: true, closesAt: current.close, nextOpen: null };
   // Antes de abrir, ou no intervalo entre dois períodos (C67): abre hoje.
@@ -343,7 +388,7 @@ export function storeStatus(
   const later = t.periods.find((p) => minutes < toMinutes(p.open));
   if (later) return { open: false, closesAt: null, nextOpen: { date: t.date, weekday: t.weekday, time: later.open } };
   for (let i = 1; i <= 14; i++) {
-    const d = periodsOn(todayMs + i * DAY);
+    const d = diaDe(todayMs + i * DAY);
     if (d.periods.length)
       return { open: false, closesAt: null, nextOpen: { date: d.date, weekday: d.weekday, time: d.periods[0]!.open } };
   }

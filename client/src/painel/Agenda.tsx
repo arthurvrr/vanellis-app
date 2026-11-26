@@ -1,4 +1,12 @@
-import { addDays, dayPeriods, deliveryProblem, formatDates, formatPeriods, weekHoursProblem } from '@vanellis/shared';
+import {
+  addDays,
+  dayPeriods,
+  deliveryProblem,
+  formatDates,
+  formatPeriods,
+  specialWindowProblem,
+  weekHoursProblem,
+} from '@vanellis/shared';
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { api, type AgendaPainel, type Horario } from './api';
 import { avisarAoSair } from './saida';
@@ -398,11 +406,18 @@ function DatasBloqueadas({ agenda, muda, ocupado, marcar }: SecaoProps) {
 
 /** Datas especiais (C31), com prazo de encomenda opcional (RF55, RF61; C116, C117, C123, C125). */
 function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
-  const vazio = { date: '', name: '', deadline: '' };
+  const vazio = { date: '', name: '', deadline: '', chooseTime: false, start: '', end: '' };
   const [especial, setEspecial] = useState(vazio);
-  usePendente(marcar, 'especiais', especial.date !== '' || especial.name !== '' || especial.deadline !== '');
+  usePendente(marcar, 'especiais', JSON.stringify(especial) !== JSON.stringify(vazio));
   // O prazo fica sempre antes da própria data (C125); o servidor confere o mesmo.
   const prazoInvalido = especial.deadline !== '' && especial.date !== '' && especial.deadline >= especial.date;
+  // Intervalo próprio (RF57): opcional, mas com os dois horários e o fim depois do início.
+  const usaIntervalo = especial.chooseTime && (especial.start !== '' || especial.end !== '');
+  const intervaloProblema = !usaIntervalo
+    ? null
+    : especial.start === '' || especial.end === ''
+      ? 'Preencha o início e o fim do intervalo, ou deixe os dois em branco'
+      : specialWindowProblem({ start: especial.start, end: especial.end });
   const bloqueadas = new Set(agenda.blockedDates.map((b) => b.date));
 
   return (
@@ -422,7 +437,12 @@ function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
             <br />
             <small>
               {bloqueadas.has(s.date) ? 'Bloqueada em Datas sem retirada: fora do site até desbloquear. ' : ''}
-              {s.closing}
+              {s.closing}.{' '}
+              {!s.chooseTime
+                ? 'Horário a combinar.'
+                : s.window
+                  ? `O cliente escolhe o horário, das ${hora(s.window.start)} às ${hora(s.window.end)}.`
+                  : 'O cliente escolhe o horário, no funcionamento normal do dia.'}
             </small>
             {s.warnings.map((w) => (
               <small key={w} className="agenda__aviso">
@@ -439,7 +459,13 @@ function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
             muda,
             e,
             '/datas-especiais',
-            { date: especial.date, name: especial.name, deadline: especial.deadline || null },
+            {
+              date: especial.date,
+              name: especial.name,
+              deadline: especial.deadline || null,
+              chooseTime: especial.chooseTime,
+              window: usaIntervalo ? { start: especial.start, end: especial.end } : null,
+            },
             'Data especial cadastrada.',
             () => setEspecial(vazio),
           )
@@ -478,10 +504,63 @@ function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
             onChange={(e) => setEspecial({ ...especial, deadline: e.target.value })}
           />
         </div>
-        <button type="submit" className="add agenda__btn" disabled={ocupado || prazoInvalido}>
+        <div className="radios especial__modo" role="radiogroup" aria-label="Horário na data especial">
+          <label className={!especial.chooseTime ? 'radio radio--on' : 'radio'}>
+            <input
+              type="radio"
+              name="es-modo"
+              checked={!especial.chooseTime}
+              onChange={() => setEspecial({ ...especial, chooseTime: false })}
+            />
+            Horário a combinar com a padaria
+          </label>
+          <label className={especial.chooseTime ? 'radio radio--on' : 'radio'}>
+            <input
+              type="radio"
+              name="es-modo"
+              checked={especial.chooseTime}
+              onChange={() => setEspecial({ ...especial, chooseTime: true })}
+            />
+            O cliente escolhe o horário
+          </label>
+        </div>
+        {especial.chooseTime && (
+          <>
+            <div className="field">
+              <label htmlFor="es-de">Das (opcional)</label>
+              <input
+                id="es-de"
+                type="time"
+                value={especial.start}
+                onChange={(e) => setEspecial({ ...especial, start: e.target.value })}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="es-ate">Às (opcional)</label>
+              <input
+                id="es-ate"
+                type="time"
+                value={especial.end}
+                onChange={(e) => setEspecial({ ...especial, end: e.target.value })}
+              />
+            </div>
+          </>
+        )}
+        <button type="submit" className="add agenda__btn" disabled={ocupado || prazoInvalido || intervaloProblema !== null}>
           Cadastrar
         </button>
       </form>
+      {especial.chooseTime && (
+        <p className="field__help">
+          Com intervalo, valem só os horários dele, sem as restrições gerais de retirada. Sem intervalo, vale o
+          funcionamento normal do dia, com as restrições.
+        </p>
+      )}
+      {intervaloProblema && (
+        <p className="field__error" role="alert">
+          {intervaloProblema}
+        </p>
+      )}
       <p id="es-prazo-ajuda" className="field__help">
         O prazo vai até o fechamento da loja nesse dia. Sem prazo, as encomendas vão até a véspera.
       </p>

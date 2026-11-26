@@ -43,7 +43,17 @@ export interface AgendaPainel {
   restrictions: { id: number; weekday: number | null; start: string; end: string; label: string | null }[];
   blockedDates: { date: string; reason: string | null }[];
   /** Com o prazo (RF55), até quando vai a encomenda e os avisos ao operador (RF61). */
-  specialDates: { date: string; name: string; deadline: string | null; closing: string; warnings: string[] }[];
+  specialDates: {
+    date: string;
+    name: string;
+    deadline: string | null;
+    /** RF56: o cliente escolhe o horário; falso = a combinar. */
+    chooseTime: boolean;
+    /** RF57: intervalo próprio, ou null (horário normal do dia). */
+    window: { start: string; end: string } | null;
+    closing: string;
+    warnings: string[];
+  }[];
   closedPeriods: { id: number; date: string; start: string; end: string }[];
   config: { minLeadHours: number; windowMonths: number };
   /** Tele-entrega (RF44). */

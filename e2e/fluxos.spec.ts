@@ -159,3 +159,31 @@ test('6. item que sai do cardápio com a página aberta bloqueia a retirada até
   await expect(aviso).toHaveCount(0);
   await expect(page.getByRole('grid', { name: 'Dia da retirada' }).getByRole('button').first()).toBeVisible();
 });
+
+test('7. data especial em que o cliente escolhe o horário leva o horário na mensagem (C102, C119)', async ({ page }) => {
+  await entrarNoPainel(page);
+  const data = diaBrasilia(2);
+  const criada = await page.request.post('/api/painel/agenda/datas-especiais', {
+    data: { date: data, name: 'Especial C119', deadline: null, chooseTime: true, window: { start: '08:00', end: '10:00' } },
+  });
+  expect(criada.ok()).toBeTruthy();
+  try {
+    await page.goto('/');
+    await adicionar(page, 'salgados', 'Coxinha');
+    await page.goto('/#dados');
+    const calendario = page.getByRole('grid', { name: 'Dia da retirada' });
+    await expect(calendario.getByRole('button').first()).toBeVisible();
+    const dia = calendario.getByRole('button', { name: /Especial C119/ });
+    // O dia pode cair no mês seguinte ao primeiro mostrado.
+    if (!(await dia.count())) await page.getByRole('button', { name: 'Próximo mês' }).click();
+    await dia.click();
+    // Só os horários do intervalo próprio, até 30 minutos antes do fim.
+    await expect(page.getByRole('radio', { name: /^\d{2}:\d{2}$/ })).toHaveText(['08:00', '08:30', '09:00', '09:30']);
+    await page.getByRole('radio', { name: '09:00' }).click();
+    await preencherCliente(page);
+    await page.getByRole('button', { name: 'Enviar pedido pelo WhatsApp' }).click();
+    expect(await mensagemEnviada(page)).toMatch(/\*Retirada:\* \S+ \d{2}\/\d{2} \(Especial C119\) às 09:00/);
+  } finally {
+    await page.request.delete(`/api/painel/agenda/datas-especiais/${data}`, { data: {} });
+  }
+});
