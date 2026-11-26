@@ -19,8 +19,10 @@ export default {
   reporters: ['clear-text', 'progress', 'html', 'json'],
   htmlReporter: { fileName: 'reports/mutation/index.html' },
   jsonReporter: { fileName: 'reports/mutation/mutation.json' },
-  // RQ22: por enquanto só relatório; o piso (break) entra depois que a nota estabilizar.
-  thresholds: { high: 80, low: 60, break: null },
+  // Piso (RQ22): nota abaixo de 100% reprova o PR, como o piso de cobertura deste pacote. Uma
+  // mutação que nenhum teste consegue pegar porque não muda o comportamento (mutante equivalente)
+  // se marca no código, com o motivo:  // Stryker disable next-line <mutador>: <motivo>
+  thresholds: { high: 100, low: 90, break: 100 },
   // O Stryker trabalha numa cópia em .stryker-tmp/ e ajustaria o "extends" do tsconfig dela com a
   // API JS do TypeScript, que o TypeScript 7 não tem mais. Sem tsconfig na cópia, o Vitest usa o
   // deste pacote, logo acima, com os caminhos certos.

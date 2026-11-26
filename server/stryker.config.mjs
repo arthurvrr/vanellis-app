@@ -22,7 +22,8 @@ export default {
   reporters: ['clear-text', 'progress', 'html', 'json'],
   htmlReporter: { fileName: 'reports/mutation/index.html' },
   jsonReporter: { fileName: 'reports/mutation/mutation.json' },
-  thresholds: { high: 80, low: 60, break: null },
+  // Piso (RQ22): nota abaixo de 100% reprova o PR. Mutante equivalente: ver shared/stryker.config.mjs.
+  thresholds: { high: 100, low: 90, break: 100 },
   // Mesmo motivo do shared: sem tsconfig na cópia, o Vitest usa o deste pacote (TypeScript 7).
   ignorePatterns: ['tsconfig.json'],
   tsconfigFile: 'tsconfig.stryker-sem-ajuste.json',
