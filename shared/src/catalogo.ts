@@ -48,8 +48,8 @@ export interface OptionGroupDTO {
 
 export interface ProductDTO {
   id: number;
-  /** Cardápio principal (o do painel até o PR E3). */
-  categoryId: number;
+  /** Cardápio principal (até o PR E4); vazio só em produto sem cardápio, que não sai no site. */
+  categoryId: number | null;
   /** Todos os cardápios visíveis em que o produto está (RF64); inclui o principal, se visível. */
   categoryIds: number[];
   pdvCode: string | null;

@@ -134,6 +134,13 @@
       "when": 1795710265102,
       "tag": "0018_produto_varios_cardapios",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795712197395,
+      "tag": "0019_produto_sem_cardapio",
+      "breakpoints": true
     }
   ]
 }

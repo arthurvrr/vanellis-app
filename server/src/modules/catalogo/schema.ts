@@ -44,9 +44,8 @@ export const product = pgTable(
     id: serial('id').primaryKey(),
     // Obrigatório conforme o tipo de produto (RN41): validado no painel, não no banco.
     pdvCode: varchar('pdv_code', { length: 20 }).unique(),
-    categoryId: integer('category_id')
-      .notNull()
-      .references(() => category.id, { onDelete: 'restrict' }),
+    // Cardápio principal (até o PR E4); vazio = produto sem cardápio, fora do site (RF64).
+    categoryId: integer('category_id').references(() => category.id, { onDelete: 'restrict' }),
     name: varchar('name', { length: 100 }).notNull(),
     description: text('description'),
     imageUrl: varchar('image_url', { length: 255 }),

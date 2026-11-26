@@ -43,7 +43,7 @@ export const product = (p: Partial<ProductDTO>): ProductDTO => {
     groups: [],
     ...p,
   };
-  return { ...base, categoryIds: p.categoryIds ?? [base.categoryId] };
+  return { ...base, categoryIds: p.categoryIds ?? (base.categoryId === null ? [] : [base.categoryId]) };
 };
 
 /** Categoria regular com os campos mínimos; passe `special` para um cardápio especial. */

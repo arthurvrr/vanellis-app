@@ -298,7 +298,7 @@ describe('Novo produto', () => {
 
   it('C61: duplicar copia grupos e preços, indisponível e sem códigos, logo depois do original', async () => {
     const id = await criar({ ...torta(), pdvCode: '3001' });
-    await criar({ ...coxinha(), categoryId: tortas, name: 'Torta de Nozes' });
+    await criar({ ...coxinha(), categoryIds: [tortas], name: 'Torta de Nozes' });
     const res = await op('POST', `/api/painel/catalogo/produtos/${id}/duplicar`, {});
     expect(res.status).toBe(201);
     const copia = await cadastro(res.body.id);

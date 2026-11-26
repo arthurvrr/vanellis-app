@@ -84,7 +84,7 @@ test('3. cardápio especial só deixa retirar na data dele', async ({ page }) =>
   const { id } = await (await api.post(`/api/painel/catalogo/produtos/${coxinha.id}/duplicar`, { data: {} })).json();
   const form = await (await api.get(`/api/painel/catalogo/produtos/${id}/cadastro`)).json();
   const salvo = await api.put(`/api/painel/catalogo/produtos/${id}`, {
-    data: { ...form, name: 'Chester E2E', categoryId: ceia.id, available: true },
+    data: { ...form, name: 'Chester E2E', categoryIds: [ceia.id], available: true },
   });
   expect(salvo.ok()).toBeTruthy();
 

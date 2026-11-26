@@ -50,7 +50,7 @@ export function Produtos({ onAuthError }: { onAuthError: (e: unknown) => boolean
   const [categorias, setCategorias] = useState<CategoriaPainel[] | null>(null);
   const [produtos, setProdutos] = useState<ProdutoLista[] | null>(null);
   const [msg, setMsg] = useState<Msg>(null);
-  const [filtroCat, setFiltroCat] = useState<number | 'todas'>('todas');
+  const [filtroCat, setFiltroCat] = useState<Filtro>('todas');
   const [soSemPdv, setSoSemPdv] = useState(window.location.hash === '#produtos-sem-pdv');
   const [editor, setEditor] = useState(editorDoEndereco);
 
@@ -93,6 +93,13 @@ export function Produtos({ onAuthError }: { onAuthError: (e: unknown) => boolean
     }
   }
 
+  // Produtos e cardápios juntos: salvar um produto muda a contagem e a ordem dos cardápios dele, e
+  // a confirmação de excluir um cardápio usa essa contagem (RF64, RN70).
+  const recarregar = () => {
+    void api.produtos().then(setProdutos).catch(erro);
+    void api.categorias().then(setCategorias).catch(erro);
+  };
+
   if (!categorias || !produtos) return <p className="status">{msg?.text ?? 'Carregando…'}</p>;
 
   if (editor !== null) {
@@ -105,11 +112,11 @@ export function Produtos({ onAuthError }: { onAuthError: (e: unknown) => boolean
         aviso={msg?.ok ? msg.text : null}
         onDone={(text) => {
           window.location.hash = '#produtos';
-          void api.produtos().then(setProdutos).catch(erro);
+          recarregar();
           setMsg(text ? { ok: true, text } : null);
         }}
         onOpen={(id, text) => {
-          void api.produtos().then(setProdutos).catch(erro);
+          recarregar();
           window.location.hash = `#produto/${id}`;
           setMsg(text ? { ok: true, text } : null);
         }}
@@ -138,9 +145,19 @@ export function Produtos({ onAuthError }: { onAuthError: (e: unknown) => boolean
           setSoSemPdv={setSoSemPdv}
           act={act}
           setProdutos={setProdutos}
+          setCategorias={setCategorias}
         />
       ) : (
-        <ListaCategorias categorias={categorias} act={act} setCategorias={setCategorias} erro={erro} />
+        <ListaCategorias
+          categorias={categorias}
+          act={act}
+          setCategorias={(c) => {
+            setCategorias(c);
+            // Excluir ou mudar um cardápio muda os cardápios dos produtos (RF65, RN70).
+            void api.produtos().then(setProdutos).catch(erro);
+          }}
+          erro={erro}
+        />
       )}
     </section>
   );
@@ -157,18 +174,25 @@ function ListaProdutos({
   setSoSemPdv,
   act,
   setProdutos,
+  setCategorias,
 }: {
   categorias: CategoriaPainel[];
   produtos: ProdutoLista[];
-  filtroCat: number | 'todas';
-  setFiltroCat: (v: number | 'todas') => void;
+  filtroCat: Filtro;
+  setFiltroCat: (v: Filtro) => void;
   soSemPdv: boolean;
   setSoSemPdv: (v: boolean) => void;
   act: <T>(fn: () => Promise<T>, apply: (v: T) => void, ok?: string) => Promise<boolean>;
   setProdutos: (p: ProdutoLista[]) => void;
+  setCategorias: (c: CategoriaPainel[]) => void;
 }) {
   const semPdv = produtos.filter((p) => p.missingPdv).length;
-  const visiveis = categorias.filter((c) => filtroCat === 'todas' || c.id === filtroCat);
+  // Grupos da lista: um por cardápio e, no fim, os produtos sem cardápio (RF64), para poder
+  // vinculá-los de novo.
+  const grupos = [
+    ...categorias.filter((c) => filtroCat === 'todas' || c.id === filtroCat).map((c) => ({ id: c.id as number | null, name: c.name })),
+    ...(filtroCat === 'todas' || filtroCat === 'sem' ? [{ id: null, name: 'Sem cardápio' }] : []),
+  ];
 
   return (
     <>
@@ -178,9 +202,12 @@ function ListaProdutos({
           <select
             id="f-cat"
             value={filtroCat}
-            onChange={(e) => setFiltroCat(e.target.value === 'todas' ? 'todas' : Number(e.target.value))}
+            onChange={(e) =>
+              setFiltroCat(e.target.value === 'todas' || e.target.value === 'sem' ? e.target.value : Number(e.target.value))
+            }
           >
             <option value="todas">Todas</option>
+            <option value="sem">Sem cardápio</option>
             {categorias.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -197,13 +224,22 @@ function ListaProdutos({
         </label>
       </div>
 
-      {visiveis.map((c) => {
-        const todos = produtos.filter((p) => p.categoryId === c.id);
+      {grupos.map((c) => {
+        // Um produto pode estar em vários cardápios, cada um na sua ordem (RF64, C134).
+        const todos =
+          c.id === null
+            ? produtos.filter((p) => !p.categoryIds.length)
+            : produtos
+                .filter((p) => p.categoryIds.includes(c.id!))
+                .sort((a, b) => (a.posicoes[c.id!] ?? 0) - (b.posicoes[c.id!] ?? 0));
         const lista = todos.filter((p) => !soSemPdv || p.missingPdv);
         if (!lista.length) return null;
         return (
-          <section key={c.id} className="card-form plist">
+          <section key={c.id ?? 'sem'} className="card-form plist">
             <h3>{c.name}</h3>
+            {c.id === null && (
+              <p className="field__help">Não aparecem no site. Edite o produto para vinculá-lo a um cardápio.</p>
+            )}
             <ul>
               {lista.map((p) => {
                 const pos = todos.indexOf(p);
@@ -236,18 +272,18 @@ function ListaProdutos({
                       {p.available ? 'Disponível' : 'Indisponível'}
                     </button>
                     <span className="prow__order">
-                      {pos > 0 && (
+                      {c.id !== null && pos > 0 && (
                         <Seta
                           dir="subir"
                           label={`Subir ${p.name}`}
-                          onClick={() => act(() => api.moveProduto(p.id, 'subir'), setProdutos)}
+                          onClick={() => act(() => api.moveProduto(p.id, 'subir', c.id!), setProdutos)}
                         />
                       )}
-                      {pos < todos.length - 1 && (
+                      {c.id !== null && pos < todos.length - 1 && (
                         <Seta
                           dir="descer"
                           label={`Descer ${p.name}`}
-                          onClick={() => act(() => api.moveProduto(p.id, 'descer'), setProdutos)}
+                          onClick={() => act(() => api.moveProduto(p.id, 'descer', c.id!), setProdutos)}
                         />
                       )}
                     </span>
@@ -256,7 +292,15 @@ function ListaProdutos({
                       className="link link--danger"
                       onClick={() => {
                         if (window.confirm(`Excluir ${p.name}? Isso não pode ser desfeito.`)) {
-                          void act(() => api.excluiProduto(p.id), setProdutos, `${p.name} excluído.`);
+                          void act(
+                            () => api.excluiProduto(p.id),
+                            (ps) => {
+                              setProdutos(ps);
+                              // A contagem de cada cardápio muda junto (RF64).
+                              void api.categorias().then(setCategorias).catch(() => undefined);
+                            },
+                            `${p.name} excluído.`,
+                          );
                         }
                       }}
                     >
@@ -273,6 +317,9 @@ function ListaProdutos({
     </>
   );
 }
+
+/** Filtro da lista de produtos: todos, um cardápio, ou os sem cardápio. */
+type Filtro = number | 'todas' | 'sem';
 
 // ---------- categorias ----------
 
@@ -591,7 +638,17 @@ function ListaCategorias({
                 type="button"
                 className="link link--danger"
                 onClick={() => {
-                  if (window.confirm(`Excluir a categoria ${c.name}? Isso não pode ser desfeito.`)) {
+                  // Os produtos dela são desvinculados, sem ser excluídos (RF65, RN70, C132, C133).
+                  const sozinhos = c.exclusiveCount;
+                  const outros = c.productCount - sozinhos;
+                  const partes = [
+                    outros ? `${outros} ${outros === 1 ? 'produto continua' : 'produtos continuam'} nos outros cardápios` : '',
+                    sozinhos
+                      ? `${sozinhos} ${sozinhos === 1 ? 'produto fica' : 'produtos ficam'} sem cardápio e ${sozinhos === 1 ? 'sai' : 'saem'} do site, até ser${sozinhos === 1 ? '' : 'em'} vinculado${sozinhos === 1 ? '' : 's'} de novo`
+                      : '',
+                  ].filter(Boolean);
+                  const aviso = partes.length ? ` ${partes.join('; ')}. Nenhum produto é excluído.` : '';
+                  if (window.confirm(`Excluir a categoria ${c.name}?${aviso} Isso não pode ser desfeito.`)) {
                     void act(() => api.excluiCategoria(c.id), setCategorias, `Categoria ${c.name} excluída.`);
                   }
                 }}
