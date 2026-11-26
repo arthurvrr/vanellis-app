@@ -1,4 +1,4 @@
-import { statusLabel, type CatalogoDTO } from '@vanellis/shared';
+import { productsOf, statusLabel, type CatalogoDTO } from '@vanellis/shared';
 import { useLoja } from '../lib/useLoja';
 import { Photo } from './Photo';
 
@@ -6,8 +6,7 @@ import { Photo } from './Photo';
 // de produtos. Destaque com a situação da loja, como funciona (compacto) e as categorias.
 export function HomeView({ catalogo, onCategory }: { catalogo: CatalogoDTO; onCategory: (slug: string) => void }) {
   const loja = useLoja();
-  const imageOf = (categoryId: number) =>
-    catalogo.produtos.find((p) => p.categoryId === categoryId && p.imageUrl)?.imageUrl ?? null;
+  const imageOf = (categoryId: number) => productsOf(catalogo, categoryId).find((p) => p.imageUrl)?.imageUrl ?? null;
 
   return (
     <main className="home">

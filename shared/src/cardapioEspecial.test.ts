@@ -13,7 +13,7 @@ import {
   specialMenuWarnings,
   type SpecialMenu,
 } from './cardapioEspecial';
-import { visibleCategories, type CategoryDTO } from './catalogo';
+import { productsOf, visibleCategories, type CategoryDTO } from './catalogo';
 import { category, product } from './test-utils';
 
 const natal: SpecialMenu = {
@@ -358,5 +358,65 @@ describe('cardápio especial: datas abertas, anúncio e fim', () => {
     ]);
     expect(specialMenuWarnings({ ...festas, visibleFrom: '2026-12-29' }, d)).toEqual([]);
     expect(specialMenuWarnings(festas, [])).toEqual([]);
+  });
+});
+
+// ---------- Produto em vários cardápios (RF64, RN68, RN69; C128–C131) ----------
+// A Quiche está em Tortas (regular) e na Ceia de Natal (especial, 24/12); o Chester só na Ceia;
+// o Panetone só nas duas ceias (24/12 e 31/12).
+
+describe('produto em vários cardápios', () => {
+  const tortas = category({ id: 1, name: 'Tortas' });
+  const ceiaNatal = category({ id: 2, name: 'Ceia de Natal', special: { pickupDates: ['2026-12-24'], announcement: '', closedProducts: [] } });
+  const anoNovo = category({ id: 3, name: 'Ceia de Ano Novo', special: { pickupDates: ['2026-12-31'], announcement: '', closedProducts: [] } });
+  const quiche = product({ id: 10, name: 'Quiche', categoryId: 1, categoryIds: [1, 2] });
+  const chester = product({ id: 20, name: 'Chester', categoryId: 2 });
+  const panetone = product({ id: 30, name: 'Panetone', categoryId: 2, categoryIds: [2, 3] });
+  const catalogo = { categorias: [tortas, ceiaNatal, anoNovo], produtos: [quiche, chester, panetone] };
+
+  it('C128: o produto aparece em cada cardápio dele, na ordem de cada cardápio', () => {
+    expect(productsOf(catalogo, 1).map((p) => p.name)).toEqual(['Quiche']);
+    expect(productsOf(catalogo, 2).map((p) => p.name)).toEqual(['Quiche', 'Chester', 'Panetone']);
+    // Com a ordem do cardápio, ela vale; produto fora dele é ignorado.
+    const ordenado = { ...catalogo, categorias: [tortas, { ...ceiaNatal, productIds: [30, 10, 99, 20] }, anoNovo] };
+    expect(productsOf(ordenado, 2).map((p) => p.name)).toEqual(['Panetone', 'Quiche', 'Chester']);
+    // Produto do cardápio que ficou fora da ordem vai para o fim.
+    const incompleto = { ...catalogo, categorias: [tortas, { ...ceiaNatal, productIds: [20, 30] }, anoNovo] };
+    expect(productsOf(incompleto, 2).map((p) => p.name)).toEqual(['Chester', 'Panetone', 'Quiche']);
+    expect(visibleCategories(catalogo).map((c) => c.name)).toEqual(['Ceia de Natal', 'Ceia de Ano Novo', 'Tortas']);
+  });
+
+  it('C129: produto também num cardápio regular segue a retirada normal (RN68)', () => {
+    expect(pickupRule(catalogo, [10])).toEqual({ menus: [], dates: null, conflict: false });
+    // Com o Chester (só da Ceia) junto, só 24/12.
+    expect(pickupRule(catalogo, [10, 20])).toEqual({
+      menus: [{ name: 'Ceia de Natal', pickupDates: ['2026-12-24'] }],
+      dates: ['2026-12-24'],
+      conflict: false,
+    });
+  });
+
+  it('C130: produto só em cardápios especiais vale nas datas de qualquer um deles', () => {
+    expect(pickupRule(catalogo, [30])).toEqual({
+      menus: [
+        { name: 'Ceia de Natal', pickupDates: ['2026-12-24'] },
+        { name: 'Ceia de Ano Novo', pickupDates: ['2026-12-31'] },
+      ],
+      dates: ['2026-12-24', '2026-12-31'],
+      conflict: false,
+    });
+    // Com o Chester, fica a data em comum.
+    expect(pickupRule(catalogo, [30, 20]).dates).toEqual(['2026-12-24']);
+  });
+
+  it('C131: cardápio que saiu do site não conta; o produto segue pelos outros (RN69)', () => {
+    // Sem a Ceia de Natal no catálogo (encerrada), o Panetone fica só com o Ano Novo.
+    const semNatal = { categorias: [tortas, anoNovo], produtos: [quiche, chester, panetone] };
+    expect(pickupRule(semNatal, [30]).dates).toEqual(['2026-12-31']);
+    expect(pickupRule(semNatal, [10]).dates).toBeNull();
+    // O Chester, só na Ceia que saiu, não prende datas: ele já é apontado como indisponível (RN64).
+    expect(pickupRule(semNatal, [20])).toEqual({ menus: [], dates: null, conflict: false });
+    // Cardápio que não existe no catálogo não tem produtos.
+    expect(productsOf(semNatal, 99)).toEqual([]);
   });
 });

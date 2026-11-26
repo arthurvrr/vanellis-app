@@ -10,6 +10,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   serial,
   text,
   unique,
@@ -64,6 +65,26 @@ export const product = pgTable(
     check('product_min_quantity_check', sql`${t.minQuantity} > 0`),
     check('product_weight_check', sql`${t.weightMaxKg} >= ${t.weightMinKg}`),
   ],
+);
+
+/**
+ * Produto num cardápio (RF64): um produto pode estar em vários, cada um com a sua ordem. Até o PR
+ * E3, o painel edita só o cardápio principal (product.category_id) e um gatilho do banco
+ * (migração 0018) mantém o vínculo dele igual: produto novo, troca de cardápio e mudança de
+ * posição. Os outros vínculos não mudam com o gatilho.
+ */
+export const productCategory = pgTable(
+  'product_category',
+  {
+    productId: integer('product_id')
+      .notNull()
+      .references(() => product.id, { onDelete: 'cascade' }),
+    categoryId: integer('category_id')
+      .notNull()
+      .references(() => category.id, { onDelete: 'restrict' }),
+    position: integer('position').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.productId, t.categoryId] })],
 );
 
 export const optionGroup = pgTable(
