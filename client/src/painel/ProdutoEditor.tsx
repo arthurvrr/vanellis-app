@@ -8,7 +8,7 @@ import {
   type ProductForm,
   type TemplateDTO,
 } from '@vanellis/shared';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, ApiError, type CategoriaPainel } from './api';
 import { FotoUpload } from './FotoUpload';
 import { avisarAoSair, podeSair } from './saida';
@@ -184,6 +184,9 @@ export function ProdutoEditor({
   const [inicial, setInicial] = useState<string>('');
   const [serverErrors, setServerErrors] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
+  // Fotos sendo enviadas agora (produto e opções).
+  const [enviandoFotos, setEnviandoFotos] = useState(0);
+  const marcarEnvio = useCallback((busy: boolean) => setEnviandoFotos((n) => n + (busy ? 1 : -1)), []);
   const [carregando, setCarregando] = useState(produtoId !== null);
 
   useEffect(() => {
@@ -234,11 +237,22 @@ export function ProdutoEditor({
   }
   if (carregando || !form) return <p className="status">{serverErrors[0] ?? 'Carregando…'}</p>;
 
-  const set = (patch: Partial<ProductForm>) => setForm({ ...form, ...patch });
+  // Sempre sobre o formulário mais recente: a foto chega depois do envio, e o que foi mudado
+  // nesse meio-tempo não pode se perder.
+  const set = (patch: Partial<ProductForm>) => setForm((f) => (f ? { ...f, ...patch } : f));
   const setGroup = (gi: number, patch: Partial<GroupForm>) =>
-    set({ groups: form.groups.map((g, i) => (i === gi ? { ...g, ...patch } : g)) });
+    setForm((f) => (f ? { ...f, groups: f.groups.map((g, i) => (i === gi ? { ...g, ...patch } : g)) } : f));
   const setOption = (gi: number, oi: number, patch: Partial<OptionForm>) =>
-    setGroup(gi, { options: form.groups[gi]!.options.map((o, i) => (i === oi ? { ...o, ...patch } : o)) });
+    setForm((f) =>
+      f
+        ? {
+            ...f,
+            groups: f.groups.map((g, i) =>
+              i === gi ? { ...g, options: g.options.map((o, j) => (j === oi ? { ...o, ...patch } : o)) } : g,
+            ),
+          }
+        : f,
+    );
 
   const salvar = async () => {
     setServerErrors([]);
@@ -291,7 +305,7 @@ export function ProdutoEditor({
       <div className="editor__head">
         <h2 id="editor-title">{produtoId === null ? 'Novo produto' : form.name || 'Produto'}</h2>
         {produtoId !== null && (
-          <button type="button" className="switch__btn" onClick={duplicar}>
+          <button type="button" className="switch__btn" onClick={duplicar} disabled={enviandoFotos > 0}>
             Duplicar
           </button>
         )}
@@ -324,7 +338,13 @@ export function ProdutoEditor({
         </div>
         <div className="field">
           <span className="capa__label">Foto do produto</span>
-          <FotoUpload value={form.imageUrl} onChange={(url) => set({ imageUrl: url })} onError={erro} label="Foto" />
+          <FotoUpload
+            value={form.imageUrl}
+            onChange={(url) => set({ imageUrl: url })}
+            onError={erro}
+            onBusy={marcarEnvio}
+            label="Foto"
+          />
         </div>
         <div className="field">
           <label htmlFor="p-pdv">Código PDV do produto</label>
@@ -562,6 +582,7 @@ export function ProdutoEditor({
                       value={o.imageUrl}
                       onChange={(url) => setOption(gi, oi, { imageUrl: url })}
                       onError={erro}
+                      onBusy={marcarEnvio}
                       label="Foto da opção"
                     />
                   )}
@@ -646,8 +667,14 @@ export function ProdutoEditor({
           <button type="button" className="link" onClick={sair}>
             Cancelar
           </button>
-          <button type="button" className="add" disabled={salvando || problems.errors.length > 0} onClick={salvar}>
-            {salvando ? 'Salvando…' : produtoId === null ? 'Criar produto' : 'Salvar'}
+          {/* Salvar antes de a foto chegar gravaria o produto sem ela. */}
+          <button
+            type="button"
+            className="add"
+            disabled={salvando || enviandoFotos > 0 || problems.errors.length > 0}
+            onClick={salvar}
+          >
+            {enviandoFotos > 0 ? 'Enviando foto…' : salvando ? 'Salvando…' : produtoId === null ? 'Criar produto' : 'Salvar'}
           </button>
         </div>
       </div>

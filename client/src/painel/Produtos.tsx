@@ -1,6 +1,7 @@
 import { formatDates, shortDate, specialMenuProblem, type Until } from '@vanellis/shared';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { api, enviaFoto, type CategoriaPainel, type ProdutoLista } from './api';
+import { api, type CategoriaPainel, type ProdutoLista } from './api';
+import { useEnvioFoto } from './FotoUpload';
 import { ProdutoEditor } from './ProdutoEditor';
 
 // Tela Produtos do painel, parte 1 (etapa 3): lista de produtos (RF15, RF53, RF54, RN41) e
@@ -279,12 +280,14 @@ function FotoCapa({
   value,
   onChange,
   erro,
+  onBusy,
 }: {
   value: string | null;
   onChange: (url: string | null) => void;
   erro: (e: unknown) => void;
+  onBusy: (busy: boolean) => void;
 }) {
-  const [enviando, setEnviando] = useState(false);
+  const { enviando, enviar } = useEnvioFoto(onChange, erro, onBusy);
   return (
     <div className="field capa">
       <span className="capa__label">Foto de capa (opcional)</span>
@@ -297,18 +300,10 @@ function FotoCapa({
             accept="image/jpeg,image/png,image/webp"
             hidden
             disabled={enviando}
-            onChange={async (e) => {
+            onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = '';
-              if (!file) return;
-              setEnviando(true);
-              try {
-                onChange((await enviaFoto(file)).url);
-              } catch (err) {
-                erro(err);
-              } finally {
-                setEnviando(false);
-              }
+              if (file) void enviar(file);
             }}
           />
         </label>
@@ -434,6 +429,7 @@ function ListaCategorias({
 }) {
   const [editando, setEditando] = useState<number | 'nova' | null>(null);
   const [form, setForm] = useState(vazio);
+  const [enviandoCapa, setEnviandoCapa] = useState(false);
 
   const abrir = (c: CategoriaPainel | null) => {
     setEditando(c ? c.id : 'nova');
@@ -492,7 +488,12 @@ function ListaCategorias({
           onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
       </div>
-      <FotoCapa value={form.coverImageUrl} onChange={(url) => setForm({ ...form, coverImageUrl: url })} erro={erro} />
+      <FotoCapa
+        value={form.coverImageUrl}
+        onChange={(url) => setForm((f) => ({ ...f, coverImageUrl: url }))}
+        erro={erro}
+        onBusy={setEnviandoCapa}
+      />
       <label className="check especial__toggle">
         <input
           type="checkbox"
@@ -511,8 +512,9 @@ function ListaCategorias({
         <button type="button" className="link" onClick={() => setEditando(null)}>
           Cancelar
         </button>
-        <button type="submit" className="add" disabled={problemaEspecial !== null}>
-          {editando === 'nova' ? 'Criar categoria' : 'Salvar'}
+        {/* Salvar antes de a capa chegar gravaria a categoria sem ela. */}
+        <button type="submit" className="add" disabled={problemaEspecial !== null || enviandoCapa}>
+          {enviandoCapa ? 'Enviando foto…' : editando === 'nova' ? 'Criar categoria' : 'Salvar'}
         </button>
       </div>
     </form>

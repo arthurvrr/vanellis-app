@@ -1,5 +1,6 @@
 // Painel: mudanças não salvas não se perdem sem aviso (itens G21 e G22 da revisão externa, C65).
 import { expect, test, type Page } from '@playwright/test';
+import sharp from 'sharp';
 import { diaBrasilia, entrarNoPainel } from './ajuda';
 
 /** Responde à próxima pergunta do navegador (window.confirm) e devolve o texto dela. */
@@ -118,5 +119,79 @@ test('C123: data especial sem prazo é salva com o aviso da véspera; o prazo de
     await expect(item).toContainText('Sem prazo, qualquer produto do site');
   } finally {
     await page.request.delete(`/api/painel/agenda/datas-especiais/${data}`, { data: {} });
+  }
+});
+
+// Foto PNG de 1x1 pixel, suficiente para o servidor aceitar e converter.
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+test('foto de um sabor: durante o envio não dá para salvar, e a foto fica gravada no sabor', async ({ page }) => {
+  await entrarNoPainel(page, '#produtos');
+  const api = page.request;
+  const lista = await (await api.get('/api/painel/catalogo/produtos')).json();
+  const torta = lista.find((p: { name: string }) => p.name === 'Torta Baixa');
+  const original = await (await api.get(`/api/painel/catalogo/produtos/${torta.id}/cadastro`)).json();
+  // Envio lento, como o de uma foto grande pela internet da padaria.
+  await page.route('**/api/painel/imagens', async (route) => {
+    await new Promise((r) => setTimeout(r, 2500));
+    await route.continue();
+  });
+  try {
+    await page.locator(`a[href="#produto/${torta.id}"]`).click();
+    const sabores = original.groups.find((g: { name: string }) => g.name === 'Sabor');
+    const indice = sabores.options.findIndex((o: { name: string }) => o.name === 'Banoffee');
+    await page.getByLabel('Foto da opção').nth(indice).setInputFiles({ name: 'banoffee.png', mimeType: 'image/png', buffer: PNG });
+    // Enquanto envia, não dá para salvar (antes, salvava sem a foto e dizia que tinha salvo).
+    await expect(page.getByText('Enviando…')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Salvar|Enviando/ }).last()).toBeDisabled();
+    // Uma mudança feita durante o envio não se perde quando a foto chega.
+    await page.getByLabel('Descrição', { exact: true }).fill('Descrição mudada durante o envio');
+    await expect(page.getByText('Enviando…')).toHaveCount(0);
+    await expect(page.getByLabel('Descrição', { exact: true })).toHaveValue('Descrição mudada durante o envio');
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+    await expect(page.getByText('Torta Baixa salvo.')).toBeVisible();
+    const salvo = await (await api.get(`/api/painel/catalogo/produtos/${torta.id}/cadastro`)).json();
+    const banoffee = salvo.groups.find((g: { name: string }) => g.name === 'Sabor').options[indice];
+    expect(banoffee.imageUrl).toMatch(/^\/api\/imagens\/\d+$/);
+    expect(salvo.description).toBe('Descrição mudada durante o envio');
+  } finally {
+    await page.unroute('**/api/painel/imagens');
+    await api.put(`/api/painel/catalogo/produtos/${torta.id}`, { data: original });
+  }
+});
+
+test('foto grande do celular é reduzida no navegador antes do envio, e passa mesmo acima de 10 MB', async ({ page }) => {
+  // 3000 × 2000 com ruído: um PNG bem acima de 10 MB, como uma foto de câmera sem compressão.
+  const grande = await sharp({
+    create: { width: 3000, height: 2000, channels: 3, background: '#c08040', noise: { type: 'gaussian', mean: 128, sigma: 60 } },
+  })
+    .png({ compressionLevel: 0 })
+    .toBuffer();
+  expect(grande.length).toBeGreaterThan(10 * 1024 * 1024);
+
+  await entrarNoPainel(page, '#produtos');
+  const api = page.request;
+  const lista = await (await api.get('/api/painel/catalogo/produtos')).json();
+  const torta = lista.find((p: { name: string }) => p.name === 'Torta Baixa');
+  const original = await (await api.get(`/api/painel/catalogo/produtos/${torta.id}/cadastro`)).json();
+  try {
+    await page.locator(`a[href="#produto/${torta.id}"]`).click();
+    const envio = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/api/painel/imagens'));
+    await page.getByLabel('Foto', { exact: true }).setInputFiles({ name: 'camera.png', mimeType: 'image/png', buffer: grande });
+    const cabecalhos = await (await envio).allHeaders();
+    // Saiu do navegador já convertida e reduzida: JPEG, bem menor que o original.
+    expect(cabecalhos['content-type']).toBe('image/jpeg');
+    expect(Number(cabecalhos['content-length'])).toBeGreaterThan(0);
+    expect(Number(cabecalhos['content-length'])).toBeLessThan(grande.length / 4);
+    await expect(page.getByRole('button', { name: 'Salvar', exact: true })).toBeEnabled({ timeout: 20_000 });
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+    await expect(page.getByText('Torta Baixa salvo.')).toBeVisible();
+    const salvo = await (await api.get(`/api/painel/catalogo/produtos/${torta.id}/cadastro`)).json();
+    expect(salvo.imageUrl).toMatch(/^\/api\/imagens\/\d+$/);
+  } finally {
+    await api.put(`/api/painel/catalogo/produtos/${torta.id}`, { data: original });
   }
 });
