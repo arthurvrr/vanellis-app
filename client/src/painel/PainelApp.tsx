@@ -93,6 +93,15 @@ function telaDoEndereco(): Tela {
   return 'inicio';
 }
 
+/**
+ * Na Agenda e em Configurações, os itens da barra lateral ('#agenda/especiais') só rolam a mesma
+ * tela até a seção: nada se perde, então não há o que perguntar.
+ */
+function mesmaTelaComSecoes(de: string, para: string): boolean {
+  const base = (h: string) => h.slice(1).split('/')[0];
+  return base(de) === base(para) && (base(para) === 'agenda' || base(para) === 'configuracoes');
+}
+
 const secaoDaTela = (t: Tela): Secao['id'] =>
   t === 'contas' ? 'configuracoes' : t === 'precos' ? 'produtos' : t;
 
@@ -112,7 +121,9 @@ export function PainelApp() {
     const onHash = () => {
       // C65: com alterações não salvas, pergunta antes de trocar de tela; se o operador
       // ficar, o endereço volta sem recarregar nada.
-      if (window.location.hash !== hashAnterior.current && !podeSair()) {
+      const de = hashAnterior.current;
+      const para = window.location.hash;
+      if (para !== de && !mesmaTelaComSecoes(de, para) && !podeSair()) {
         history.replaceState(null, '', hashAnterior.current || window.location.pathname);
         return;
       }

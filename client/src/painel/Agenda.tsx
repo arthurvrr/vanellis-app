@@ -1,6 +1,7 @@
 import { dayPeriods, deliveryProblem, formatDates, formatPeriods, weekHoursProblem } from '@vanellis/shared';
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { api, type AgendaPainel, type Horario } from './api';
+import { avisarAoSair } from './saida';
 
 // Tela Agenda do painel (RF20, RF21, RF22, RF35; cenários C24–C35).
 // O site do cliente já segue todas estas regras; aqui o operador as mantém.
@@ -168,44 +169,631 @@ function Item({ children, acao, onAcao }: { children: ReactNode; acao: string; o
   );
 }
 
+// ---------- estado das seções ----------
+// Cada seção guarda o próprio formulário (G21): gravar uma seção não apaga o que está digitado
+// nas outras. A tela só junta os avisos de "não salvo" para perguntar antes de sair (C65).
+
+type Muda = (method: 'POST' | 'PUT' | 'DELETE', path: string, body: unknown, ok: string) => Promise<boolean>;
+type Marcar = (secao: string, sujo: boolean) => void;
+
+interface SecaoProps {
+  agenda: AgendaPainel;
+  muda: Muda;
+  ocupado: boolean;
+  marcar: Marcar;
+}
+
+const SAIR = 'Há mudanças na Agenda que ainda não foram salvas. Sair e perder as alterações?';
+
+/** Avisa a tela enquanto a seção tiver algo digitado e não salvo. */
+function usePendente(marcar: Marcar, secao: string, sujo: boolean) {
+  useEffect(() => marcar(secao, sujo), [marcar, secao, sujo]);
+  useEffect(() => () => marcar(secao, false), [marcar, secao]);
+}
+
+/**
+ * Formulário de um valor já salvo (horário em vigor, regras, tele-entrega). Sem edição, mostra o
+ * salvo, que acompanha as gravações das outras seções; editado, guarda o rascunho até a gravação
+ * desta seção dar certo.
+ */
+function useRascunho<T>(salvo: T) {
+  const [rascunho, setRascunho] = useState<T | null>(null);
+  return {
+    valor: rascunho ?? salvo,
+    set: setRascunho,
+    limpar: () => setRascunho(null),
+    sujo: rascunho !== null && JSON.stringify(rascunho) !== JSON.stringify(salvo),
+  };
+}
+
+/** Envia o formulário de inclusão; se deu certo, limpa os campos. */
+async function incluir(muda: Muda, e: FormEvent, path: string, body: unknown, ok: string, limpar: () => void) {
+  e.preventDefault();
+  if (await muda('POST', path, body, ok)) limpar();
+}
+
+// ---------- seções ----------
+
+/** 1. Horário em vigor (C24, C25). */
+function HorarioEmVigor({ agenda, muda, ocupado, marcar }: SecaoProps) {
+  const c = agenda.current;
+  const semana = useRascunho(toSemana(c?.hours ?? []));
+  usePendente(marcar, 'horario', semana.sujo);
+
+  const salvar = async (e: FormEvent) => {
+    e.preventDefault();
+    const ok = await muda(
+      'PUT',
+      '/horario-atual',
+      { hours: fromSemana(semana.valor) },
+      'Horário em vigor salvo. O site já segue o novo horário.',
+    );
+    if (ok) semana.limpar();
+  };
+
+  return (
+    <Bloco
+      id="horario"
+      titulo="Horário em vigor"
+      ajuda={
+        c
+          ? `Vale ${periodo(c.validFrom, c.validUntil)}. Mudar aqui vale a partir de agora. A retirada vai até 30 minutos antes de fechar.`
+          : 'Nenhum horário cadastrado: o site não oferece dias de retirada.'
+      }
+    >
+      <form onSubmit={salvar}>
+        <EditorSemana value={semana.valor} onChange={semana.set} />
+        <ProblemaSemana semana={semana.valor} />
+        <button type="submit" className="primary" disabled={ocupado || problemaSemana(semana.valor) !== null}>
+          Salvar horário em vigor
+        </button>
+      </form>
+    </Bloco>
+  );
+}
+
+/** 2. Mudanças programadas (C26–C28). */
+function ProximasMudancas({ agenda, muda, ocupado, marcar }: SecaoProps) {
+  const [programando, setProgramando] = useState(false);
+  const [mudanca, setMudanca] = useState({ validFrom: '', validUntil: '', semana: toSemana([]) });
+  const [semanaInicial, setSemanaInicial] = useState('');
+  usePendente(
+    marcar,
+    'mudancas',
+    programando && (mudanca.validFrom !== '' || mudanca.validUntil !== '' || JSON.stringify(mudanca.semana) !== semanaInicial),
+  );
+
+  const abrir = () => {
+    const semana = toSemana(agenda.current?.hours ?? []);
+    setMudanca({ validFrom: '', validUntil: '', semana });
+    setSemanaInicial(JSON.stringify(semana));
+    setProgramando(true);
+  };
+  const salvar = async (e: FormEvent) => {
+    e.preventDefault();
+    const ok = await muda(
+      'POST',
+      '/mudancas',
+      { validFrom: mudanca.validFrom, validUntil: mudanca.validUntil || null, hours: fromSemana(mudanca.semana) },
+      'Mudança programada.',
+    );
+    if (ok) setProgramando(false);
+  };
+
+  return (
+    <Bloco
+      id="mudancas"
+      titulo="Próximas mudanças"
+      ajuda="Um horário novo a partir de uma data. Com data de fim, o horário normal volta sozinho depois."
+    >
+      <Lista vazia="Nenhuma mudança programada.">
+        {agenda.upcoming.map((s) => (
+          <Item key={s.id} acao="Remover" onAcao={() => void muda('DELETE', `/mudancas/${s.id}`, {}, 'Mudança removida.')}>
+            <strong>{periodo(s.validFrom, s.validUntil)}</strong>
+            <br />
+            <small>{resumoSemana(s.hours)}</small>
+          </Item>
+        ))}
+      </Lista>
+      {programando ? (
+        <form className="agenda__form" onSubmit={salvar}>
+          <div className="agenda__inline">
+            <div className="field">
+              <label htmlFor="mud-inicio">Começa em</label>
+              <input
+                id="mud-inicio"
+                type="date"
+                required
+                min={agenda.today}
+                value={mudanca.validFrom}
+                onChange={(e) => setMudanca({ ...mudanca, validFrom: e.target.value })}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="mud-fim">Termina em (opcional)</label>
+              <input
+                id="mud-fim"
+                type="date"
+                min={mudanca.validFrom || agenda.today}
+                value={mudanca.validUntil}
+                onChange={(e) => setMudanca({ ...mudanca, validUntil: e.target.value })}
+              />
+            </div>
+          </div>
+          <EditorSemana value={mudanca.semana} onChange={(s) => setMudanca({ ...mudanca, semana: s })} />
+          <ProblemaSemana semana={mudanca.semana} />
+          <div className="agenda__actions">
+            <button type="button" className="link" onClick={() => setProgramando(false)}>
+              Cancelar
+            </button>
+            <button type="submit" className="add" disabled={ocupado || problemaSemana(mudanca.semana) !== null}>
+              Programar mudança
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" className="switch__btn agenda__open" onClick={abrir}>
+          Programar mudança
+        </button>
+      )}
+    </Bloco>
+  );
+}
+
+/** 3. Datas sem retirada (C30, C31). */
+function DatasBloqueadas({ agenda, muda, ocupado, marcar }: SecaoProps) {
+  const [bloqueio, setBloqueio] = useState({ date: '', reason: '' });
+  usePendente(marcar, 'bloqueadas', bloqueio.date !== '' || bloqueio.reason !== '');
+
+  return (
+    <Bloco id="bloqueadas" titulo="Datas sem retirada" ajuda="Feriados e folgas: o dia some do calendário do cliente.">
+      <Lista vazia="Nenhuma data bloqueada.">
+        {agenda.blockedDates.map((b) => (
+          <Item
+            key={b.date}
+            acao="Desbloquear"
+            onAcao={() => void muda('DELETE', `/datas-bloqueadas/${b.date}`, {}, 'Data desbloqueada.')}
+          >
+            <strong>{br(b.date)}</strong>
+            {b.reason && ` · ${b.reason}`}
+          </Item>
+        ))}
+      </Lista>
+      <form
+        className="agenda__inline agenda__form"
+        onSubmit={(e) =>
+          incluir(muda, e, '/datas-bloqueadas', { date: bloqueio.date, reason: bloqueio.reason || null }, 'Data bloqueada.', () =>
+            setBloqueio({ date: '', reason: '' }),
+          )
+        }
+      >
+        <div className="field">
+          <label htmlFor="bl-data">Data</label>
+          <input
+            id="bl-data"
+            type="date"
+            required
+            min={agenda.today}
+            value={bloqueio.date}
+            onChange={(e) => setBloqueio({ ...bloqueio, date: e.target.value })}
+          />
+        </div>
+        <div className="field agenda__grow">
+          <label htmlFor="bl-motivo">Motivo (opcional)</label>
+          <input
+            id="bl-motivo"
+            maxLength={100}
+            placeholder="Ex: feriado"
+            value={bloqueio.reason}
+            onChange={(e) => setBloqueio({ ...bloqueio, reason: e.target.value })}
+          />
+        </div>
+        <button type="submit" className="add agenda__btn" disabled={ocupado}>
+          Bloquear
+        </button>
+      </form>
+    </Bloco>
+  );
+}
+
+/** Datas especiais (C33). */
+function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
+  const [especial, setEspecial] = useState({ date: '', name: '' });
+  usePendente(marcar, 'especiais', especial.date !== '' || especial.name !== '');
+
+  return (
+    <Bloco
+      id="especiais"
+      titulo="Datas especiais"
+      ajuda="O cliente escolhe só o dia; a padaria combina o horário pelo WhatsApp (ex: vésperas de Natal e Ano Novo)."
+    >
+      <Lista vazia="Nenhuma data especial.">
+        {agenda.specialDates.map((s) => (
+          <Item
+            key={s.date}
+            acao="Remover"
+            onAcao={() => void muda('DELETE', `/datas-especiais/${s.date}`, {}, 'Data especial removida.')}
+          >
+            <strong>{br(s.date)}</strong> · {s.name}
+          </Item>
+        ))}
+      </Lista>
+      <form
+        className="agenda__inline agenda__form"
+        onSubmit={(e) =>
+          incluir(muda, e, '/datas-especiais', especial, 'Data especial cadastrada.', () => setEspecial({ date: '', name: '' }))
+        }
+      >
+        <div className="field">
+          <label htmlFor="es-data">Data</label>
+          <input
+            id="es-data"
+            type="date"
+            required
+            min={agenda.today}
+            value={especial.date}
+            onChange={(e) => setEspecial({ ...especial, date: e.target.value })}
+          />
+        </div>
+        <div className="field agenda__grow">
+          <label htmlFor="es-nome">Nome</label>
+          <input
+            id="es-nome"
+            required
+            maxLength={60}
+            placeholder="Ex: Véspera de Natal"
+            value={especial.name}
+            onChange={(e) => setEspecial({ ...especial, name: e.target.value })}
+          />
+        </div>
+        <button type="submit" className="add agenda__btn" disabled={ocupado}>
+          Cadastrar
+        </button>
+      </form>
+    </Bloco>
+  );
+}
+
+/** Horários fechados por lotação num dia (C32). */
+function HorariosLotados({ agenda, muda, ocupado, marcar }: SecaoProps) {
+  const [fechado, setFechado] = useState({ date: '', start: '09:00', end: '11:00' });
+  usePendente(marcar, 'lotados', fechado.date !== '');
+
+  return (
+    <Bloco
+      id="lotados"
+      titulo="Horários fechados por lotação"
+      ajuda="Fecha um período só naquele dia, quando a produção lota. Reabra quando quiser."
+    >
+      <Lista vazia="Nenhum horário fechado.">
+        {agenda.closedPeriods.map((p) => (
+          <Item key={p.id} acao="Reabrir" onAcao={() => void muda('DELETE', `/horarios-fechados/${p.id}`, {}, 'Horário reaberto.')}>
+            <strong>{br(p.date)}</strong> · das {hora(p.start)} às {hora(p.end)}
+          </Item>
+        ))}
+      </Lista>
+      <form
+        className="agenda__inline agenda__form"
+        onSubmit={(e) => incluir(muda, e, '/horarios-fechados', fechado, 'Horário fechado.', () => setFechado({ ...fechado, date: '' }))}
+      >
+        <div className="field">
+          <label htmlFor="fe-data">Data</label>
+          <input
+            id="fe-data"
+            type="date"
+            required
+            min={agenda.today}
+            value={fechado.date}
+            onChange={(e) => setFechado({ ...fechado, date: e.target.value })}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="fe-de">Das</label>
+          <input
+            id="fe-de"
+            type="time"
+            required
+            value={fechado.start}
+            onChange={(e) => setFechado({ ...fechado, start: e.target.value })}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="fe-ate">Às</label>
+          <input
+            id="fe-ate"
+            type="time"
+            required
+            value={fechado.end}
+            onChange={(e) => setFechado({ ...fechado, end: e.target.value })}
+          />
+        </div>
+        <button type="submit" className="add agenda__btn" disabled={ocupado}>
+          Fechar
+        </button>
+      </form>
+    </Bloco>
+  );
+}
+
+/** 4. Restrições de retirada (C34). */
+function Restricoes({ agenda, muda, ocupado, marcar }: SecaoProps) {
+  const [restricao, setRestricao] = useState({ weekday: 'todos', tipo: 'apartir', start: '12:00', end: '14:00', label: '' });
+  usePendente(marcar, 'restricoes', restricao.label !== '');
+
+  const salvar = (e: FormEvent) =>
+    incluir(
+      muda,
+      e,
+      '/restricoes',
+      {
+        weekday: restricao.weekday === 'todos' ? null : Number(restricao.weekday),
+        start: restricao.tipo === 'apartir' ? '00:00' : restricao.start,
+        end: restricao.tipo === 'apartir' ? restricao.start : restricao.end,
+        label: restricao.label || null,
+      },
+      'Restrição criada.',
+      () => setRestricao({ ...restricao, label: '' }),
+    );
+
+  return (
+    <Bloco id="restricoes" titulo="Restrições de retirada" ajuda="Horários em que a loja está aberta, mas não entrega encomendas.">
+      <Lista vazia="Nenhuma restrição.">
+        {agenda.restrictions.map((r) => (
+          <Item key={r.id} acao="Remover" onAcao={() => void muda('DELETE', `/restricoes/${r.id}`, {}, 'Restrição removida.')}>
+            {descreveRestricao(r)}
+          </Item>
+        ))}
+      </Lista>
+      <form className="agenda__inline agenda__form" onSubmit={salvar}>
+        <div className="field">
+          <label htmlFor="re-dia">Dia</label>
+          <select id="re-dia" value={restricao.weekday} onChange={(e) => setRestricao({ ...restricao, weekday: e.target.value })}>
+            <option value="todos">Todos os dias</option>
+            {ORDEM.map((wd) => (
+              <option key={wd} value={wd}>
+                {DIAS[wd]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="re-tipo">Regra</label>
+          <select id="re-tipo" value={restricao.tipo} onChange={(e) => setRestricao({ ...restricao, tipo: e.target.value })}>
+            <option value="apartir">Retirada só a partir de</option>
+            <option value="intervalo">Sem retirada das</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="re-ini">{restricao.tipo === 'apartir' ? 'Horário' : 'Das'}</label>
+          <input
+            id="re-ini"
+            type="time"
+            required
+            value={restricao.start}
+            onChange={(e) => setRestricao({ ...restricao, start: e.target.value })}
+          />
+        </div>
+        {restricao.tipo === 'intervalo' && (
+          <div className="field">
+            <label htmlFor="re-fim">Às</label>
+            <input
+              id="re-fim"
+              type="time"
+              required
+              value={restricao.end}
+              onChange={(e) => setRestricao({ ...restricao, end: e.target.value })}
+            />
+          </div>
+        )}
+        <div className="field agenda__grow">
+          <label htmlFor="re-nome">Descrição (opcional)</label>
+          <input
+            id="re-nome"
+            maxLength={60}
+            placeholder="Ex: almoço da produção"
+            value={restricao.label}
+            onChange={(e) => setRestricao({ ...restricao, label: e.target.value })}
+          />
+        </div>
+        <button type="submit" className="add agenda__btn" disabled={ocupado}>
+          Criar
+        </button>
+      </form>
+    </Bloco>
+  );
+}
+
+/** Antecedência mínima e prazo de agendamento (C35). */
+function Regras({ agenda, muda, ocupado, marcar }: SecaoProps) {
+  const regras = useRascunho({
+    minLeadHours: String(agenda.config.minLeadHours),
+    windowMonths: String(agenda.config.windowMonths),
+  });
+  usePendente(marcar, 'regras', regras.sujo);
+  const r = regras.valor;
+
+  const salvar = async (e: FormEvent) => {
+    e.preventDefault();
+    const ok = await muda(
+      'PUT',
+      '/regras',
+      { minLeadHours: Number(r.minLeadHours), windowMonths: Number(r.windowMonths) },
+      'Regras salvas.',
+    );
+    if (ok) regras.limpar();
+  };
+
+  return (
+    <Bloco id="regras" titulo="Antecedência e prazo">
+      <form className="agenda__inline" onSubmit={salvar}>
+        <div className="field">
+          <label htmlFor="rg-ant">Antecedência mínima (horas)</label>
+          <input
+            id="rg-ant"
+            type="number"
+            min={0}
+            max={168}
+            required
+            value={r.minLeadHours}
+            onChange={(e) => regras.set({ ...r, minLeadHours: e.target.value })}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="rg-prazo">Agendar até (meses à frente)</label>
+          <input
+            id="rg-prazo"
+            type="number"
+            min={1}
+            max={12}
+            required
+            value={r.windowMonths}
+            onChange={(e) => regras.set({ ...r, windowMonths: e.target.value })}
+          />
+        </div>
+        <button type="submit" className="add agenda__btn" disabled={ocupado}>
+          Salvar
+        </button>
+      </form>
+      <p className="field__help">Produtos com antecedência própria (ex: bolos de 48h) continuam valendo quando são maiores.</p>
+    </Bloco>
+  );
+}
+
+/** Tele-entrega (RF44, RN43, RN44; C77–C79, C83). */
+function TeleEntrega({ agenda, muda, ocupado, marcar }: SecaoProps) {
+  const entrega = useRascunho(agenda.delivery);
+  const [novaData, setNovaData] = useState('');
+  usePendente(marcar, 'entrega', entrega.sujo || novaData !== '');
+  const d = entrega.valor;
+
+  const salvar = async (e: FormEvent) => {
+    e.preventDefault();
+    const ok = await muda(
+      'PUT',
+      '/entrega',
+      d,
+      d.enabled
+        ? d.allDays
+          ? 'Tele-entrega ligada para todos os dias.'
+          : `Tele-entrega ligada para ${formatDates(d.dates)}.`
+        : 'Tele-entrega desligada: o site só oferece retirada.',
+    );
+    if (ok) entrega.limpar();
+  };
+
+  return (
+    <Bloco
+      id="entrega"
+      titulo="Tele-entrega"
+      ajuda="Desligada, o site só oferece retirada no balcão. Ligada, o cliente escolhe entre retirar e receber em casa, nos mesmos dias e horários da agenda. A taxa é combinada pelo WhatsApp."
+    >
+      <form onSubmit={salvar}>
+        <label className="check entrega__toggle">
+          <input type="checkbox" checked={d.enabled} onChange={(e) => entrega.set({ ...d, enabled: e.target.checked })} />
+          Oferecer tele-entrega no site
+        </label>
+        {d.enabled && (
+          <div className="radios entrega__modo" role="radiogroup" aria-label="Em quais dias vale a entrega">
+            <label className={d.allDays ? 'radio radio--on' : 'radio'}>
+              <input type="radio" name="entrega-modo" checked={d.allDays} onChange={() => entrega.set({ ...d, allDays: true })} />
+              Todos os dias com retirada
+            </label>
+            <label className={!d.allDays ? 'radio radio--on' : 'radio'}>
+              <input type="radio" name="entrega-modo" checked={!d.allDays} onChange={() => entrega.set({ ...d, allDays: false })} />
+              Só nas datas marcadas
+            </label>
+          </div>
+        )}
+        {d.enabled && !d.allDays && (
+          <div className="entrega__datas">
+            <div className="agenda__inline">
+              <div className="field">
+                <label htmlFor="ent-data">Data com entrega</label>
+                <input
+                  id="ent-data"
+                  type="date"
+                  min={agenda.today}
+                  value={novaData}
+                  onChange={(e) => setNovaData(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                className="switch__btn agenda__btn"
+                disabled={!novaData || d.dates.includes(novaData)}
+                onClick={() => {
+                  entrega.set({ ...d, dates: [...d.dates, novaData].sort() });
+                  setNovaData('');
+                }}
+              >
+                Incluir data
+              </button>
+            </div>
+            {d.dates.length > 0 && (
+              <ul className="especial__datas">
+                {d.dates.map((x) => (
+                  <li key={x}>
+                    {br(x)}
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-label={`Tirar a data ${br(x)}`}
+                      onClick={() => entrega.set({ ...d, dates: d.dates.filter((y) => y !== x) })}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {deliveryProblem(d) && (
+          <p className="field__error" role="alert">
+            {deliveryProblem(d)}
+          </p>
+        )}
+        <button type="submit" className="primary" disabled={ocupado || deliveryProblem(d) !== null}>
+          Salvar tele-entrega
+        </button>
+      </form>
+      <p className="field__help">
+        {agenda.delivery.enabled
+          ? agenda.delivery.allDays
+            ? 'Agora: ligada para todos os dias com retirada.'
+            : `Agora: ligada só para ${formatDates(agenda.delivery.dates) || 'nenhuma data futura'}.`
+          : 'Agora: desligada.'}
+      </p>
+    </Bloco>
+  );
+}
+
 // ---------- tela ----------
 
 export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }) {
   const [agenda, setAgenda] = useState<AgendaPainel | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [pendentes, setPendentes] = useState<Record<string, boolean>>({});
 
-  // Formulários
-  const [semana, setSemana] = useState<Semana>(toSemana([]));
-  const [programando, setProgramando] = useState(false);
-  const [mudanca, setMudanca] = useState({ validFrom: '', validUntil: '', semana: toSemana([]) });
-  const [bloqueio, setBloqueio] = useState({ date: '', reason: '' });
-  const [especial, setEspecial] = useState({ date: '', name: '' });
-  const [fechado, setFechado] = useState({ date: '', start: '09:00', end: '11:00' });
-  const [restricao, setRestricao] = useState({
-    weekday: 'todos',
-    tipo: 'apartir',
-    start: '12:00',
-    end: '14:00',
-    label: '',
-  });
-  const [regras, setRegras] = useState({ minLeadHours: '2', windowMonths: '4' });
-  const [entrega, setEntrega] = useState({ enabled: false, allDays: true, dates: [] as string[] });
-  const [novaData, setNovaData] = useState('');
+  const marcar = useCallback<Marcar>(
+    (secao, sujo) => setPendentes((p) => (Boolean(p[secao]) === sujo ? p : { ...p, [secao]: sujo })),
+    [],
+  );
 
-  const aplicar = useCallback((a: AgendaPainel) => {
-    setAgenda(a);
-    setSemana(toSemana(a.current?.hours ?? []));
-    setRegras({ minLeadHours: String(a.config.minLeadHours), windowMonths: String(a.config.windowMonths) });
-    setEntrega(a.delivery);
-  }, []);
+  // C65: com algo digitado e não salvo em qualquer seção, pergunta antes de sair da tela.
+  const algoPendente = Object.values(pendentes).some(Boolean);
+  useEffect(() => {
+    avisarAoSair(algoPendente ? SAIR : null);
+    return () => avisarAoSair(null);
+  }, [algoPendente]);
 
   useEffect(() => {
     api
       .agenda()
-      .then(aplicar)
+      .then(setAgenda)
       .catch((e: unknown) => onAuthError(e) || setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) }));
-  }, [aplicar, onAuthError]);
+  }, [onAuthError]);
 
   // Subseção pela barra lateral: '#agenda/especiais' rola até o bloco.
   const carregada = agenda !== null;
@@ -222,68 +810,27 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
   }, [carregada]);
 
   /** Envia uma mudança; em sucesso atualiza a tela e mostra `ok`. Devolve se deu certo. */
-  const muda = async (method: 'POST' | 'PUT' | 'DELETE', path: string, body: unknown, ok: string) => {
-    setOcupado(true);
-    setMsg(null);
-    try {
-      aplicar(await api.agendaMuda(method, path, body));
-      setMsg({ ok: true, text: ok });
-      return true;
-    } catch (e) {
-      if (!onAuthError(e)) setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
-      return false;
-    } finally {
-      setOcupado(false);
-    }
-  };
+  const muda = useCallback<Muda>(
+    async (method, path, body, ok) => {
+      setOcupado(true);
+      setMsg(null);
+      try {
+        setAgenda(await api.agendaMuda(method, path, body));
+        setMsg({ ok: true, text: ok });
+        return true;
+      } catch (e) {
+        if (!onAuthError(e)) setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
+        return false;
+      } finally {
+        setOcupado(false);
+      }
+    },
+    [onAuthError],
+  );
 
   if (!agenda) return <p className="status">{msg?.text ?? 'Carregando…'}</p>;
 
-  const salvarSemana = (e: FormEvent) => {
-    e.preventDefault();
-    void muda(
-      'PUT',
-      '/horario-atual',
-      { hours: fromSemana(semana) },
-      'Horário em vigor salvo. O site já segue o novo horário.',
-    );
-  };
-
-  const abrirProgramacao = () => {
-    setMudanca({ validFrom: '', validUntil: '', semana: toSemana(agenda.current?.hours ?? []) });
-    setProgramando(true);
-  };
-  const salvarMudanca = async (e: FormEvent) => {
-    e.preventDefault();
-    const ok = await muda(
-      'POST',
-      '/mudancas',
-      { validFrom: mudanca.validFrom, validUntil: mudanca.validUntil || null, hours: fromSemana(mudanca.semana) },
-      'Mudança programada.',
-    );
-    if (ok) setProgramando(false);
-  };
-
-  const add = async (e: FormEvent, path: string, body: unknown, ok: string, reset: () => void) => {
-    e.preventDefault();
-    if (await muda('POST', path, body, ok)) reset();
-  };
-
-  const salvarRestricao = (e: FormEvent) =>
-    add(
-      e,
-      '/restricoes',
-      {
-        weekday: restricao.weekday === 'todos' ? null : Number(restricao.weekday),
-        start: restricao.tipo === 'apartir' ? '00:00' : restricao.start,
-        end: restricao.tipo === 'apartir' ? restricao.start : restricao.end,
-        label: restricao.label || null,
-      },
-      'Restrição criada.',
-      () => setRestricao({ ...restricao, label: '' }),
-    );
-
-  const c = agenda.current;
+  const secao = { agenda, muda, ocupado, marcar };
   return (
     <section className="painel__page agenda" aria-labelledby="agenda-title">
       <h2 id="agenda-title">Agenda de retirada</h2>
@@ -292,494 +839,14 @@ export function Agenda({ onAuthError }: { onAuthError: (e: unknown) => boolean }
           {msg.text}
         </p>
       )}
-
-      {/* 1. Horário em vigor (C24, C25) */}
-      <Bloco
-        id="horario"
-        titulo="Horário em vigor"
-        ajuda={
-          c
-            ? `Vale ${periodo(c.validFrom, c.validUntil)}. Mudar aqui vale a partir de agora. A retirada vai até 30 minutos antes de fechar.`
-            : 'Nenhum horário cadastrado: o site não oferece dias de retirada.'
-        }
-      >
-        <form onSubmit={salvarSemana}>
-          <EditorSemana value={semana} onChange={setSemana} />
-          <ProblemaSemana semana={semana} />
-          <button type="submit" className="primary" disabled={ocupado || problemaSemana(semana) !== null}>
-            Salvar horário em vigor
-          </button>
-        </form>
-      </Bloco>
-
-      {/* 2. Mudanças programadas (C26–C28) */}
-      <Bloco
-        id="mudancas"
-        titulo="Próximas mudanças"
-        ajuda="Um horário novo a partir de uma data. Com data de fim, o horário normal volta sozinho depois."
-      >
-        <Lista vazia="Nenhuma mudança programada.">
-          {agenda.upcoming.map((s) => (
-            <Item
-              key={s.id}
-              acao="Remover"
-              onAcao={() => void muda('DELETE', `/mudancas/${s.id}`, {}, 'Mudança removida.')}
-            >
-              <strong>{periodo(s.validFrom, s.validUntil)}</strong>
-              <br />
-              <small>{resumoSemana(s.hours)}</small>
-            </Item>
-          ))}
-        </Lista>
-        {programando ? (
-          <form className="agenda__form" onSubmit={salvarMudanca}>
-            <div className="agenda__inline">
-              <div className="field">
-                <label htmlFor="mud-inicio">Começa em</label>
-                <input
-                  id="mud-inicio"
-                  type="date"
-                  required
-                  min={agenda.today}
-                  value={mudanca.validFrom}
-                  onChange={(e) => setMudanca({ ...mudanca, validFrom: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="mud-fim">Termina em (opcional)</label>
-                <input
-                  id="mud-fim"
-                  type="date"
-                  min={mudanca.validFrom || agenda.today}
-                  value={mudanca.validUntil}
-                  onChange={(e) => setMudanca({ ...mudanca, validUntil: e.target.value })}
-                />
-              </div>
-            </div>
-            <EditorSemana value={mudanca.semana} onChange={(s) => setMudanca({ ...mudanca, semana: s })} />
-            <ProblemaSemana semana={mudanca.semana} />
-            <div className="agenda__actions">
-              <button type="button" className="link" onClick={() => setProgramando(false)}>
-                Cancelar
-              </button>
-              <button type="submit" className="add" disabled={ocupado || problemaSemana(mudanca.semana) !== null}>
-                Programar mudança
-              </button>
-            </div>
-          </form>
-        ) : (
-          <button type="button" className="switch__btn agenda__open" onClick={abrirProgramacao}>
-            Programar mudança
-          </button>
-        )}
-      </Bloco>
-
-      {/* 3. Exceções no calendário (C30–C33) */}
-      <Bloco
-        id="bloqueadas"
-        titulo="Datas sem retirada"
-        ajuda="Feriados e folgas: o dia some do calendário do cliente."
-      >
-        <Lista vazia="Nenhuma data bloqueada.">
-          {agenda.blockedDates.map((b) => (
-            <Item
-              key={b.date}
-              acao="Desbloquear"
-              onAcao={() => void muda('DELETE', `/datas-bloqueadas/${b.date}`, {}, 'Data desbloqueada.')}
-            >
-              <strong>{br(b.date)}</strong>
-              {b.reason && ` · ${b.reason}`}
-            </Item>
-          ))}
-        </Lista>
-        <form
-          className="agenda__inline agenda__form"
-          onSubmit={(e) =>
-            add(
-              e,
-              '/datas-bloqueadas',
-              { date: bloqueio.date, reason: bloqueio.reason || null },
-              'Data bloqueada.',
-              () => setBloqueio({ date: '', reason: '' }),
-            )
-          }
-        >
-          <div className="field">
-            <label htmlFor="bl-data">Data</label>
-            <input
-              id="bl-data"
-              type="date"
-              required
-              min={agenda.today}
-              value={bloqueio.date}
-              onChange={(e) => setBloqueio({ ...bloqueio, date: e.target.value })}
-            />
-          </div>
-          <div className="field agenda__grow">
-            <label htmlFor="bl-motivo">Motivo (opcional)</label>
-            <input
-              id="bl-motivo"
-              maxLength={100}
-              placeholder="Ex: feriado"
-              value={bloqueio.reason}
-              onChange={(e) => setBloqueio({ ...bloqueio, reason: e.target.value })}
-            />
-          </div>
-          <button type="submit" className="add agenda__btn" disabled={ocupado}>
-            Bloquear
-          </button>
-        </form>
-      </Bloco>
-
-      <Bloco
-        id="especiais"
-        titulo="Datas especiais"
-        ajuda="O cliente escolhe só o dia; a padaria combina o horário pelo WhatsApp (ex: vésperas de Natal e Ano Novo)."
-      >
-        <Lista vazia="Nenhuma data especial.">
-          {agenda.specialDates.map((s) => (
-            <Item
-              key={s.date}
-              acao="Remover"
-              onAcao={() => void muda('DELETE', `/datas-especiais/${s.date}`, {}, 'Data especial removida.')}
-            >
-              <strong>{br(s.date)}</strong> · {s.name}
-            </Item>
-          ))}
-        </Lista>
-        <form
-          className="agenda__inline agenda__form"
-          onSubmit={(e) =>
-            add(e, '/datas-especiais', especial, 'Data especial cadastrada.', () => setEspecial({ date: '', name: '' }))
-          }
-        >
-          <div className="field">
-            <label htmlFor="es-data">Data</label>
-            <input
-              id="es-data"
-              type="date"
-              required
-              min={agenda.today}
-              value={especial.date}
-              onChange={(e) => setEspecial({ ...especial, date: e.target.value })}
-            />
-          </div>
-          <div className="field agenda__grow">
-            <label htmlFor="es-nome">Nome</label>
-            <input
-              id="es-nome"
-              required
-              maxLength={60}
-              placeholder="Ex: Véspera de Natal"
-              value={especial.name}
-              onChange={(e) => setEspecial({ ...especial, name: e.target.value })}
-            />
-          </div>
-          <button type="submit" className="add agenda__btn" disabled={ocupado}>
-            Cadastrar
-          </button>
-        </form>
-      </Bloco>
-
-      <Bloco
-        id="lotados"
-        titulo="Horários fechados por lotação"
-        ajuda="Fecha um período só naquele dia, quando a produção lota. Reabra quando quiser."
-      >
-        <Lista vazia="Nenhum horário fechado.">
-          {agenda.closedPeriods.map((p) => (
-            <Item
-              key={p.id}
-              acao="Reabrir"
-              onAcao={() => void muda('DELETE', `/horarios-fechados/${p.id}`, {}, 'Horário reaberto.')}
-            >
-              <strong>{br(p.date)}</strong> · das {hora(p.start)} às {hora(p.end)}
-            </Item>
-          ))}
-        </Lista>
-        <form
-          className="agenda__inline agenda__form"
-          onSubmit={(e) =>
-            add(e, '/horarios-fechados', fechado, 'Horário fechado.', () => setFechado({ ...fechado, date: '' }))
-          }
-        >
-          <div className="field">
-            <label htmlFor="fe-data">Data</label>
-            <input
-              id="fe-data"
-              type="date"
-              required
-              min={agenda.today}
-              value={fechado.date}
-              onChange={(e) => setFechado({ ...fechado, date: e.target.value })}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="fe-de">Das</label>
-            <input
-              id="fe-de"
-              type="time"
-              required
-              value={fechado.start}
-              onChange={(e) => setFechado({ ...fechado, start: e.target.value })}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="fe-ate">Às</label>
-            <input
-              id="fe-ate"
-              type="time"
-              required
-              value={fechado.end}
-              onChange={(e) => setFechado({ ...fechado, end: e.target.value })}
-            />
-          </div>
-          <button type="submit" className="add agenda__btn" disabled={ocupado}>
-            Fechar
-          </button>
-        </form>
-      </Bloco>
-
-      {/* 4. Regras gerais (C34, C35) */}
-      <Bloco
-        id="restricoes"
-        titulo="Restrições de retirada"
-        ajuda="Horários em que a loja está aberta, mas não entrega encomendas."
-      >
-        <Lista vazia="Nenhuma restrição.">
-          {agenda.restrictions.map((r) => (
-            <Item
-              key={r.id}
-              acao="Remover"
-              onAcao={() => void muda('DELETE', `/restricoes/${r.id}`, {}, 'Restrição removida.')}
-            >
-              {descreveRestricao(r)}
-            </Item>
-          ))}
-        </Lista>
-        <form className="agenda__inline agenda__form" onSubmit={salvarRestricao}>
-          <div className="field">
-            <label htmlFor="re-dia">Dia</label>
-            <select
-              id="re-dia"
-              value={restricao.weekday}
-              onChange={(e) => setRestricao({ ...restricao, weekday: e.target.value })}
-            >
-              <option value="todos">Todos os dias</option>
-              {ORDEM.map((wd) => (
-                <option key={wd} value={wd}>
-                  {DIAS[wd]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="re-tipo">Regra</label>
-            <select
-              id="re-tipo"
-              value={restricao.tipo}
-              onChange={(e) => setRestricao({ ...restricao, tipo: e.target.value })}
-            >
-              <option value="apartir">Retirada só a partir de</option>
-              <option value="intervalo">Sem retirada das</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="re-ini">{restricao.tipo === 'apartir' ? 'Horário' : 'Das'}</label>
-            <input
-              id="re-ini"
-              type="time"
-              required
-              value={restricao.start}
-              onChange={(e) => setRestricao({ ...restricao, start: e.target.value })}
-            />
-          </div>
-          {restricao.tipo === 'intervalo' && (
-            <div className="field">
-              <label htmlFor="re-fim">Às</label>
-              <input
-                id="re-fim"
-                type="time"
-                required
-                value={restricao.end}
-                onChange={(e) => setRestricao({ ...restricao, end: e.target.value })}
-              />
-            </div>
-          )}
-          <div className="field agenda__grow">
-            <label htmlFor="re-nome">Descrição (opcional)</label>
-            <input
-              id="re-nome"
-              maxLength={60}
-              placeholder="Ex: almoço da produção"
-              value={restricao.label}
-              onChange={(e) => setRestricao({ ...restricao, label: e.target.value })}
-            />
-          </div>
-          <button type="submit" className="add agenda__btn" disabled={ocupado}>
-            Criar
-          </button>
-        </form>
-      </Bloco>
-
-      <Bloco id="regras" titulo="Antecedência e prazo">
-        <form
-          className="agenda__inline"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void muda(
-              'PUT',
-              '/regras',
-              { minLeadHours: Number(regras.minLeadHours), windowMonths: Number(regras.windowMonths) },
-              'Regras salvas.',
-            );
-          }}
-        >
-          <div className="field">
-            <label htmlFor="rg-ant">Antecedência mínima (horas)</label>
-            <input
-              id="rg-ant"
-              type="number"
-              min={0}
-              max={168}
-              required
-              value={regras.minLeadHours}
-              onChange={(e) => setRegras({ ...regras, minLeadHours: e.target.value })}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="rg-prazo">Agendar até (meses à frente)</label>
-            <input
-              id="rg-prazo"
-              type="number"
-              min={1}
-              max={12}
-              required
-              value={regras.windowMonths}
-              onChange={(e) => setRegras({ ...regras, windowMonths: e.target.value })}
-            />
-          </div>
-          <button type="submit" className="add agenda__btn" disabled={ocupado}>
-            Salvar
-          </button>
-        </form>
-        <p className="field__help">
-          Produtos com antecedência própria (ex: bolos de 48h) continuam valendo quando são maiores.
-        </p>
-      </Bloco>
-
-      {/* Tele-entrega (RF44, RN43, RN44; C77–C79, C83) */}
-      <Bloco
-        id="entrega"
-        titulo="Tele-entrega"
-        ajuda="Desligada, o site só oferece retirada no balcão. Ligada, o cliente escolhe entre retirar e receber em casa, nos mesmos dias e horários da agenda. A taxa é combinada pelo WhatsApp."
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void muda(
-              'PUT',
-              '/entrega',
-              entrega,
-              entrega.enabled
-                ? entrega.allDays
-                  ? 'Tele-entrega ligada para todos os dias.'
-                  : `Tele-entrega ligada para ${formatDates(entrega.dates)}.`
-                : 'Tele-entrega desligada: o site só oferece retirada.',
-            );
-          }}
-        >
-          <label className="check entrega__toggle">
-            <input
-              type="checkbox"
-              checked={entrega.enabled}
-              onChange={(e) => setEntrega({ ...entrega, enabled: e.target.checked })}
-            />
-            Oferecer tele-entrega no site
-          </label>
-          {entrega.enabled && (
-            <div className="radios entrega__modo" role="radiogroup" aria-label="Em quais dias vale a entrega">
-              <label className={entrega.allDays ? 'radio radio--on' : 'radio'}>
-                <input
-                  type="radio"
-                  name="entrega-modo"
-                  checked={entrega.allDays}
-                  onChange={() => setEntrega({ ...entrega, allDays: true })}
-                />
-                Todos os dias com retirada
-              </label>
-              <label className={!entrega.allDays ? 'radio radio--on' : 'radio'}>
-                <input
-                  type="radio"
-                  name="entrega-modo"
-                  checked={!entrega.allDays}
-                  onChange={() => setEntrega({ ...entrega, allDays: false })}
-                />
-                Só nas datas marcadas
-              </label>
-            </div>
-          )}
-          {entrega.enabled && !entrega.allDays && (
-            <div className="entrega__datas">
-              <div className="agenda__inline">
-                <div className="field">
-                  <label htmlFor="ent-data">Data com entrega</label>
-                  <input
-                    id="ent-data"
-                    type="date"
-                    min={agenda.today}
-                    value={novaData}
-                    onChange={(e) => setNovaData(e.target.value)}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="switch__btn agenda__btn"
-                  disabled={!novaData || entrega.dates.includes(novaData)}
-                  onClick={() => {
-                    setEntrega({ ...entrega, dates: [...entrega.dates, novaData].sort() });
-                    setNovaData('');
-                  }}
-                >
-                  Incluir data
-                </button>
-              </div>
-              {entrega.dates.length > 0 && (
-                <ul className="especial__datas">
-                  {entrega.dates.map((d) => (
-                    <li key={d}>
-                      {br(d)}
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        aria-label={`Tirar a data ${br(d)}`}
-                        onClick={() => setEntrega({ ...entrega, dates: entrega.dates.filter((x) => x !== d) })}
-                      >
-                        ×
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-          {deliveryProblem(entrega) && (
-            <p className="field__error" role="alert">
-              {deliveryProblem(entrega)}
-            </p>
-          )}
-          <button type="submit" className="primary" disabled={ocupado || deliveryProblem(entrega) !== null}>
-            Salvar tele-entrega
-          </button>
-        </form>
-        <p className="field__help">
-          {agenda.delivery.enabled
-            ? agenda.delivery.allDays
-              ? 'Agora: ligada para todos os dias com retirada.'
-              : `Agora: ligada só para ${formatDates(agenda.delivery.dates) || 'nenhuma data futura'}.`
-            : 'Agora: desligada.'}
-        </p>
-      </Bloco>
+      <HorarioEmVigor {...secao} />
+      <ProximasMudancas {...secao} />
+      <DatasBloqueadas {...secao} />
+      <DatasEspeciais {...secao} />
+      <HorariosLotados {...secao} />
+      <Restricoes {...secao} />
+      <Regras {...secao} />
+      <TeleEntrega {...secao} />
     </section>
   );
 }
