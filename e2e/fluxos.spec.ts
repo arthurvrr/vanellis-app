@@ -100,7 +100,7 @@ test('3. cardápio especial só deixa retirar na data dele', async ({ page }) =>
   await page.goto('/#dados');
 
   await expect(page.getByText(`Ceia E2E: retirada só em ${dia}/${mes}`)).toBeVisible();
-  const dias = page.getByRole('grid', { name: 'Dia da retirada' }).getByRole('button');
+  const dias = page.getByRole('grid', { name: 'Dia da retirada' }).getByRole('button', { disabled: false });
   await expect(dias).toHaveCount(1);
   await expect(dias.first()).toHaveAccessibleName(new RegExp(`^\\S+, ${Number(dia)} de `));
 });
@@ -160,7 +160,7 @@ test('6. item que sai do cardápio com a página aberta bloqueia a retirada até
   // Ao tirar o item, os dias voltam para o resto do pedido.
   await aviso.getByRole('button', { name: 'Tirar do carrinho' }).click();
   await expect(aviso).toHaveCount(0);
-  await expect(page.getByRole('grid', { name: 'Dia da retirada' }).getByRole('button').first()).toBeVisible();
+  await expect(page.getByRole('grid', { name: 'Dia da retirada' }).getByRole('button', { disabled: false }).first()).toBeVisible();
 });
 
 test('7. data especial em que o cliente escolhe o horário leva o horário na mensagem (C102, C119)', async ({ page }) => {
@@ -175,7 +175,7 @@ test('7. data especial em que o cliente escolhe o horário leva o horário na me
     await adicionar(page, 'salgados', 'Coxinha');
     await page.goto('/#dados');
     const calendario = page.getByRole('grid', { name: 'Dia da retirada' });
-    await expect(calendario.getByRole('button').first()).toBeVisible();
+    await expect(calendario.getByRole('button', { disabled: false }).first()).toBeVisible();
     const dia = calendario.getByRole('button', { name: /Especial C119/ });
     // O dia pode cair no mês seguinte ao primeiro mostrado.
     if (!(await dia.count())) await page.getByRole('button', { name: 'Próximo mês' }).click();
@@ -188,5 +188,38 @@ test('7. data especial em que o cliente escolhe o horário leva o horário na me
     expect(await mensagemEnviada(page)).toMatch(/\*Retirada:\* \S+ \d{2}\/\d{2} \(Especial C119\) às 09:00/);
   } finally {
     await page.request.delete(`/api/painel/agenda/datas-especiais/${data}`, { data: {} });
+  }
+});
+
+test('8. item de antecedência longa: o card, a linha do limite e o motivo do dia indisponível (C105–C107)', async ({ page }) => {
+  await entrarNoPainel(page);
+  const api = page.request;
+  const produtos = await (await api.get('/api/painel/catalogo/produtos')).json();
+  const coxinha = produtos.find((p: { name: string }) => p.name === 'Coxinha');
+  const { id } = await (await api.post(`/api/painel/catalogo/produtos/${coxinha.id}/duplicar`, { data: {} })).json();
+  try {
+    const form = await (await api.get(`/api/painel/catalogo/produtos/${id}/cadastro`)).json();
+    const salvo = await api.put(`/api/painel/catalogo/produtos/${id}`, {
+      data: { ...form, name: 'Bolo E2E', available: true, leadTimeHours: 72, minQuantity: 1 },
+    });
+    expect(salvo.ok()).toBeTruthy();
+    // C105: o card avisa a antecedência e a primeira retirada.
+    await page.goto('/#salgados');
+    await page.getByRole('button', { name: /Bolo E2E/ }).first().click();
+    await expect(page.getByText(/Encomende com 72h de antecedência: retirada a partir de \S+ \d{2}\/\d{2}/)).toBeVisible();
+    await adicionar(page, 'salgados', 'Bolo E2E');
+    await page.goto('/#dados');
+    // C106: a linha fixa acima do calendário.
+    await expect(page.getByText(/Bolo E2E precisa de 72h de antecedência: a retirada é a partir de/)).toBeVisible();
+    // C107: um dia apagado continua clicável e diz por quê, sem escolher nada.
+    const calendario = page.getByRole('grid', { name: 'Dia da retirada' });
+    await expect(calendario.getByRole('button', { disabled: false }).first()).toBeVisible();
+    // Pelo teclado, como pede o C107 (o dia apagado continua focável).
+    await calendario.locator('button[aria-disabled="true"]').first().focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('status').filter({ hasText: 'Bolo E2E precisa de 72h de antecedência' })).toBeVisible();
+    await expect(page.getByText(/^Retirada em /)).toHaveCount(0);
+  } finally {
+    await api.delete(`/api/painel/catalogo/produtos/${id}`, { data: {} });
   }
 });

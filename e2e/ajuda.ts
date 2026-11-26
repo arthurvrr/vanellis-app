@@ -46,7 +46,7 @@ export async function adicionar(page: Page, categoria: string, produto: string, 
 
 /** Na tela de retirada: o primeiro dia disponível e, se houver escolha, o primeiro horário. */
 export async function escolherPrimeiroDia(page: Page) {
-  const dias = page.getByRole('grid', { name: 'Dia da retirada' }).getByRole('button');
+  const dias = page.getByRole('grid', { name: 'Dia da retirada' }).getByRole('button', { disabled: false });
   await dias.first().click();
   const horarios = page.getByRole('radio', { name: /^\d{2}:\d{2}$/ });
   if (await horarios.count()) await horarios.first().click();

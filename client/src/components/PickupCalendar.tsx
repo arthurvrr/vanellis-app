@@ -1,8 +1,9 @@
-import type { AvailableDay } from '@vanellis/shared';
+import type { AvailableDay, BlockedDay } from '@vanellis/shared';
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 // Calendário mensal da retirada: só os dias com faixas livres (ou datas especiais) podem ser
-// escolhidos. Navega por mês dentro da janela de agendamento.
+// escolhidos. Os outros dias da janela aparecem apagados, mas continuam clicáveis e alcançáveis
+// pelo teclado, para dizer por que não dá (RF59). Navega por mês dentro da janela de agendamento.
 
 const MONTHS = [
   'janeiro',
@@ -61,12 +62,17 @@ function fullLabel(date: string): string {
 
 interface Props {
   days: AvailableDay[];
+  /** Dias indisponíveis, com o motivo (RF62). */
+  blocked?: BlockedDay[];
   value: string | null;
   onChange: (date: string) => void;
+  /** Clique num dia indisponível: a tela mostra o motivo. */
+  onBlocked?: (day: BlockedDay) => void;
 }
 
-export function PickupCalendar({ days, value, onChange }: Props) {
+export function PickupCalendar({ days, blocked = [], value, onChange, onBlocked }: Props) {
   const byDate = useMemo(() => new Map(days.map((d) => [d.date, d])), [days]);
+  const blockedByDate = useMemo(() => new Map(blocked.map((b) => [b.date, b])), [blocked]);
   const firstMonth = monthKey(days[0]!.date);
   const lastMonth = monthKey(days.at(-1)!.date);
   const [chosenMonth, setMonth] = useState(value ? monthKey(value) : firstMonth);
@@ -133,9 +139,27 @@ export function PickupCalendar({ days, value, onChange }: Props) {
               const day = byDate.get(date);
               const n = Number(date.slice(8));
               if (!day) {
+                const fora = blockedByDate.get(date);
+                if (!fora || !onBlocked) {
+                  return (
+                    <span key={date} className="calendar__cell calendar__cell--off" role="gridcell" aria-disabled="true">
+                      {n}
+                    </span>
+                  );
+                }
+                // Indisponível, mas clicável: o motivo aparece abaixo do calendário (RF59, C107).
                 return (
-                  <span key={date} className="calendar__cell calendar__cell--off" role="gridcell" aria-disabled="true">
-                    {n}
+                  <span key={date} className="calendar__cell" role="gridcell">
+                    <button
+                      type="button"
+                      data-date={date}
+                      className="calendar__day calendar__day--off"
+                      aria-disabled="true"
+                      aria-label={`${fullLabel(date)}: indisponível, ${fora.reason}`}
+                      onClick={() => onBlocked(fora)}
+                    >
+                      {n}
+                    </button>
                   </span>
                 );
               }
