@@ -22,6 +22,12 @@ const base = (p: Partial<ProductForm> = {}): ProductForm => ({
 const opt = (name: string, o: Partial<ReturnType<typeof emptyOption>> = {}) => ({ ...emptyOption(), name, ...o });
 
 describe('validação do cadastro de produto', () => {
+  it('C135: o produto precisa de ao menos um cardápio; repetidos contam uma vez (RF64)', () => {
+    expect(validateProduct(base({ categoryIds: [] })).errors).toEqual(['Escolha ao menos um cardápio']);
+    expect(validateProduct(base({ categoryIds: [1, 2] })).errors).toEqual([]);
+    expect(validateProduct(base({ categoryIds: [1, 1] })).errors).toEqual(['O mesmo cardápio foi escolhido duas vezes']);
+  });
+
   it('produto simples válido, sem avisos', () => {
     expect(validateProduct(base())).toEqual({ errors: [], warnings: [] });
   });
@@ -99,7 +105,7 @@ describe('validação do cadastro de produto', () => {
       { saleUnit: 'KG', groups: [{ name: 'Tamanho', minSelect: 1, maxSelect: 1, priceMode: null, controlsImage: false, hasWeight: true, definesPdvCode: false }] },
       2,
     );
-    expect(p).toMatchObject({ saleUnit: 'KG', categoryId: 2, groups: [{ name: 'Tamanho', hasWeight: true, options: [] }] });
+    expect(p).toMatchObject({ saleUnit: 'KG', categoryIds: [2], groups: [{ name: 'Tamanho', hasWeight: true, options: [] }] });
   });
 
   it('C61: duplicar tira ids e códigos e deixa indisponível', () => {
@@ -148,7 +154,7 @@ describe('formulários vazios e modelo de produto', () => {
 
   it('sem modelo, o produto novo é por unidade, disponível e sem grupos', () => {
     expect(productFromTemplate(null, 3)).toEqual({
-      categoryId: 3,
+      categoryIds: [3],
       name: '',
       description: null,
       imageUrl: null,

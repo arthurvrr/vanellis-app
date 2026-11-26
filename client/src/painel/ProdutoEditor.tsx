@@ -316,16 +316,31 @@ export function ProdutoEditor({
           <label htmlFor="p-nome">Nome</label>
           <input id="p-nome" maxLength={100} value={form.name} onChange={(e) => set({ name: e.target.value })} />
         </div>
-        <div className="field">
-          <label htmlFor="p-cat">Categoria</label>
-          <select id="p-cat" value={form.categoryId} onChange={(e) => set({ categoryId: Number(e.target.value) })}>
-            {categorias.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Um produto pode estar em vários cardápios, regulares ou especiais (RF64); ao menos um (C135). */}
+        <fieldset className="field cardapios">
+          <legend>Cardápios</legend>
+          {categorias.map((c) => (
+            <label key={c.id} className="check">
+              <input
+                type="checkbox"
+                checked={form.categoryIds.includes(c.id)}
+                onChange={(e) =>
+                  set({
+                    categoryIds: e.target.checked
+                      ? [...form.categoryIds, c.id]
+                      : form.categoryIds.filter((id) => id !== c.id),
+                  })
+                }
+              />
+              {c.name}
+              {c.special && ' (especial)'}
+            </label>
+          ))}
+          <p className="field__help">
+            O cadastro é um só: preço, fotos e opções valem em todos. Num cardápio especial, o produto que também está
+            num regular continua com a retirada normal.
+          </p>
+        </fieldset>
         <div className="field">
           <label htmlFor="p-desc">Descrição</label>
           <textarea

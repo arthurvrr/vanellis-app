@@ -198,7 +198,10 @@ function ListaProdutos({
       </div>
 
       {visiveis.map((c) => {
-        const todos = produtos.filter((p) => p.categoryId === c.id);
+        // Um produto pode estar em vários cardápios, cada um na sua ordem (RF64, C134).
+        const todos = produtos
+          .filter((p) => p.categoryIds.includes(c.id))
+          .sort((a, b) => (a.posicoes[c.id] ?? 0) - (b.posicoes[c.id] ?? 0));
         const lista = todos.filter((p) => !soSemPdv || p.missingPdv);
         if (!lista.length) return null;
         return (
@@ -240,14 +243,14 @@ function ListaProdutos({
                         <Seta
                           dir="subir"
                           label={`Subir ${p.name}`}
-                          onClick={() => act(() => api.moveProduto(p.id, 'subir'), setProdutos)}
+                          onClick={() => act(() => api.moveProduto(p.id, 'subir', c.id), setProdutos)}
                         />
                       )}
                       {pos < todos.length - 1 && (
                         <Seta
                           dir="descer"
                           label={`Descer ${p.name}`}
-                          onClick={() => act(() => api.moveProduto(p.id, 'descer'), setProdutos)}
+                          onClick={() => act(() => api.moveProduto(p.id, 'descer', c.id), setProdutos)}
                         />
                       )}
                     </span>
@@ -591,7 +594,12 @@ function ListaCategorias({
                 type="button"
                 className="link link--danger"
                 onClick={() => {
-                  if (window.confirm(`Excluir a categoria ${c.name}? Isso não pode ser desfeito.`)) {
+                  // Os produtos dela são desvinculados e continuam nos outros cardápios (RF65, C132).
+                  const n = c.productCount;
+                  const aviso = n
+                    ? ` ${n === 1 ? '1 produto será desvinculado' : `${n} produtos serão desvinculados`} e continua${n === 1 ? '' : 'm'} nos outros cardápios; nenhum produto é excluído.`
+                    : '';
+                  if (window.confirm(`Excluir a categoria ${c.name}?${aviso} Isso não pode ser desfeito.`)) {
                     void act(() => api.excluiCategoria(c.id), setCategorias, `Categoria ${c.name} excluída.`);
                   }
                 }}

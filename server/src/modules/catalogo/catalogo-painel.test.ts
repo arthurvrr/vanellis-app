@@ -157,10 +157,10 @@ describe('Categorias', () => {
     expect(res.status).toBe(400);
   });
 
-  it('C50: não exclui categoria com produtos; exclui a vazia', async () => {
+  it('C50: não exclui categoria com produto que só está nela (RN70); exclui a vazia', async () => {
     const res = await op('DELETE', `/api/painel/catalogo/categorias/${doces}`, {});
     expect(res.status).toBe(409);
-    expect(res.body.error).toContain('1 produto');
+    expect(res.body.error).toMatch(/só está neste cardápio: vincule a outro cardápio ou exclua o produto antes/);
     const nova = await op('POST', '/api/painel/catalogo/categorias', { name: 'Bebidas' });
     const id = nova.body.find((c: { name: string }) => c.name === 'Bebidas').id;
     expect((await op('DELETE', `/api/painel/catalogo/categorias/${id}`, {})).status).toBe(200);

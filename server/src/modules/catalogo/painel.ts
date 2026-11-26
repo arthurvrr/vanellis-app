@@ -11,7 +11,7 @@ import {
   type SpecialMenuState,
   type Until,
 } from '@vanellis/shared';
-import { and, asc, count, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { Router, type Response } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
@@ -26,8 +26,9 @@ import {
   loadProductForm,
   updateProduct,
 } from './produtoForm';
+import { cardapiosDe, idsNoCardapio, ordenar } from './cardapios';
 import { productsMissingPdv, specialMenus } from './repository';
-import { category, option, optionGroup, product } from './schema';
+import { category, option, optionGroup, product, productCategory } from './schema';
 
 export interface CategoriaPainelDTO {
   id: number;
@@ -36,6 +37,8 @@ export interface CategoriaPainelDTO {
   description: string | null;
   coverImageUrl: string | null;
   productCount: number;
+  /** Os produtos do cardápio, na ordem dele (RF64). */
+  productIds: number[];
   /** Configuração do cardápio especial; `null` = categoria regular. */
   special: SpecialMenu | null;
   /** Situação agora, para o painel mostrar se aparece no site (Agendado, No site, Oculto, Encerrado). */
@@ -50,7 +53,12 @@ export interface CategoriaPainelDTO {
 
 export interface ProdutoListaDTO {
   id: number;
+  /** Cardápio principal (até o PR E4). */
   categoryId: number;
+  /** Todos os cardápios do produto (RF64). */
+  categoryIds: number[];
+  /** Posição do produto em cada cardápio dele, pelo id do cardápio (C134). */
+  posicoes: Record<number, number>;
   name: string;
   pdvCode: string | null;
   /** Sem código no produto e em nenhuma opção (RN41). */
@@ -104,7 +112,8 @@ function specialColumns(sp: z.infer<typeof especialBody>) {
     pickupDates,
   };
 }
-const moverBody = z.object({ direcao: z.enum(['subir', 'descer']) });
+/** Subir ou descer um produto num cardápio dele (o principal, se não vier). */
+const moverBody = z.object({ direcao: z.enum(['subir', 'descer']), categoryId: z.number().int().positive().optional() });
 const disponivelBody = z.object({ available: z.boolean() });
 
 /**
@@ -138,11 +147,13 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
   // ---------- categorias ----------
 
   async function listCategorias(): Promise<CategoriaPainelDTO[]> {
-    const counts = await db
-      .select({ categoryId: product.categoryId, n: count() })
-      .from(product)
-      .groupBy(product.categoryId);
-    const byCat = new Map(counts.map((c) => [c.categoryId, Number(c.n)]));
+    // Produtos de cada cardápio, pelos vínculos e na ordem deles (RF64).
+    const vinculos = await db
+      .select({ categoryId: productCategory.categoryId, productId: productCategory.productId })
+      .from(productCategory)
+      .orderBy(asc(productCategory.position), asc(productCategory.productId));
+    const ordens = new Map<number, number[]>();
+    for (const v of vinculos) ordens.set(v.categoryId, [...(ordens.get(v.categoryId) ?? []), v.productId]);
     const rows = await db.select().from(category).orderBy(asc(category.position), asc(category.id));
     const especiais = await specialMenus(db, now());
     return rows.map((c) => {
@@ -154,7 +165,8 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
         slug: c.slug,
         description: c.description,
         coverImageUrl: c.coverImageUrl,
-        productCount: byCat.get(c.id) ?? 0,
+        productCount: (ordens.get(c.id) ?? []).length,
+        productIds: ordens.get(c.id) ?? [],
         special,
         specialState: sp?.state ?? null,
         specialEnd: sp ? menuEnd(sp.pickups) : null,
@@ -253,19 +265,40 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
     res.json(await listCategorias());
   });
 
+  // Excluir um cardápio desvincula os produtos dele, sem excluí-los (RF65, RN70). Produto que só
+  // está nele ficaria sem cardápio: aí a exclusão é recusada e diz quais vincular antes (C133).
   router.delete('/categorias/:id', async (req, res) => {
     const id = Number(req.params.id);
     const cat = (await listCategorias()).find((c) => c.id === id);
     if (!cat) return fail(res, 404, 'Categoria não encontrada');
-    if (cat.productCount > 0) {
-      const n = cat.productCount;
-      return fail(
-        res,
-        409,
-        `"${cat.name}" tem ${n} ${n === 1 ? 'produto' : 'produtos'}. Mova ou exclua ${n === 1 ? 'o produto' : 'os produtos'} antes de excluir a categoria.`,
-      );
+    const deCada = await cardapiosDe(db, cat.productIds);
+    const sozinhos = cat.productIds.filter((pid) => (deCada.get(pid) ?? []).length <= 1);
+    if (sozinhos.length) {
+      const nomes = await db.select({ name: product.name }).from(product).where(inArray(product.id, sozinhos));
+      const lista = new Intl.ListFormat('pt-BR').format(nomes.map((n) => n.name).sort((a, b) => a.localeCompare(b)));
+      const so = sozinhos.length === 1 ? 'só está' : 'só estão';
+      return fail(res, 409, `${lista} ${so} neste cardápio: vincule a outro cardápio ou exclua o produto antes.`);
     }
-    await db.delete(category).where(eq(category.id, id));
+    await inTransaction(db, async (tx) => {
+      // Quem tinha este cardápio como principal passa a ter o primeiro dos outros, mantendo o lugar.
+      const ordemCats = (await tx.select({ id: category.id }).from(category).orderBy(asc(category.position), asc(category.id))).map(
+        (c) => c.id,
+      );
+      const principais = await tx
+        .select({ id: product.id })
+        .from(product)
+        .where(eq(product.categoryId, id));
+      for (const { id: pid } of principais) {
+        const novo = ordemCats.find((c) => c !== id && deCada.get(pid)!.includes(c))!;
+        const [v] = await tx
+          .select({ position: productCategory.position })
+          .from(productCategory)
+          .where(and(eq(productCategory.productId, pid), eq(productCategory.categoryId, novo)));
+        await tx.update(product).set({ categoryId: novo, position: v!.position }).where(eq(product.id, pid));
+      }
+      await tx.delete(productCategory).where(eq(productCategory.categoryId, id));
+      await tx.delete(category).where(eq(category.id, id));
+    });
     await deleteStoredImage(db, cat.coverImageUrl);
     res.json(await listCategorias());
   });
@@ -278,6 +311,7 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
       .select({
         id: product.id,
         categoryId: product.categoryId,
+        position: product.position,
         name: product.name,
         pdvCode: product.pdvCode,
         available: product.available,
@@ -287,7 +321,13 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
       .from(product)
       .innerJoin(category, eq(category.id, product.categoryId))
       .orderBy(asc(category.position), asc(product.position), asc(product.id));
-    return rows.map((p) => ({ ...p, missingPdv: missing.has(p.id) }));
+    const vinculos = await db.select().from(productCategory);
+    const posicoes = new Map<number, Record<number, number>>();
+    for (const v of vinculos) posicoes.set(v.productId, { ...posicoes.get(v.productId), [v.categoryId]: v.position });
+    return rows.map((p) => {
+      const pos = posicoes.get(p.id) ?? { [p.categoryId]: p.position };
+      return { ...p, categoryIds: Object.keys(pos).map(Number), posicoes: pos, missingPdv: missing.has(p.id) };
+    });
   }
 
   router.get('/produtos', async (_req, res) => {
@@ -306,17 +346,22 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
     res.json(await listProdutos());
   });
 
+  // Subir ou descer um produto num cardápio dele; a ordem de cada cardápio é própria (C134).
   router.post('/produtos/:id/mover', async (req, res) => {
     const parsed = moverBody.safeParse(req.body);
     if (!parsed.success) return fail(res, 400, 'Direção inválida');
     const id = Number(req.params.id);
-    const all = await listProdutos();
-    const alvo = all.find((p) => p.id === id);
+    const [alvo] = await db.select({ categoryId: product.categoryId }).from(product).where(eq(product.id, id));
     if (!alvo) return fail(res, 404, 'Produto não encontrado');
-    const ids = all.filter((p) => p.categoryId === alvo.categoryId).map((p) => p.id);
-    await move(db, ids, id, parsed.data.direcao, (tx, pid, position) =>
-      tx.update(product).set({ position }).where(eq(product.id, pid)),
-    );
+    const cardapio = parsed.data.categoryId ?? alvo.categoryId;
+    await inTransaction(db, async (tx) => {
+      const ids = await idsNoCardapio(tx, cardapio);
+      const i = ids.indexOf(id);
+      const j = parsed.data.direcao === 'subir' ? i - 1 : i + 1;
+      if (i < 0 || j < 0 || j >= ids.length) return;
+      [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+      await ordenar(tx, cardapio, ids);
+    });
     res.json(await listProdutos());
   });
 

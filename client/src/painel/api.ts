@@ -73,6 +73,8 @@ export interface CategoriaPainel {
   description: string | null;
   coverImageUrl: string | null;
   productCount: number;
+  /** Os produtos do cardápio, na ordem dele (RF64). */
+  productIds: number[];
   /** Cardápio especial (RF16–RF19); `null` = categoria regular. */
   special: SpecialMenu | null;
   /** Agendado (em-breve), No site (visivel), Oculto ou Encerrado (RN63). */
@@ -86,7 +88,12 @@ export interface CategoriaPainel {
 }
 export interface ProdutoLista {
   id: number;
+  /** Cardápio principal (até o PR E4). */
   categoryId: number;
+  /** Todos os cardápios do produto (RF64). */
+  categoryIds: number[];
+  /** Posição em cada cardápio, pelo id do cardápio. */
+  posicoes: Record<number, number>;
   name: string;
   pdvCode: string | null;
   missingPdv: boolean;
@@ -158,8 +165,9 @@ export const api = {
   produtos: () => call<ProdutoLista[]>('GET', '/painel/catalogo/produtos'),
   disponivel: (id: number, available: boolean) =>
     call<ProdutoLista[]>('PUT', `/painel/catalogo/produtos/${id}/disponivel`, { available }),
-  moveProduto: (id: number, direcao: 'subir' | 'descer') =>
-    call<ProdutoLista[]>('POST', `/painel/catalogo/produtos/${id}/mover`, { direcao }),
+  /** Sobe ou desce o produto num cardápio dele; cada cardápio tem a sua ordem (C134). */
+  moveProduto: (id: number, direcao: 'subir' | 'descer', categoryId: number) =>
+    call<ProdutoLista[]>('POST', `/painel/catalogo/produtos/${id}/mover`, { direcao, categoryId }),
   excluiProduto: (id: number) => call<ProdutoLista[]>('DELETE', `/painel/catalogo/produtos/${id}`, {}),
   modelos: () => call<TemplateDTO[]>('GET', '/painel/catalogo/modelos'),
   cadastro: (id: number) => call<ProductForm>('GET', `/painel/catalogo/produtos/${id}/cadastro`),

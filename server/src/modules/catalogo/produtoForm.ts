@@ -18,7 +18,8 @@ import type { DB } from '../../db/client';
 import { kg, money, num } from '../../db/conversao';
 import { inTransaction } from '../../db/transacao';
 import { deleteStoredImage, photoUrl } from '../imagens/imagens';
-import { category, option, optionGroup, product, productTemplate } from './schema';
+import { cardapiosDe, ordensAntes, vincular } from './cardapios';
+import { category, option, optionGroup, product, productCategory, productTemplate } from './schema';
 
 const txt = (v: string | null) => (v && v.trim() ? v.trim() : null);
 
@@ -48,7 +49,7 @@ const groupSchema = z.object({
   options: z.array(optionSchema).max(40),
 });
 export const productFormSchema = z.object({
-  categoryId: z.number().int().positive(),
+  categoryIds: z.array(z.number().int().positive()).max(30),
   name: z.string().max(100),
   description: z.string().max(1000).nullable(),
   imageUrl: photoUrl,
@@ -103,8 +104,15 @@ export async function loadProductForm(db: DB, id: number): Promise<ProductForm |
     },
   });
   if (!p) return null;
+  // Cardápios do produto: o principal primeiro, os outros na ordem da tela (RF64).
+  const outros = await db
+    .select({ id: productCategory.categoryId })
+    .from(productCategory)
+    .innerJoin(category, eq(category.id, productCategory.categoryId))
+    .where(and(eq(productCategory.productId, id), ne(productCategory.categoryId, p.categoryId)))
+    .orderBy(asc(category.position), asc(category.id));
   return {
-    categoryId: p.categoryId,
+    categoryIds: [p.categoryId, ...outros.map((o) => o.id)],
     name: p.name,
     description: p.description,
     imageUrl: p.imageUrl,
@@ -185,8 +193,8 @@ async function check(db: DB, raw: unknown, productId: number | null): Promise<{ 
   const form = normalize(parsed.data);
   const { errors, warnings } = validateProduct(form);
   if (errors.length) throw new FormError(400, errors);
-  const [cat] = await db.select({ id: category.id }).from(category).where(eq(category.id, form.categoryId)).limit(1);
-  if (!cat) throw new FormError(400, ['Categoria não encontrada']);
+  const cats = await db.select({ id: category.id }).from(category).where(inArray(category.id, form.categoryIds));
+  if (cats.length !== form.categoryIds.length) throw new FormError(400, ['Cardápio não encontrado']);
   const conflicts = await pdvConflicts(db, form, productId);
   if (conflicts.length) throw new FormError(409, conflicts);
   return { form, warnings };
@@ -194,8 +202,9 @@ async function check(db: DB, raw: unknown, productId: number | null): Promise<{ 
 
 // ---------- gravação ----------
 
-const productValues = (f: ProductForm) => ({
-  categoryId: f.categoryId,
+/** Colunas do produto; `categoryId` é o cardápio principal (até o PR E4). */
+const productValues = (f: ProductForm, categoryId: number) => ({
+  categoryId,
   name: f.name,
   description: f.description,
   imageUrl: f.imageUrl,
@@ -290,14 +299,13 @@ async function saveGroups(tx: DB, productId: number, groups: GroupForm[]): Promi
 export async function createProduct(db: DB, raw: unknown): Promise<{ id: number; warnings: string[] }> {
   const { form, warnings } = await check(db, raw, null);
   const id = await inTransaction(db, async (tx) => {
-    const [last] = await tx
-      .select({ max: sql<number>`coalesce(max(${product.position}), -1)` })
-      .from(product)
-      .where(eq(product.categoryId, form.categoryId));
+    // Entra no fim de cada cardápio escolhido; o primeiro é o principal.
+    const antes = await ordensAntes(tx, form.categoryIds);
     const [row] = await tx
       .insert(product)
-      .values({ ...productValues(form), position: Number(last?.max ?? -1) + 1 })
+      .values({ ...productValues(form, form.categoryIds[0]!), position: 0 })
       .returning({ id: product.id });
+    await vincular(tx, row!.id, form.categoryIds, antes);
     await saveGroups(tx, row!.id, form.groups);
     return row!.id;
   });
@@ -309,15 +317,13 @@ export async function updateProduct(db: DB, id: number, raw: unknown): Promise<{
   if (!atual) throw new FormError(404, ['Produto não encontrado']);
   const { form, warnings } = await check(db, raw, id);
   const removed = await inTransaction(db, async (tx) => {
-    const values: Record<string, unknown> = productValues(form);
-    if (form.categoryId !== atual.categoryId) {
-      const [last] = await tx
-        .select({ max: sql<number>`coalesce(max(${product.position}), -1)` })
-        .from(product)
-        .where(eq(product.categoryId, form.categoryId));
-      values.position = Number(last?.max ?? -1) + 1; // mudou de categoria: vai para o fim
-    }
-    await tx.update(product).set(values).where(eq(product.id, id));
+    // O principal continua o mesmo se ainda estiver entre os escolhidos; senão, o primeiro.
+    const principal = form.categoryIds.includes(atual.categoryId) ? atual.categoryId : form.categoryIds[0]!;
+    const atuais = (await cardapiosDe(tx, [id])).get(id) ?? [];
+    const antes = await ordensAntes(tx, [...form.categoryIds, ...atuais]);
+    await tx.update(product).set(productValues(form, principal)).where(eq(product.id, id));
+    // Onde já estava, mantém o lugar; num cardápio novo, entra no fim (RF64).
+    await vincular(tx, id, form.categoryIds, antes);
     const imgs = await saveGroups(tx, id, form.groups);
     if (atual.imageUrl && atual.imageUrl !== form.imageUrl) imgs.push(atual.imageUrl);
     return imgs;
@@ -333,21 +339,15 @@ export async function duplicate(db: DB, id: number): Promise<{ id: number }> {
   const copy = duplicateProduct(form);
   // Uma transação só (G10): se a cópia não puder ir para o lugar certo, ela não fica criada.
   return inTransaction(db, async (tx) => {
+    const antes = await ordensAntes(tx, copy.categoryIds);
     const [row] = await tx
       .insert(product)
-      .values({ ...productValues(copy), position: 0 })
+      .values({ ...productValues(copy, copy.categoryIds[0]!), position: 0 })
       .returning({ id: product.id });
     const newId = row!.id;
     await saveGroups(tx, newId, copy.groups);
-    // A cópia entra logo depois do original na lista.
-    const irmaos = await tx
-      .select({ id: product.id })
-      .from(product)
-      .where(eq(product.categoryId, form.categoryId))
-      .orderBy(asc(product.position), asc(product.id));
-    const ids = irmaos.map((p) => p.id).filter((x) => x !== newId);
-    ids.splice(ids.indexOf(id) + 1, 0, newId);
-    for (const [pos, pid] of ids.entries()) await tx.update(product).set({ position: pos }).where(eq(product.id, pid));
+    // Nos mesmos cardápios do original, logo depois dele em cada um.
+    await vincular(tx, newId, copy.categoryIds, antes, id);
     return { id: newId };
   });
 }

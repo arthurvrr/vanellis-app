@@ -1396,3 +1396,20 @@
   gap: 0.75rem;
   flex-shrink: 0;
 }
+
+/* Cardápios do produto (RF64): uma caixa por cardápio, lado a lado. */
+.cardapios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  border: 0;
+  padding: 0;
+}
+.cardapios legend {
+  flex-basis: 100%;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+.cardapios .field__help {
+  flex-basis: 100%;
+}
