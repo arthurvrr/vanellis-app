@@ -195,3 +195,32 @@ test('foto grande do celular é reduzida no navegador antes do envio, e passa me
     await api.put(`/api/painel/catalogo/produtos/${torta.id}`, { data: original });
   }
 });
+
+test('C127: editar o prazo de uma data especial sem removê-la; o modo de horário continua', async ({ page }) => {
+  await entrarNoPainel(page, '#agenda/especiais');
+  const data = diaBrasilia(40);
+  const prazo = diaBrasilia(37);
+  const novoPrazo = diaBrasilia(36);
+  const api = page.request;
+  await api.post('/api/painel/agenda/datas-especiais', {
+    data: { date: data, name: 'Data C127', deadline: prazo, chooseTime: true, window: { start: '08:00', end: '12:00' } },
+  });
+  try {
+    await page.reload();
+    const [, mes, dia] = data.split('-');
+    await page.getByRole('button', { name: `Editar ${dia}/${mes}/${data.slice(0, 4)}` }).click();
+    await expect(page.locator('#es-data')).toBeDisabled();
+    await expect(page.locator('#es-nome')).toHaveValue('Data C127');
+    await page.locator('#es-prazo').fill(novoPrazo);
+    await page.getByRole('button', { name: 'Salvar alterações' }).click();
+    await expect(page.getByText('Data especial atualizada.')).toBeVisible();
+
+    const agenda = await (await api.get('/api/painel/agenda')).json();
+    const salva = agenda.specialDates.find((s: { date: string }) => s.date === data);
+    expect(salva).toMatchObject({ name: 'Data C127', deadline: novoPrazo, chooseTime: true, window: { start: '08:00', end: '12:00' } });
+    // O formulário volta a cadastrar.
+    await expect(page.getByRole('button', { name: 'Cadastrar' })).toBeVisible();
+  } finally {
+    await api.delete(`/api/painel/agenda/datas-especiais/${data}`, { data: {} });
+  }
+});

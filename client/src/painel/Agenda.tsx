@@ -166,13 +166,34 @@ function Lista({ vazia, children }: { vazia: string; children: ReactNode[] }) {
   return children.length ? <ul className="agenda__list">{children}</ul> : <p className="agenda__empty">{vazia}</p>;
 }
 
-function Item({ children, acao, onAcao }: { children: ReactNode; acao: string; onAcao: () => void }) {
+function Item({
+  children,
+  acao,
+  onAcao,
+  onEditar,
+  rotulo,
+}: {
+  children: ReactNode;
+  acao: string;
+  onAcao: () => void;
+  /** Botão "Editar", antes da ação principal (RF63). */
+  onEditar?: () => void;
+  /** Nome do item para os botões no leitor de tela ("Editar 24/12"). */
+  rotulo?: string;
+}) {
   return (
     <li>
       <span>{children}</span>
-      <button type="button" className="link" onClick={onAcao}>
-        {acao}
-      </button>
+      <span className="agenda__acoes">
+        {onEditar && (
+          <button type="button" className="link" onClick={onEditar} aria-label={rotulo ? `Editar ${rotulo}` : undefined}>
+            Editar
+          </button>
+        )}
+        <button type="button" className="link" onClick={onAcao} aria-label={rotulo ? `${acao} ${rotulo}` : undefined}>
+          {acao}
+        </button>
+      </span>
     </li>
   );
 }
@@ -408,7 +429,29 @@ function DatasBloqueadas({ agenda, muda, ocupado, marcar }: SecaoProps) {
 function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
   const vazio = { date: '', name: '', deadline: '', chooseTime: false, start: '', end: '' };
   const [especial, setEspecial] = useState(vazio);
-  usePendente(marcar, 'especiais', JSON.stringify(especial) !== JSON.stringify(vazio));
+  // Editando uma data já cadastrada (RF63, C127): o dia não muda; `inicial` é como ela estava.
+  const [editando, setEditando] = useState<string | null>(null);
+  const [inicial, setInicial] = useState(vazio);
+  usePendente(marcar, 'especiais', JSON.stringify(especial) !== JSON.stringify(inicial));
+  const limpar = () => {
+    setEspecial(vazio);
+    setInicial(vazio);
+    setEditando(null);
+  };
+  const editar = (s: AgendaPainel['specialDates'][number]) => {
+    const dados = {
+      date: s.date,
+      name: s.name,
+      deadline: s.deadline ?? '',
+      chooseTime: s.chooseTime,
+      start: s.window?.start ?? '',
+      end: s.window?.end ?? '',
+    };
+    setEspecial(dados);
+    setInicial(dados);
+    setEditando(s.date);
+    document.getElementById('es-nome')?.focus();
+  };
   // O prazo fica sempre antes da própria data (C125); o servidor confere o mesmo.
   const prazoInvalido = especial.deadline !== '' && especial.date !== '' && especial.deadline >= especial.date;
   // Intervalo próprio (RF57): opcional, mas com os dois horários e o fim depois do início.
@@ -431,7 +474,12 @@ function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
           <Item
             key={s.date}
             acao="Remover"
-            onAcao={() => void muda('DELETE', `/datas-especiais/${s.date}`, {}, 'Data especial removida.')}
+            rotulo={br(s.date)}
+            onEditar={() => editar(s)}
+            onAcao={() => {
+              if (editando === s.date) limpar();
+              void muda('DELETE', `/datas-especiais/${s.date}`, {}, 'Data especial removida.');
+            }}
           >
             <strong>{br(s.date)}</strong> · {s.name}
             <br />
@@ -466,18 +514,19 @@ function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
               chooseTime: especial.chooseTime,
               window: usaIntervalo ? { start: especial.start, end: especial.end } : null,
             },
-            'Data especial cadastrada.',
-            () => setEspecial(vazio),
+            editando ? 'Data especial atualizada.' : 'Data especial cadastrada.',
+            limpar,
           )
         }
       >
         <div className="field">
-          <label htmlFor="es-data">Data</label>
+          <label htmlFor="es-data">{editando ? 'Data (para outro dia, remova e cadastre)' : 'Data'}</label>
           <input
             id="es-data"
             type="date"
             required
             min={agenda.today}
+            disabled={editando !== null}
             value={especial.date}
             onChange={(e) => setEspecial({ ...especial, date: e.target.value })}
           />
@@ -546,8 +595,13 @@ function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
             </div>
           </>
         )}
+        {editando && (
+          <button type="button" className="link agenda__btn" onClick={limpar}>
+            Cancelar
+          </button>
+        )}
         <button type="submit" className="add agenda__btn" disabled={ocupado || prazoInvalido || intervaloProblema !== null}>
-          Cadastrar
+          {editando ? 'Salvar alterações' : 'Cadastrar'}
         </button>
       </form>
       {especial.chooseTime && (
