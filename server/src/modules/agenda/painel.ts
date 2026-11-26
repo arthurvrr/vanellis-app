@@ -5,6 +5,8 @@ import {
   deliveryProblem,
   scheduleFor,
   specialDateNotes,
+  specialWindowProblem,
+  type SpecialDate,
   weekHoursProblem,
   type DeliveryConfig,
   type OpeningHours,
@@ -16,6 +18,7 @@ import { z } from 'zod';
 import type { DB } from '../../db/client';
 import { hm } from '../../db/conversao';
 import { inTransaction } from '../../db/transacao';
+import { toSpecialDate } from './repository';
 import { requireUser } from '../acesso/sessao';
 import {
   agendaConfig,
@@ -41,7 +44,7 @@ export interface AgendaPainelDTO {
   restrictions: { id: number; weekday: number | null; start: string; end: string; label: string | null }[];
   blockedDates: { date: string; reason: string | null }[];
   /** Com o prazo (RF55) e o que o painel mostra dele: até quando vai e os avisos (RF61). */
-  specialDates: { date: string; name: string; deadline: string | null; closing: string; warnings: string[] }[];
+  specialDates: (SpecialDate & { closing: string; warnings: string[] })[];
   closedPeriods: { id: number; date: string; start: string; end: string }[];
   config: { minLeadHours: number; windowMonths: number };
   /** Tele-entrega (RF44, RN43, RN44). */
@@ -85,8 +88,14 @@ const bodies = {
       date,
       name: z.string().trim().min(1, 'Informe o nome da data').max(60),
       deadline: date.nullable().default(null),
+      chooseTime: z.boolean().default(false),
+      window: z.object({ start: time, end: time }).nullable().default(null),
     })
-    .refine((v) => v.deadline === null || v.deadline < v.date, 'O prazo precisa ser antes da própria data'),
+    .refine((v) => v.deadline === null || v.deadline < v.date, 'O prazo precisa ser antes da própria data')
+    .superRefine((v, ctx) => {
+      const problem = v.chooseTime && v.window && specialWindowProblem(v.window);
+      if (problem) ctx.addIssue({ code: 'custom', message: problem });
+    }),
   closed: z.object({ date, start: time, end: time }).refine(endAfterStart, END_AFTER_START),
   rules: z
     .object({
@@ -130,7 +139,7 @@ async function readAgenda(db: DB, today: string): Promise<AgendaPainelDTO> {
       label: r.label,
     })),
     blockedDates: await db.select().from(blockedDate).where(gte(blockedDate.date, today)).orderBy(asc(blockedDate.date)),
-    specialDates: especiais.map((s) => ({ ...s, ...specialDateNotes({ schedules: all, blockedDates: blocked }, s) })),
+    specialDates: especiais.map(toSpecialDate).map((s) => ({ ...s, ...specialDateNotes({ schedules: all, blockedDates: blocked }, s) })),
     closedPeriods: (
       await db
         .select()
@@ -246,12 +255,15 @@ export function agendaPainelRouter(db: DB, today: () => string) {
   router.post('/datas-especiais', async (req, res) => {
     const parsed = bodies.special.safeParse(req.body);
     if (!parsed.success) return fail(res, 400, firstIssue(parsed.error));
-    const { date: d, name, deadline } = parsed.data;
+    const { date: d, name, deadline, chooseTime } = parsed.data;
     if (d < today()) return fail(res, 400, 'Escolha uma data a partir de hoje');
+    // O intervalo próprio só vale quando o cliente escolhe o horário (RF57).
+    const window = chooseTime ? parsed.data.window : null;
+    const set = { name, deadline, chooseTime, windowStart: window?.start ?? null, windowEnd: window?.end ?? null };
     await db
       .insert(specialDate)
-      .values({ date: d, name, deadline })
-      .onConflictDoUpdate({ target: specialDate.date, set: { name, deadline } });
+      .values({ date: d, ...set })
+      .onConflictDoUpdate({ target: specialDate.date, set });
     return respond(res);
   });
   router.delete('/datas-especiais/:date', async (req, res) => {

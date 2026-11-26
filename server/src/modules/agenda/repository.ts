@@ -1,4 +1,4 @@
-import type { AgendaInput } from '@vanellis/shared';
+import type { AgendaInput, SpecialDate } from '@vanellis/shared';
 import type { DB } from '../../db/client';
 import { hm } from '../../db/conversao';
 import {
@@ -10,6 +10,17 @@ import {
 } from './schema';
 
 // O PostgreSQL devolve `time` como 'HH:MM:SS'; a agenda trabalha com 'HH:MM'.
+
+/** Linha do banco → data especial da agenda (RF55–RF57). */
+export function toSpecialDate(s: typeof specialDate.$inferSelect): SpecialDate {
+  return {
+    date: s.date,
+    name: s.name,
+    deadline: s.deadline,
+    chooseTime: s.chooseTime,
+    window: s.windowStart && s.windowEnd ? { start: hm(s.windowStart), end: hm(s.windowEnd) } : null,
+  };
+}
 
 export async function getAgendaInput(db: DB): Promise<{ input: AgendaInput; paused: boolean }> {
   const [config] = await db.select().from(agendaConfig).limit(1);
@@ -37,7 +48,7 @@ export async function getAgendaInput(db: DB): Promise<{ input: AgendaInput; paus
       restrictions: restrictions.map((r) => ({ weekday: r.weekday, start: hm(r.startTime), end: hm(r.endTime) })),
       blockedDates: blocked.map((b) => b.date),
       closedPeriods: closed.map((c) => ({ date: c.date, start: hm(c.startTime), end: hm(c.endTime) })),
-      specialDates: special.map((s) => ({ date: s.date, name: s.name, deadline: s.deadline })),
+      specialDates: special.map(toSpecialDate),
     },
   };
 }

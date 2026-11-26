@@ -13,6 +13,8 @@ import {
   pickupTimes,
   specialClosing,
   specialDateNotes,
+  specialWindowProblem,
+  type SpecialDate,
   weekHoursProblem,
   type AgendaInput,
   type PickupRestriction,
@@ -120,7 +122,7 @@ describe('availableDays', () => {
   });
 
   it('data especial aparece sem horários (RN20)', () => {
-    const input: AgendaInput = { ...base, specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline: null }] };
+    const input: AgendaInput = { ...base, specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline: null, chooseTime: false, window: null }] };
     expect(availableDays(input, '2026-12-22T10:00').find((d) => d.date === '2026-12-24')).toEqual({
       date: '2026-12-24',
       weekday: 4,
@@ -277,7 +279,7 @@ describe('availableDays: casos de borda', () => {
   });
 
   it('só a data especial fica sem horários; os outros dias seguem normais', () => {
-    const input: AgendaInput = { ...base, specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline: null }] };
+    const input: AgendaInput = { ...base, specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline: null, chooseTime: false, window: null }] };
     const [primeiro] = availableDays(input, '2026-12-22T10:00');
     expect(primeiro).toMatchObject({ date: '2026-12-22', special: null });
     expect(primeiro!.times[0]).toBe('12:00');
@@ -514,7 +516,7 @@ describe('agendaForCart: antecedência dos itens e pausa', () => {
 describe('data especial: prazo e fechamento efetivo', () => {
   const natal = (deadline: string | null = '2026-12-22', extra: Partial<AgendaInput> = {}): AgendaInput => ({
     ...base,
-    specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline }],
+    specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline, chooseTime: false, window: null }],
     ...extra,
   });
   const oferece = (input: AgendaInput, now: string, lead = 0) =>
@@ -623,7 +625,7 @@ describe('data especial: prazo e fechamento efetivo', () => {
 describe('specialDateNotes: o que o painel mostra de cada data especial (RF61)', () => {
   const comPrazo = (deadline: string | null): AgendaInput => ({
     ...base,
-    specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline }],
+    specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline, chooseTime: false, window: null }],
   });
   const notas = (input: AgendaInput) => specialDateNotes(input, input.specialDates[0]!);
 
@@ -652,5 +654,123 @@ describe('specialDateNotes: o que o painel mostra de cada data especial (RF61)',
       closing: 'Encomendas até o fim de ter 22/12',
       warnings: ['A loja não abre em ter 22/12: o prazo recua para o fim de ter 22/12.'],
     });
+  });
+});
+
+// ---------- Horário na data especial (RF56, RF57, RN66; C101–C104, C119, C120) ----------
+// Semana de teste: segunda a sábado 7h30–19h, domingo fechado. 24/12/2026 é quinta; 27/12 é domingo.
+
+describe('data especial: modo de horário e intervalo próprio', () => {
+  const especial = (o: Partial<SpecialDate> = {}, extra: Partial<AgendaInput> = {}): AgendaInput => ({
+    ...base,
+    specialDates: [{ date: '2026-12-24', name: 'Véspera de Natal', deadline: '2026-12-22', chooseTime: false, window: null, ...o }],
+    ...extra,
+  });
+  const vinteQuatro = (input: AgendaInput, now = '2026-12-21T10:00') =>
+    availableDays(input, now).find((d) => d.date === '2026-12-24');
+
+  it('C101: horário a combinar (padrão): só o dia, sem horários', () => {
+    expect(vinteQuatro(especial())).toMatchObject({ special: 'Véspera de Natal', times: [] });
+  });
+
+  it('C102: o cliente escolhe o horário, com intervalo próprio: de 30 em 30, até 30 min antes do fim', () => {
+    const d = vinteQuatro(especial({ chooseTime: true, window: { start: '08:00', end: '12:00' } }));
+    expect(d?.special).toBe('Véspera de Natal');
+    expect(d?.times).toEqual(['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30']);
+  });
+
+  it('C119: o intervalo próprio ignora as restrições gerais', () => {
+    const d = vinteQuatro(
+      especial({ chooseTime: true, window: { start: '07:00', end: '13:00' } }, { restrictions: restricoes }),
+    );
+    expect(d?.times[0]).toBe('07:00');
+    expect(d?.times.at(-1)).toBe('12:30');
+    expect(d?.times).toHaveLength(12);
+  });
+
+  it('C103 e C120: sem intervalo próprio, valem o horário normal do dia e as restrições normais', () => {
+    const d = vinteQuatro(especial({ chooseTime: true }, { restrictions: restricoes }));
+    expect(d?.times[0]).toBe('08:30');
+    expect(d?.times).not.toContain('12:00');
+    expect(d?.times).not.toContain('13:30');
+    expect(d?.times).toContain('14:00');
+    expect(d?.times.at(-1)).toBe('18:30');
+  });
+
+  it('horários lotados valem sempre, com ou sem intervalo próprio (RN66)', () => {
+    const lotado = { closedPeriods: [{ date: '2026-12-24', start: '09:00', end: '10:00' }] };
+    const com = vinteQuatro(especial({ chooseTime: true, window: { start: '08:00', end: '12:00' } }, lotado));
+    expect(com?.times).toEqual(['08:00', '08:30', '10:00', '10:30', '11:00', '11:30']);
+    const sem = vinteQuatro(especial({ chooseTime: true }, lotado));
+    expect(sem?.times).not.toContain('09:30');
+    expect(sem?.times).toContain('10:00');
+  });
+
+  it('um horário lotado em outra data não corta a data especial', () => {
+    const outro = { closedPeriods: [{ date: '2026-12-23', start: '08:00', end: '12:00' }] };
+    expect(vinteQuatro(especial({ chooseTime: true, window: { start: '08:00', end: '09:00' } }, outro))?.times).toEqual([
+      '08:00',
+      '08:30',
+    ]);
+    expect(vinteQuatro(especial({ chooseTime: true }, outro))?.times[0]).toBe('07:30');
+  });
+
+  it('sem nenhum horário semanal cadastrado: só o intervalo próprio oferece horários', () => {
+    const vazio = { schedules: [] };
+    expect(vinteQuatro(especial({ chooseTime: true }, vazio))).toBeUndefined();
+    expect(vinteQuatro(especial({ chooseTime: true, window: { start: '08:00', end: '09:00' } }, vazio))?.times).toEqual([
+      '08:00',
+      '08:30',
+    ]);
+    expect(specialDateNotes({ ...base, schedules: [] }, { date: '2026-12-24', deadline: '2026-12-22', chooseTime: true, window: null }).warnings).toContain(
+      'A loja não abre em qui 24/12: sem intervalo próprio, não haverá horário para escolher. Cadastre um intervalo.',
+    );
+  });
+
+  it('o intervalo próprio não vale no modo "a combinar"', () => {
+    expect(vinteQuatro(especial({ chooseTime: false, window: { start: '08:00', end: '12:00' } }))?.times).toEqual([]);
+  });
+
+  it('a antecedência dos itens não corta os horários da data especial (RN57)', () => {
+    const input = especial({ chooseTime: true, window: { start: '08:00', end: '12:00' } });
+    const d = availableDays(input, '2026-12-22T15:00', 72).find((x) => x.date === '2026-12-24');
+    expect(d?.times[0]).toBe('08:00');
+  });
+
+  it('C104: dia fechado sem intervalo próprio não oferece a data (não há horário para escolher)', () => {
+    const domingo: AgendaInput = {
+      ...base,
+      specialDates: [{ date: '2026-12-27', name: 'Domingo especial', deadline: null, chooseTime: true, window: null }],
+    };
+    expect(availableDays(domingo, '2026-12-21T10:00').map((d) => d.date)).not.toContain('2026-12-27');
+    const comIntervalo: AgendaInput = {
+      ...domingo,
+      specialDates: [{ ...domingo.specialDates[0]!, window: { start: '08:00', end: '10:00' } }],
+    };
+    expect(availableDays(comIntervalo, '2026-12-21T10:00').find((d) => d.date === '2026-12-27')?.times).toEqual([
+      '08:00',
+      '08:30',
+      '09:00',
+      '09:30',
+    ]);
+  });
+
+  it('C104 no painel: avisa que não haverá horário e pede um intervalo', () => {
+    const domingo = { date: '2026-12-27', deadline: null, chooseTime: true, window: null };
+    expect(specialDateNotes(base, domingo).warnings).toContain(
+      'A loja não abre em dom 27/12: sem intervalo próprio, não haverá horário para escolher. Cadastre um intervalo.',
+    );
+    expect(specialDateNotes(base, { ...domingo, window: { start: '08:00', end: '10:00' } }).warnings).not.toContain(
+      'A loja não abre em dom 27/12: sem intervalo próprio, não haverá horário para escolher. Cadastre um intervalo.',
+    );
+    expect(specialDateNotes(base, { ...domingo, chooseTime: false }).warnings).not.toContain(
+      'A loja não abre em dom 27/12: sem intervalo próprio, não haverá horário para escolher. Cadastre um intervalo.',
+    );
+  });
+
+  it('o problema do intervalo próprio: fim depois do início (painel e servidor)', () => {
+    expect(specialWindowProblem({ start: '08:00', end: '12:00' })).toBeNull();
+    expect(specialWindowProblem({ start: '12:00', end: '12:00' })).toBe('O fim do intervalo precisa ser depois do início');
+    expect(specialWindowProblem({ start: '13:00', end: '12:00' })).toBe('O fim do intervalo precisa ser depois do início');
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveCart, type CartLine } from './carrinho';
 import {
   buildOrderMessage,
+  formatPickup,
   describeSelection,
   generateOrderCode,
   MAX_WHATSAPP_URL_LENGTH,
@@ -118,11 +119,21 @@ describe('buildOrderMessage', () => {
     expect(text).not.toContain('Observação');
   });
 
-  it('data especial com horário marcado ainda diz que o horário é a combinar (RN20)', () => {
+  it('C119: data especial em que o cliente escolhe o horário leva o horário escolhido (RN66)', () => {
     const text = buildOrderMessage(
       input([line(1, {}, 25)], { pickup: { date: '2026-12-24', weekday: 4, time: '10:00', special: 'Véspera de Natal' } }),
     );
-    expect(text).toContain('*Retirada:* Qui 24/12 (Véspera de Natal), horário a combinar');
+    expect(text).toContain('*Retirada:* Qui 24/12 (Véspera de Natal) às 10:00');
+  });
+
+  it('formatPickup é o mesmo texto da mensagem, para a tela de pedido enviado', () => {
+    expect(formatPickup({ date: '2026-12-24', weekday: 4, time: '10:00', special: 'Véspera de Natal' })).toBe(
+      'Qui 24/12 (Véspera de Natal) às 10:00',
+    );
+    expect(formatPickup({ date: '2026-12-24', weekday: 4, time: null, special: 'Véspera de Natal' })).toBe(
+      'Qui 24/12 (Véspera de Natal), horário a combinar',
+    );
+    expect(formatPickup({ date: '2026-11-23', weekday: 1, time: '14:30', special: null })).toBe('Seg 23/11 às 14:30');
   });
 
   it('sem horário e sem nome da data, diz "data especial"', () => {

@@ -165,7 +165,7 @@ export function PickupCalendar({ days, value, onChange }: Props) {
       </div>
 
       {days.some((d) => d.special && monthKey(d.date) === month) && (
-        <p className="calendar__legend">★ Data especial: horário combinado com a padaria</p>
+        <p className="calendar__legend">★ Data especial: ao escolher o dia, veja como fica o horário</p>
       )}
     </div>
   );

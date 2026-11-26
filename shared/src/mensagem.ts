@@ -141,9 +141,15 @@ export const SAMPLE_MESSAGE_VALUES: Record<MessageField, string> = {
   observacao: '*Observação:* Sem cebola, por favor.',
 };
 
-function pickupText(p: OrderPickup): string {
+/**
+ * Dia e horário do pedido, como saem na mensagem e na tela de pedido enviado: "Seg 23/11 às
+ * 14:30"; numa data especial, "Qui 24/12 (Véspera de Natal) às 10:00" quando o cliente escolhe
+ * o horário (RN66), ou "…, horário a combinar" (RN20).
+ */
+export function formatPickup(p: OrderPickup): string {
   const day = formatDay(p);
-  return p.special || !p.time ? `${day} (${p.special ?? 'data especial'}), horário a combinar` : `${day} às ${p.time}`;
+  if (!p.time) return `${day} (${p.special ?? 'data especial'}), horário a combinar`;
+  return p.special ? `${day} (${p.special}) às ${p.time}` : `${day} às ${p.time}`;
 }
 
 /**
@@ -170,8 +176,8 @@ export function buildOrderMessage(input: OrderMessageInput, compact = false): st
     itens: items.join('\n'),
     total: total ? `${estimated ? 'Total estimado' : 'Total'}: ${formatRange(total)}` : '',
     recebimento: delivery
-      ? `*Entrega:* ${pickupText(pickup)}\n*Endereço:* ${formatAddress(delivery)}`
-      : `*Retirada:* ${pickupText(pickup)}`,
+      ? `*Entrega:* ${formatPickup(pickup)}\n*Endereço:* ${formatAddress(delivery)}`
+      : `*Retirada:* ${formatPickup(pickup)}`,
     nome: customer.name.trim(),
     cpf: customer.cpf,
     telefone: customer.phone,
