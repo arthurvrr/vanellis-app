@@ -227,7 +227,7 @@ const CLOSING_SEARCH_DAYS = 60;
 export function specialClosing(
   input: Pick<AgendaInput, 'schedules' | 'blockedDates'>,
   special: Pick<SpecialDate, 'date' | 'deadline'>,
-): { date: string; time: string | null } {
+): Until {
   const base = special.deadline ?? addDays(special.date, -1);
   const blocked = new Set(input.blockedDates);
   for (let i = 0; i <= CLOSING_SEARCH_DAYS; i++) {
@@ -239,8 +239,14 @@ export function specialClosing(
   return { date: base, time: null };
 }
 
-/** O instante (ms) em que a data especial para de aceitar pedidos. */
-function closingMs(c: { date: string; time: string | null }): number {
+/** Até quando se pode pedir: dia e hora, ou o fim do dia (`time: null`). */
+export interface Until {
+  date: string;
+  time: string | null;
+}
+
+/** O instante (ms) de um prazo: a hora no dia, ou o fim do dia. */
+export function untilMs(c: Until): number {
   return c.time === null ? dateMs(c.date) + DAY : dateMs(c.date, toMinutes(c.time));
 }
 
@@ -250,7 +256,7 @@ function dayLabel(date: string): string {
 }
 
 /** "ter 22/12 às 19h" ou "o fim de ter 22/12". */
-function describeClosing(c: { date: string; time: string | null }): string {
+function describeClosing(c: Until): string {
   return c.time === null ? `o fim de ${dayLabel(c.date)}` : `${dayLabel(c.date)} às ${formatHour(c.time)}`;
 }
 
@@ -315,7 +321,7 @@ export function availableDays(
       // A antecedência dos itens não vale aqui (RN57): os pedidos fecham antes do dia.
       const times = special.chooseTime ? specialTimes(input, special, date, weekday) : [];
       // No modo "cliente escolhe", um dia sem nenhum horário não é oferecido (C104).
-      if (nowMs < closingMs(specialClosing(input, special)) && (!special.chooseTime || times.length))
+      if (nowMs < untilMs(specialClosing(input, special)) && (!special.chooseTime || times.length))
         days.push({ date, weekday, special: special.name, times, delivery: deliveryOn(input.delivery, date) });
       continue;
     }

@@ -1,5 +1,7 @@
-// Cenários C70–C76 (etapa 6): cardápios especiais pelo painel e o que o site recebe.
+// Cenários C70–C76 (etapa 6) e C109–C114, C121, C125 (fim pelo prazo das datas): cardápios
+// especiais pelo painel e o que o site recebe. 24/12 é data especial com prazo em 22/12.
 
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { startTestApp } from '../../test/app';
 import { openingHours, specialDate, weeklySchedule } from '../agenda/schema';
@@ -10,8 +12,8 @@ let app: Awaited<ReturnType<typeof startTestApp>>;
 let op: ReturnType<typeof app.browser>;
 const ids: Record<string, number> = {};
 
-const NATAL = { visibleFrom: '2026-12-01', visibleUntil: '2026-12-22', pickupDates: ['2026-12-24'] };
-const ANO_NOVO = { visibleFrom: '2026-12-01', visibleUntil: '2026-12-29', pickupDates: ['2026-12-31'] };
+const NATAL = { visibleFrom: '2026-12-01', pickupDates: ['2026-12-24'] };
+const ANO_NOVO = { visibleFrom: '2026-12-01', pickupDates: ['2026-12-31'] };
 
 beforeAll(async () => {
   app = await startTestApp({ now: () => now });
@@ -21,7 +23,7 @@ beforeAll(async () => {
   await app.db
     .insert(openingHours)
     .values([0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ scheduleId: s!.id, weekday, openTime: '07:30', closeTime: '19:00' })));
-  await app.db.insert(specialDate).values({ date: '2026-12-24', name: 'Véspera de Natal' });
+  await app.db.insert(specialDate).values({ date: '2026-12-24', name: 'Véspera de Natal', deadline: '2026-12-22' });
 });
 afterAll(() => app.stop());
 
@@ -80,9 +82,16 @@ describe('Cadastro', () => {
     const painel = r.body.find((c: { name: string }) => c.name === 'Ceia de Natal');
     expect(painel.special).toEqual({ ...NATAL, hidden: false });
     expect(painel.specialState).toBe('visivel');
+    // C113: o fim calculado, sem campo "até".
+    expect(painel.specialEnd).toEqual({ date: '2026-12-22', time: '19:00' });
+    expect(painel.specialAnnouncement).toBe('Retirada em 24/12. Encomendas até 22/12');
 
     const cat = (await site()).categorias.find((c: { name: string }) => c.name === 'Ceia de Natal');
-    expect(cat.special).toEqual({ visibleUntil: '2026-12-22', pickupDates: ['2026-12-24'] });
+    expect(cat.special).toEqual({
+      pickupDates: ['2026-12-24'],
+      announcement: 'Retirada em 24/12. Encomendas até 22/12',
+      closedProducts: [],
+    });
 
     now = '2026-11-30T10:00';
     expect(await nomes()).not.toContain('Ceia de Natal');
@@ -105,9 +114,9 @@ describe('Cadastro', () => {
   });
 
   it('C72: recusa dados inválidos', async () => {
-    const fim = await especial('Ceia de Natal', { ...NATAL, visibleUntil: '2026-11-01' });
-    expect(fim.status).toBe(400);
-    expect(fim.body.error).toMatch(/fim do período/);
+    const inicio = await especial('Ceia de Natal', { ...NATAL, visibleFrom: '' });
+    expect(inicio.status).toBe(400);
+    expect(inicio.body.error).toBe('Informe o início');
     expect((await especial('Ceia de Natal', { ...NATAL, pickupDates: [] })).body.error).toMatch(/ao menos uma data/);
     expect((await especial('Ceia de Natal', { ...NATAL, pickupDates: ['2026-11-20'] })).body.error).toMatch(
       /a partir do início/,
@@ -120,6 +129,58 @@ describe('Cadastro', () => {
     expect(r.body.find((c: { name: string }) => c.name === 'Natal').special).not.toBeNull();
     const regular = await especial('Ceia de Natal', null);
     expect(regular.body.find((c: { name: string }) => c.name === 'Natal')).toMatchObject({ special: null, specialState: null });
+  });
+});
+
+describe('Fim pelo prazo das datas (RF60, RN62, RN63, RN67)', () => {
+  it('C112: depois do último prazo some do site e fica Encerrado no painel, ainda editável', async () => {
+    await especial('Ceia de Natal', NATAL);
+    now = '2026-12-22T18:59';
+    expect(await nomes()).toContain('Ceia de Natal');
+    now = '2026-12-22T19:00';
+    expect(await nomes()).not.toContain('Ceia de Natal');
+    const lista = (await op('GET', '/api/painel/catalogo/categorias')).body;
+    expect(lista.find((c: { name: string }) => c.name === 'Ceia de Natal')).toMatchObject({
+      specialState: 'encerrado',
+      specialAnnouncement: null,
+    });
+  });
+
+  it('C114: uma data nova ainda aberta traz o cardápio de volta; oculto pelo operador continua oculto', async () => {
+    await especial('Ceia de Natal', NATAL);
+    now = '2026-12-23T10:00';
+    expect(await nomes()).not.toContain('Ceia de Natal');
+    // 26/12 é um dia normal: vale a antecedência dos itens, e o anúncio diz só a data.
+    await especial('Ceia de Natal', { ...NATAL, pickupDates: ['2026-12-24', '2026-12-26'] });
+    const cat = (await site()).categorias.find((c: { name: string }) => c.name === 'Ceia de Natal');
+    expect(cat.special).toMatchObject({ pickupDates: ['2026-12-26'], announcement: 'Retirada em 26/12' });
+    await op('PUT', `/api/painel/catalogo/categorias/${ids['Ceia de Natal']}/oculto`, { hidden: true });
+    expect(await nomes()).not.toContain('Ceia de Natal');
+  });
+
+  it('C121: item que não chega mais à data normal do cardápio vem com o prazo encerrado', async () => {
+    const [torta] = await app.db
+      .insert(product)
+      .values({ categoryId: ids['Ceia de Ano Novo']!, name: 'Torta Especial', saleUnit: 'UN', basePrice: '80.00', leadTimeHours: 48 })
+      .returning({ id: product.id });
+    await especial('Ceia de Ano Novo', { visibleFrom: '2026-12-01', pickupDates: ['2026-12-12'] });
+    now = '2026-12-11T10:00';
+    const cat = (await site()).categorias.find((c: { name: string }) => c.name === 'Ceia de Ano Novo');
+    expect(cat.special).toEqual({ pickupDates: ['2026-12-12'], announcement: 'Retirada em 12/12', closedProducts: [torta!.id] });
+  });
+
+  it('C125: o painel avisa que o cardápio começaria no site já encerrado', async () => {
+    const r = await especial('Ceia de Natal', { visibleFrom: '2026-12-23', pickupDates: ['2026-12-24'] });
+    expect(r.status).toBe(200);
+    expect(r.body.find((c: { name: string }) => c.name === 'Ceia de Natal').specialWarnings).toEqual([
+      'O cardápio começaria no site já encerrado: o último prazo (22/12) é antes do início (23/12).',
+    ]);
+  });
+
+  it('o campo antigo visible_until guarda a última data de retirada, para a volta à versão anterior', async () => {
+    await especial('Ceia de Natal', { visibleFrom: '2026-12-01', pickupDates: ['2026-12-31', '2026-12-24'] });
+    const [c] = await app.db.select().from(category).where(eq(category.id, ids['Ceia de Natal']!));
+    expect(c!.visibleUntil).toBe('2026-12-31');
   });
 });
 

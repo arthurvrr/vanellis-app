@@ -555,7 +555,7 @@ describe('data especial: prazo e fechamento efetivo', () => {
   });
 
   it('C100: o prazo vale para o carrinho misto (cardápio especial de 24/12 + produto de 72h)', () => {
-    const ceia = category({ id: 2, name: 'Ceia', special: { visibleUntil: '2026-12-22', pickupDates: ['2026-12-24'] } });
+    const ceia = category({ id: 2, name: 'Ceia', special: { pickupDates: ['2026-12-24'], announcement: '', closedProducts: [] } });
     const catalogo = {
       categorias: [category({ id: 1, name: 'Bolos' }), ceia],
       produtos: [product({ id: 1, categoryId: 1, leadTimeHours: 72 }), product({ id: 2, categoryId: 2 })],

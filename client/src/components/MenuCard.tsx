@@ -22,7 +22,7 @@ export function MenuCard({
       className={[
         'mcard',
         compact && 'mcard--compact',
-        !product.available && 'mcard--off',
+        (!product.available || product.orderClosed) && 'mcard--off',
         selected && 'mcard--selected',
       ]
         .filter(Boolean)
@@ -48,7 +48,13 @@ export function MenuCard({
             </span>
           )}
           <span className="mcard__cta">
-            {!product.available ? 'Indisponível' : selected ? 'Vendo ao lado' : 'Escolher'}
+            {!product.available
+              ? 'Indisponível'
+              : product.orderClosed
+                ? 'Prazo encerrado para este item'
+                : selected
+                  ? 'Vendo ao lado'
+                  : 'Escolher'}
           </span>
         </span>
       </button>

@@ -7,7 +7,7 @@ import { getCatalogo } from './repository';
 export function catalogoRouter(db: DB, now: () => string) {
   const router = Router();
   router.get('/', async (_req, res) => {
-    res.json(await getCatalogo(db, now().slice(0, 10)));
+    res.json(await getCatalogo(db, now()));
   });
   return router;
 }

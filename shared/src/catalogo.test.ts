@@ -16,7 +16,7 @@ describe('cardápios especiais em destaque (RF02)', () => {
   it('vêm antes das regulares, mantendo a ordem entre si', () => {
     const especial = (id: number, slug: string): CategoryDTO => ({
       ...cat(id, slug),
-      special: { visibleUntil: '2026-12-22', pickupDates: ['2026-12-24'] },
+      special: { pickupDates: ['2026-12-24'], announcement: '', closedProducts: [] },
     });
     const categorias = [cat(1, 'paes'), especial(2, 'natal'), cat(3, 'doces'), especial(4, 'ano-novo')];
     const produtos = [1, 2, 3, 4].map((id) => product({ id, categoryId: id }));
