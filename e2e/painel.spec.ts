@@ -98,3 +98,25 @@ test('G22: salvar o produto volta à lista sem perguntar nada', async ({ page })
     await api.put(`/api/painel/catalogo/produtos/${coxinha.id}`, { data: original });
   }
 });
+
+test('C123: data especial sem prazo é salva com o aviso da véspera; o prazo depois da data é recusado', async ({ page }) => {
+  await entrarNoPainel(page, '#agenda/especiais');
+  const data = diaBrasilia(50);
+  try {
+    await page.locator('#es-data').fill(data);
+    await page.locator('#es-nome').fill('Data C123');
+    // Prazo no próprio dia: recusado já na tela (C125).
+    await page.locator('#es-prazo').fill(data);
+    await expect(page.getByRole('alert').filter({ hasText: 'O prazo precisa ser antes da própria data' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Cadastrar' })).toBeDisabled();
+
+    await page.locator('#es-prazo').fill('');
+    await page.getByRole('button', { name: 'Cadastrar' }).click();
+    await expect(page.getByText('Data especial cadastrada.')).toBeVisible();
+    const item = page.locator('#agenda-especiais li').filter({ hasText: 'Data C123' });
+    await expect(item).toContainText('(véspera)');
+    await expect(item).toContainText('Sem prazo, qualquer produto do site');
+  } finally {
+    await page.request.delete(`/api/painel/agenda/datas-especiais/${data}`, { data: {} });
+  }
+});

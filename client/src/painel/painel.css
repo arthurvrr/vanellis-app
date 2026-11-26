@@ -255,6 +255,12 @@
 .agenda__list small {
   color: #6d5c3d;
 }
+/* Aviso de uma data especial (RF61): prazo que recua, data sem prazo. */
+.agenda__list .agenda__aviso {
+  display: block;
+  margin-top: 0.2rem;
+  color: #8a4b12;
+}
 .agenda__empty {
   margin: 0.75rem 0 0;
   font-size: 0.9rem;

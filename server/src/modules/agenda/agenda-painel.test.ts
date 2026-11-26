@@ -3,7 +3,9 @@
 
 import type { AgendaDTO, AvailableDay } from '@vanellis/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { startTestApp } from '../../test/app';
+import { category, product } from '../catalogo/schema';
 import { blockedDate, closedPeriod, openingHours, pickupRestriction, specialDate, weeklySchedule } from './schema';
 
 const NOW = '2026-11-22T10:00';
@@ -167,13 +169,66 @@ describe('Exceções no calendário', () => {
     expect(day(await site(), '2026-11-28')!.times).toContain('09:30');
   });
 
-  it('C33: a mesma data não pode ser bloqueada e especial', async () => {
-    await op('POST', '/api/painel/agenda/datas-bloqueadas', { date: '2026-12-25', reason: 'Natal' });
-    const res = await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-12-25', name: 'Natal' });
-    expect(res.status).toBe(409);
-    expect(res.body.error).toContain('bloqueada');
-    await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-12-24', name: 'Véspera de Natal' });
-    expect((await op('POST', '/api/painel/agenda/datas-bloqueadas', { date: '2026-12-24' })).status).toBe(409);
+  it('C116: bloquear uma data especial é aceito; desbloquear a devolve com o mesmo prazo (RN60)', async () => {
+    await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-12-24', name: 'Véspera de Natal', deadline: '2026-12-22' });
+    const bloqueio = await op('POST', '/api/painel/agenda/datas-bloqueadas', { date: '2026-12-24', reason: 'Produção cheia' });
+    expect(bloqueio.status).toBe(200);
+    expect(day(await site(), '2026-12-24')).toBeUndefined();
+    expect(bloqueio.body.specialDates).toMatchObject([{ date: '2026-12-24', deadline: '2026-12-22' }]);
+    await op('DELETE', '/api/painel/agenda/datas-bloqueadas/2026-12-24', {});
+    expect(day(await site(), '2026-12-24')).toMatchObject({ special: 'Véspera de Natal' });
+    // E o contrário: uma data bloqueada pode virar especial, e continua fora até desbloquear.
+    await op('POST', '/api/painel/agenda/datas-bloqueadas', { date: '2026-12-31', reason: 'Folga' });
+    expect((await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-12-31', name: 'Ano Novo' })).status).toBe(200);
+    expect(day(await site(), '2026-12-31')).toBeUndefined();
+  });
+
+  it('C123: data especial sem prazo é salva com o aviso da véspera; com prazo, mostra até quando vai', async () => {
+    const sem = await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-12-24', name: 'Véspera de Natal' });
+    expect(sem.status).toBe(200);
+    expect(sem.body.specialDates[0]).toMatchObject({
+      deadline: null,
+      closing: 'Encomendas até qua 23/12 às 19h (véspera)',
+      warnings: [expect.stringContaining('Sem prazo, qualquer produto do site')],
+    });
+    const com = await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-12-24', name: 'Véspera de Natal', deadline: '2026-12-22' });
+    expect(com.body.specialDates[0]).toMatchObject({ deadline: '2026-12-22', closing: 'Encomendas até ter 22/12 às 19h', warnings: [] });
+  });
+
+  it('C117: prazo num dia em que a loja não abre: o painel avisa o recuo', async () => {
+    await op('POST', '/api/painel/agenda/datas-bloqueadas', { date: '2026-12-22', reason: 'Folga' });
+    const res = await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-12-24', name: 'Véspera de Natal', deadline: '2026-12-22' });
+    expect(res.body.specialDates[0]).toMatchObject({
+      closing: 'Encomendas até seg 21/12 às 19h',
+      warnings: ['A loja não abre em ter 22/12: o prazo recua para seg 21/12 às 19h.'],
+    });
+  });
+
+  it('C125: o prazo precisa ser antes da própria data', async () => {
+    for (const deadline of ['2026-12-24', '2026-12-25']) {
+      const res = await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-12-24', name: 'Véspera de Natal', deadline });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('O prazo precisa ser antes da própria data');
+    }
+  });
+
+  it('C94: com prazo, o site oferece a data especial mesmo para produto de antecedência longa', async () => {
+    // "Agora" é 22/11; um bolo de 72h só chegaria a 25/11, mas 24/11 é data especial com prazo em 23/11.
+    const [cat] = await app.db.insert(category).values({ name: 'Bolos C94', slug: 'bolos-c94', position: 99 }).returning();
+    const [bolo] = await app.db
+      .insert(product)
+      .values({ categoryId: cat!.id, name: 'Bolo de Nozes', saleUnit: 'UN', basePrice: '90.00', leadTimeHours: 72 })
+      .returning();
+    try {
+      await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-11-24', name: 'Encomenda especial', deadline: '2026-11-23' });
+      const res = await app.browser()('GET', `/api/agenda/disponibilidade?produtos=${bolo!.id}`);
+      expect(day(res.body, '2026-11-24')).toMatchObject({ special: 'Encomenda especial' });
+      // C99: o dia normal seguinte continua preso à antecedência.
+      expect(day(res.body, '2026-11-23')).toBeUndefined();
+    } finally {
+      await app.db.delete(product).where(eq(product.id, bolo!.id));
+      await app.db.delete(category).where(eq(category.id, cat!.id));
+    }
   });
 
   it('recusa datas no passado', async () => {

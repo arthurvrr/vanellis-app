@@ -1,4 +1,4 @@
-import { dayPeriods, deliveryProblem, formatDates, formatPeriods, weekHoursProblem } from '@vanellis/shared';
+import { addDays, dayPeriods, deliveryProblem, formatDates, formatPeriods, weekHoursProblem } from '@vanellis/shared';
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { api, type AgendaPainel, type Horario } from './api';
 import { avisarAoSair } from './saida';
@@ -396,16 +396,20 @@ function DatasBloqueadas({ agenda, muda, ocupado, marcar }: SecaoProps) {
   );
 }
 
-/** Datas especiais (C33). */
+/** Datas especiais (C31), com prazo de encomenda opcional (RF55, RF61; C116, C117, C123, C125). */
 function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
-  const [especial, setEspecial] = useState({ date: '', name: '' });
-  usePendente(marcar, 'especiais', especial.date !== '' || especial.name !== '');
+  const vazio = { date: '', name: '', deadline: '' };
+  const [especial, setEspecial] = useState(vazio);
+  usePendente(marcar, 'especiais', especial.date !== '' || especial.name !== '' || especial.deadline !== '');
+  // O prazo fica sempre antes da própria data (C125); o servidor confere o mesmo.
+  const prazoInvalido = especial.deadline !== '' && especial.date !== '' && especial.deadline >= especial.date;
+  const bloqueadas = new Set(agenda.blockedDates.map((b) => b.date));
 
   return (
     <Bloco
       id="especiais"
       titulo="Datas especiais"
-      ajuda="O cliente escolhe só o dia; a padaria combina o horário pelo WhatsApp (ex: vésperas de Natal e Ano Novo)."
+      ajuda="O cliente escolhe só o dia; a padaria combina o horário pelo WhatsApp (ex: vésperas de Natal e Ano Novo). Nessa data vale o prazo de encomenda, não a antecedência de cada produto."
     >
       <Lista vazia="Nenhuma data especial.">
         {agenda.specialDates.map((s) => (
@@ -415,13 +419,30 @@ function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
             onAcao={() => void muda('DELETE', `/datas-especiais/${s.date}`, {}, 'Data especial removida.')}
           >
             <strong>{br(s.date)}</strong> · {s.name}
+            <br />
+            <small>
+              {bloqueadas.has(s.date) ? 'Bloqueada em Datas sem retirada: fora do site até desbloquear. ' : ''}
+              {s.closing}
+            </small>
+            {s.warnings.map((w) => (
+              <small key={w} className="agenda__aviso">
+                {w}
+              </small>
+            ))}
           </Item>
         ))}
       </Lista>
       <form
         className="agenda__inline agenda__form"
         onSubmit={(e) =>
-          incluir(muda, e, '/datas-especiais', especial, 'Data especial cadastrada.', () => setEspecial({ date: '', name: '' }))
+          incluir(
+            muda,
+            e,
+            '/datas-especiais',
+            { date: especial.date, name: especial.name, deadline: especial.deadline || null },
+            'Data especial cadastrada.',
+            () => setEspecial(vazio),
+          )
         }
       >
         <div className="field">
@@ -446,10 +467,29 @@ function DatasEspeciais({ agenda, muda, ocupado, marcar }: SecaoProps) {
             onChange={(e) => setEspecial({ ...especial, name: e.target.value })}
           />
         </div>
-        <button type="submit" className="add agenda__btn" disabled={ocupado}>
+        <div className="field">
+          <label htmlFor="es-prazo">Encomendas até (opcional)</label>
+          <input
+            id="es-prazo"
+            type="date"
+            max={especial.date ? addDays(especial.date, -1) : undefined}
+            aria-describedby="es-prazo-ajuda"
+            value={especial.deadline}
+            onChange={(e) => setEspecial({ ...especial, deadline: e.target.value })}
+          />
+        </div>
+        <button type="submit" className="add agenda__btn" disabled={ocupado || prazoInvalido}>
           Cadastrar
         </button>
       </form>
+      <p id="es-prazo-ajuda" className="field__help">
+        O prazo vai até o fechamento da loja nesse dia. Sem prazo, as encomendas vão até a véspera.
+      </p>
+      {prazoInvalido && (
+        <p className="field__error" role="alert">
+          O prazo precisa ser antes da própria data
+        </p>
+      )}
     </Bloco>
   );
 }

@@ -57,6 +57,16 @@ export interface PickupRestriction {
   end: string;
 }
 
+/**
+ * Data especial (RN20, RF55): o cliente escolhe só o dia. `deadline` é o último dia para
+ * encomendar, até o fechamento da loja (RN58); sem ele, vale a véspera (RN59).
+ */
+export interface SpecialDate {
+  date: string;
+  name: string;
+  deadline: string | null;
+}
+
 export interface AgendaInput {
   schedules: WeeklySchedule[];
   restrictions: PickupRestriction[];
@@ -65,7 +75,7 @@ export interface AgendaInput {
   /** Períodos fechados num dia específico, por lotação (RN15). */
   closedPeriods: { date: string; start: string; end: string }[];
   /** Datas especiais: só o dia, horário combinado pelo operador (RN20). */
-  specialDates: { date: string; name: string }[];
+  specialDates: SpecialDate[];
   /** Antecedência mínima padrão em horas (RN13). */
   minLeadHours: number;
   /** Até quantos meses à frente o cliente pode agendar (RN53). */
@@ -166,11 +176,73 @@ export function pickupTimes(
   return [...times].sort((a, b) => a - b).map(toTime);
 }
 
+/** Até quantos dias antes do prazo se procura um dia aberto (RN58). */
+const CLOSING_SEARCH_DAYS = 60;
+
+/**
+ * Até quando uma data especial aceita pedidos (RN58, RN59): no fechamento da loja no dia do
+ * prazo, ou na véspera, sem prazo. Se a loja não abre nesse dia (sem horário ou data
+ * bloqueada), vale o último dia aberto antes dele; no dia, vale o fim do último período (depois
+ * do almoço). Sem nenhum dia aberto antes, vale o fim do dia do prazo (`time: null`).
+ */
+export function specialClosing(
+  input: Pick<AgendaInput, 'schedules' | 'blockedDates'>,
+  special: Pick<SpecialDate, 'date' | 'deadline'>,
+): { date: string; time: string | null } {
+  const base = special.deadline ?? addDays(special.date, -1);
+  const blocked = new Set(input.blockedDates);
+  for (let i = 0; i <= CLOSING_SEARCH_DAYS; i++) {
+    const { date, weekday } = dayAt(dateMs(base) - i * DAY);
+    if (blocked.has(date)) continue;
+    // Stryker disable next-line ArrayDeclaration: equivalente, dayPeriods filtra por dia da semana e descarta qualquer item sem weekday
+    const last = dayPeriods(scheduleFor(input.schedules, date)?.hours ?? [], weekday).at(-1);
+    if (last) return { date, time: last.close };
+  }
+  return { date: base, time: null };
+}
+
+/** O instante (ms) em que a data especial para de aceitar pedidos. */
+function closingMs(c: { date: string; time: string | null }): number {
+  return c.time === null ? dateMs(c.date) + DAY : dateMs(c.date, toMinutes(c.time));
+}
+
+/** "ter 22/12" */
+function dayLabel(date: string): string {
+  return `${weekdayShort(dayAt(dateMs(date)).weekday).toLowerCase()} ${shortDate(date)}`;
+}
+
+/** "ter 22/12 às 19h" ou "o fim de ter 22/12". */
+function describeClosing(c: { date: string; time: string | null }): string {
+  return c.time === null ? `o fim de ${dayLabel(c.date)}` : `${dayLabel(c.date)} às ${formatHour(c.time)}`;
+}
+
+/**
+ * O que o painel mostra de uma data especial (RF61): até quando vai a encomenda, já com o
+ * recuo para o último dia aberto, e os avisos ao operador.
+ */
+export function specialDateNotes(
+  input: Pick<AgendaInput, 'schedules' | 'blockedDates'>,
+  special: Pick<SpecialDate, 'date' | 'deadline'>,
+): { closing: string; warnings: string[] } {
+  const c = specialClosing(input, special);
+  const base = special.deadline ?? addDays(special.date, -1);
+  const when = describeClosing(c);
+  const warnings: string[] = [];
+  // O recuo devolve outro dia, ou o fim do próprio dia quando não há dia aberto antes.
+  if (c.date !== base || c.time === null) warnings.push(`A loja não abre em ${dayLabel(base)}: o prazo recua para ${when}.`);
+  if (special.deadline === null)
+    warnings.push(
+      'Sem prazo, qualquer produto do site, inclusive os de antecedência longa, poderá ser pedido até a véspera, no fechamento da loja.',
+    );
+  return { closing: `Encomendas até ${when}${special.deadline === null ? ' (véspera)' : ''}`, warnings };
+}
+
 /**
  * Dias e horários disponíveis a partir de `now` ('AAAA-MM-DDTHH:MM', horário de Brasília).
  * A antecedência é a maior entre a padrão e a exigida pelos itens do carrinho (RN13, RN14):
- * um horário só aparece se é depois de `now` + antecedência. Data especial conta a partir
- * da meia-noite do dia, já que o horário é combinado depois.
+ * um horário só aparece se é depois de `now` + antecedência. Na data especial, quem controla
+ * é o prazo dela (RN57–RN59), não a antecedência dos itens, e a janela de agendamento não vale
+ * (RN65).
  */
 export function availableDays(
   input: AgendaInput,
@@ -183,21 +255,24 @@ export function availableDays(
   const [today, time] = now.split('T') as [string, string];
   const leadMinutes = Math.max(input.minLeadHours, itemsLeadHours) * 60;
   const earliest = dateMs(today, toMinutes(time) + leadMinutes);
+  const nowMs = dateMs(today, toMinutes(time));
   const blocked = new Set(input.blockedDates);
   const lastMs = dateMs(lastBookableDate(today, input.windowMonths));
+  const lastSpecialMs = Math.max(lastMs, ...input.specialDates.map((s) => dateMs(s.date)));
   const days: AvailableDay[] = [];
 
-  for (let dayMs = dateMs(today); dayMs <= lastMs; dayMs += DAY) {
+  for (let dayMs = dateMs(today); dayMs <= lastSpecialMs; dayMs += DAY) {
     const { date, weekday } = dayAt(dayMs);
     if (blocked.has(date)) continue;
     if (allowed && !allowed.has(date)) continue;
 
     const special = input.specialDates.find((s) => s.date === date);
     if (special) {
-      if (dayMs >= earliest)
+      if (nowMs < closingMs(specialClosing(input, special)))
         days.push({ date, weekday, special: special.name, times: [], delivery: deliveryOn(input.delivery, date) });
       continue;
     }
+    if (dayMs > lastMs) continue;
 
     // Stryker disable next-line ArrayDeclaration: equivalente, dayPeriods filtra por dia da semana e descarta qualquer item sem weekday
     const periods = dayPeriods(scheduleFor(input.schedules, date)?.hours ?? [], weekday);

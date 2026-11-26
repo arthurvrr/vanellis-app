@@ -4,6 +4,7 @@
 import {
   deliveryProblem,
   scheduleFor,
+  specialDateNotes,
   weekHoursProblem,
   type DeliveryConfig,
   type OpeningHours,
@@ -39,7 +40,8 @@ export interface AgendaPainelDTO {
   upcoming: ScheduleDTO[];
   restrictions: { id: number; weekday: number | null; start: string; end: string; label: string | null }[];
   blockedDates: { date: string; reason: string | null }[];
-  specialDates: { date: string; name: string }[];
+  /** Com o prazo (RF55) e o que o painel mostra dele: até quando vai e os avisos (RF61). */
+  specialDates: { date: string; name: string; deadline: string | null; closing: string; warnings: string[] }[];
   closedPeriods: { id: number; date: string; start: string; end: string }[];
   config: { minLeadHours: number; windowMonths: number };
   /** Tele-entrega (RF44, RN43, RN44). */
@@ -78,7 +80,13 @@ const bodies = {
     })
     .refine(endAfterStart, END_AFTER_START),
   blocked: z.object({ date, reason: z.string().trim().max(100).nullable().default(null) }),
-  special: z.object({ date, name: z.string().trim().min(1, 'Informe o nome da data').max(60) }),
+  special: z
+    .object({
+      date,
+      name: z.string().trim().min(1, 'Informe o nome da data').max(60),
+      deadline: date.nullable().default(null),
+    })
+    .refine((v) => v.deadline === null || v.deadline < v.date, 'O prazo precisa ser antes da própria data'),
   closed: z.object({ date, start: time, end: time }).refine(endAfterStart, END_AFTER_START),
   rules: z
     .object({
@@ -106,6 +114,9 @@ async function readAgenda(db: DB, today: string): Promise<AgendaPainelDTO> {
       .sort((a, b) => a.weekday - b.weekday || a.open.localeCompare(b.open)),
   }));
   const [config] = await db.select().from(agendaConfig).limit(1);
+  // O recuo do prazo (RN58) olha o horário e os bloqueios de qualquer data, não só os futuros.
+  const blocked = (await db.select({ date: blockedDate.date }).from(blockedDate)).map((b) => b.date);
+  const especiais = await db.select().from(specialDate).where(gte(specialDate.date, today)).orderBy(asc(specialDate.date));
 
   return {
     today,
@@ -119,7 +130,7 @@ async function readAgenda(db: DB, today: string): Promise<AgendaPainelDTO> {
       label: r.label,
     })),
     blockedDates: await db.select().from(blockedDate).where(gte(blockedDate.date, today)).orderBy(asc(blockedDate.date)),
-    specialDates: await db.select().from(specialDate).where(gte(specialDate.date, today)).orderBy(asc(specialDate.date)),
+    specialDates: especiais.map((s) => ({ ...s, ...specialDateNotes({ schedules: all, blockedDates: blocked }, s) })),
     closedPeriods: (
       await db
         .select()
@@ -223,8 +234,7 @@ export function agendaPainelRouter(db: DB, today: () => string) {
     if (!parsed.success) return fail(res, 400, firstIssue(parsed.error));
     const { date: d, reason } = parsed.data;
     if (d < today()) return fail(res, 400, 'Escolha uma data a partir de hoje');
-    const [sp] = await db.select().from(specialDate).where(eq(specialDate.date, d)).limit(1);
-    if (sp) return fail(res, 409, `Essa data já é a data especial "${sp.name}". Remova-a antes de bloquear.`);
+    // Bloquear uma data especial é permitido (RN60): ela some até desbloquear, sem perder o prazo.
     await db.insert(blockedDate).values({ date: d, reason }).onConflictDoUpdate({ target: blockedDate.date, set: { reason } });
     return respond(res);
   });
@@ -236,11 +246,12 @@ export function agendaPainelRouter(db: DB, today: () => string) {
   router.post('/datas-especiais', async (req, res) => {
     const parsed = bodies.special.safeParse(req.body);
     if (!parsed.success) return fail(res, 400, firstIssue(parsed.error));
-    const { date: d, name } = parsed.data;
+    const { date: d, name, deadline } = parsed.data;
     if (d < today()) return fail(res, 400, 'Escolha uma data a partir de hoje');
-    const [bl] = await db.select().from(blockedDate).where(eq(blockedDate.date, d)).limit(1);
-    if (bl) return fail(res, 409, 'Essa data está bloqueada. Desbloqueie antes de torná-la especial.');
-    await db.insert(specialDate).values({ date: d, name }).onConflictDoUpdate({ target: specialDate.date, set: { name } });
+    await db
+      .insert(specialDate)
+      .values({ date: d, name, deadline })
+      .onConflictDoUpdate({ target: specialDate.date, set: { name, deadline } });
     return respond(res);
   });
   router.delete('/datas-especiais/:date', async (req, res) => {

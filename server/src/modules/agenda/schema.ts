@@ -85,11 +85,20 @@ export const closedPeriod = pgTable(
   (t) => [check('closed_period_time_check', sql`${t.endTime} > ${t.startTime}`)],
 );
 
-/** Data especial: o cliente escolhe só o dia e o horário é combinado (RN20, RN21). */
-export const specialDate = pgTable('special_date', {
-  date: date('date', { mode: 'string' }).primaryKey(),
-  name: varchar('name', { length: 60 }).notNull(),
-});
+/**
+ * Data especial: o cliente escolhe só o dia e o horário é combinado (RN20, RN21). `deadline` é
+ * o último dia para encomendar, até o fechamento da loja (RF55, RN58); sem ele, vale a véspera
+ * (RN59). Sempre antes da própria data.
+ */
+export const specialDate = pgTable(
+  'special_date',
+  {
+    date: date('date', { mode: 'string' }).primaryKey(),
+    name: varchar('name', { length: 60 }).notNull(),
+    deadline: date('deadline', { mode: 'string' }),
+  },
+  (t) => [check('special_date_deadline_check', sql`${t.deadline} is null or ${t.deadline} < ${t.date}`)],
+);
 
 /** Configuração da agenda: linha única (id = 1). */
 export const agendaConfig = pgTable(
