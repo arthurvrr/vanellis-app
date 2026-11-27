@@ -6,6 +6,8 @@ dist/
 
 # Backups do banco no servidor
 backups/
+# Acesso ao Google Drive e senhas da criptografia da cópia externa (só no servidor)
+rclone/
 deploy/.env.teste
 
 # Testes de ponta a ponta (Playwright)

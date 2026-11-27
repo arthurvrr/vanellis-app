@@ -141,6 +141,7 @@ jobs:
 
   # G06: o backup de verdade (deploy/backup.sh) na imagem do servidor, contra um Postgres de
   # teste: backup bom conferido, banco fora do ar sem apagar nada, rotação que mantém 7.
+  # RQ35: a cópia externa (deploy/copia-externa.sh) contra um destino local criptografado.
   backup:
     name: backup
     runs-on: ubuntu-latest
@@ -148,3 +149,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Testa o backup
         run: bash deploy/testar-backup.sh
+      - name: Testa a cópia externa
+        run: bash deploy/testar-copia-externa.sh

@@ -74,6 +74,8 @@ main() {
     # O backup lê deploy/backup.sh montado do servidor; sem reiniciar, o processo antigo seguiria
     # com o script velho. Ao reiniciar, ele faz um backup na hora e volta ao horário diário.
     docker compose restart backup >/dev/null && log "   serviço de backup reiniciado com o script desta versão"
+    # Mesmo motivo para a cópia externa (deploy/copia-externa.sh); ao reiniciar, ela envia na hora.
+    docker compose restart copia-externa >/dev/null && log "   cópia externa reiniciada com o script desta versão"
     limpar_imagens "$nova" "$anterior"
     return 0
   fi
