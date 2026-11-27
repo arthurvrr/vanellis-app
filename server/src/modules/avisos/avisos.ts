@@ -13,6 +13,8 @@ import {
   proximaRevisao,
   specialMenuWarnings,
   type AvisoDTO,
+  type AvisosDTO,
+  type EventoDTO,
   type EstadoBackup,
   type EstadoCopia,
 } from '@vanellis/shared';
@@ -33,30 +35,6 @@ const DIAS_HISTORICO = 365;
 /** De quanto em quanto tempo os problemas de sistema são conferidos sem ninguém abrir o painel. */
 const INTERVALO_MS = 10 * 60_000;
 const BACKUP = /^vanellis-.*\.sql\.gz$/;
-
-export interface EventoDTO {
-  id: number;
-  tipo: string;
-  gravidade: string;
-  titulo: string;
-  /** Instantes em ms. */
-  inicio: number;
-  fim: number | null;
-  conta: string | null;
-  contaFim: string | null;
-  cientePor: string | null;
-  cienteEm: number | null;
-  /** Vermelho ainda sem Ciente: conta no sino (RN72). */
-  pedeCiente: boolean;
-}
-
-export interface AvisosDTO {
-  agora: (AvisoDTO & { eventoId: number | null })[];
-  historico: EventoDTO[];
-  sino: { total: number; vermelho: boolean };
-  proximaRevisao: string | null;
-  podeMarcarCiente: boolean;
-}
 
 /**
  * Lê a pasta de backups: o backup conferido mais recente e o estado da cópia externa.

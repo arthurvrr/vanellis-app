@@ -1,6 +1,8 @@
+import type { AvisosDTO } from '@vanellis/shared';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, ApiError, type Sessao } from './api';
 import { Agenda } from './Agenda';
+import { Avisos } from './Avisos';
 import { BuscaPainel } from './BuscaPainel';
 import { Configuracoes } from './Configuracoes';
 import { Contas } from './Contas';
@@ -10,7 +12,7 @@ import { Precos } from './Precos';
 import { Produtos } from './Produtos';
 import { podeSair } from './saida';
 
-type Tela = 'inicio' | 'produtos' | 'precos' | 'agenda' | 'configuracoes' | 'contas';
+type Tela = 'inicio' | 'avisos' | 'produtos' | 'precos' | 'agenda' | 'configuracoes' | 'contas';
 
 interface SubItem {
   nome: string;
@@ -89,7 +91,7 @@ function telaDoEndereco(): Tela {
   const h = window.location.hash.slice(1);
   const base = h.split('/')[0];
   if (base === 'produto' || base === 'categorias' || base === 'produtos-sem-pdv') return 'produtos';
-  if (['inicio', 'produtos', 'precos', 'agenda', 'configuracoes', 'contas'].includes(base!)) return base as Tela;
+  if (['inicio', 'avisos', 'produtos', 'precos', 'agenda', 'configuracoes', 'contas'].includes(base!)) return base as Tela;
   return 'inicio';
 }
 
@@ -103,7 +105,32 @@ function mesmaTelaComSecoes(de: string, para: string): boolean {
 }
 
 const secaoDaTela = (t: Tela): Secao['id'] =>
-  t === 'contas' ? 'configuracoes' : t === 'precos' ? 'produtos' : t;
+  t === 'contas' ? 'configuracoes' : t === 'precos' ? 'produtos' : t === 'avisos' ? 'inicio' : t;
+
+/** De quanto em quanto tempo o sino confere os avisos com a tela parada. */
+const SINO_MS = 60_000;
+
+/** Sino do topo (RF66): número de avisos, em vermelho quando há problema de sistema (RN71, RN72). */
+function Sino({ dados }: { dados: AvisosDTO | null }) {
+  const total = dados?.sino.total ?? 0;
+  const vermelho = dados?.sino.vermelho ?? false;
+  const nome = total === 0 ? 'Avisos: nenhum' : `Avisos: ${total}${vermelho ? ', há problema de sistema' : ''}`;
+  return (
+    <a href="#avisos" className={vermelho ? 'sino sino--vermelho' : 'sino'} aria-label={nome} title={nome}>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+        <path
+          d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      {total > 0 && <span className="sino__numero">{total}</span>}
+    </a>
+  );
+}
 
 // Painel do operador. Sem sessão, mostra o login (cenário C4).
 export function PainelApp() {
@@ -111,6 +138,7 @@ export function PainelApp() {
   const [tela, setTela] = useState<Tela>(telaDoEndereco);
   const [hash, setHash] = useState(window.location.hash);
   const [menuAberto, setMenuAberto] = useState(false);
+  const [avisos, setAvisos] = useState<AvisosDTO | null>(null);
   const hashAnterior = useRef(window.location.hash);
 
   useEffect(() => {
@@ -128,6 +156,11 @@ export function PainelApp() {
         return;
       }
       hashAnterior.current = window.location.hash;
+      // A outra tela pode ter mudado algo que gera aviso (PDV, cardápio especial): o sino confere.
+      api
+        .avisos()
+        .then(setAvisos)
+        .catch(() => undefined);
       setTela(telaDoEndereco());
       setHash(window.location.hash);
       setMenuAberto(false);
@@ -144,6 +177,29 @@ export function PainelApp() {
     }
     return false;
   }, []);
+
+  /** Os avisos valem para o sino e para as telas Início e Avisos; recarregados a cada troca de tela. */
+  const recarregarAvisos = useCallback(async () => {
+    try {
+      setAvisos(await api.avisos());
+    } catch (e) {
+      // Sem os avisos o painel continua funcionando; a sessão encerrada volta ao login.
+      onAuthError(e);
+    }
+  }, [onAuthError]);
+
+  const logado = !!sessao;
+  useEffect(() => {
+    if (!logado) return;
+    const carregar = () =>
+      api
+        .avisos()
+        .then(setAvisos)
+        .catch((e: unknown) => onAuthError(e));
+    void carregar();
+    const timer = setInterval(() => void carregar(), SINO_MS);
+    return () => clearInterval(timer);
+  }, [logado, onAuthError]);
 
   const sair = async () => {
     if (!podeSair()) return;
@@ -185,6 +241,7 @@ export function PainelApp() {
         </button>
         <h1 className="header__logo">VANELLIS</h1>
         <BuscaPainel admin={admin} />
+        <Sino dados={avisos} />
         <div className="painel__user">
           <span>
             {sessao.usuario}
@@ -231,7 +288,10 @@ export function PainelApp() {
         </nav>
 
         <div className="painel__main">
-          {atual === 'inicio' && <Inicio onAuthError={onAuthError} />}
+          {atual === 'inicio' && <Inicio avisos={avisos} onMudou={recarregarAvisos} onAuthError={onAuthError} />}
+          {atual === 'avisos' && (
+            <Avisos dados={avisos} onAtualizar={setAvisos} onRecarregar={recarregarAvisos} onAuthError={onAuthError} />
+          )}
           {atual === 'produtos' && <Produtos onAuthError={onAuthError} />}
           {atual === 'precos' && <Precos onAuthError={onAuthError} />}
           {atual === 'agenda' && <Agenda onAuthError={onAuthError} />}
