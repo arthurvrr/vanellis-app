@@ -282,6 +282,36 @@ describe('Exceções no calendário', () => {
     }
   });
 
+  it('RF70 (C151, C154): produto com antecedência menor que a padrão é oferecido mais cedo e mostra a primeira retirada', async () => {
+    // "Agora" é domingo 22/11, 10h (domingo fecha às 12h); padrão de 24h e a Coxinha com 1h.
+    await op('PUT', '/api/painel/agenda/regras', { minLeadHours: 24, windowMonths: 4 });
+    const [cat] = await app.db.insert(category).values({ name: 'Salgados RF70', slug: 'salgados-rf70', position: 97 }).returning();
+    const [coxinha, empadinha] = await inserirProdutos(app.db, [
+      { categoryId: cat!.id, name: 'Coxinha', saleUnit: 'UN', basePrice: '1.60', leadTimeHours: 1 },
+      { categoryId: cat!.id, name: 'Empadinha', saleUnit: 'UN', basePrice: '2.00', leadTimeHours: null },
+    ]);
+    try {
+      const catalogo = (await app.browser()('GET', '/api/catalogo')).body;
+      const doSite = (id: number) => catalogo.produtos.find((p: { id: number }) => p.id === id);
+      expect(doSite(coxinha!.id).firstPickup).toEqual({ date: '2026-11-22', weekday: 0, time: '11:00' });
+      // Sem antecedência própria, vale a padrão: o card não repete o aviso da faixa do site.
+      expect(doSite(empadinha!.id)).not.toHaveProperty('firstPickup');
+
+      const so = (await app.browser()('GET', `/api/agenda/disponibilidade?produtos=${coxinha!.id}`)).body as AgendaDTO;
+      expect(so.leadHours).toBe(1);
+      expect(so.days[0]).toMatchObject({ date: '2026-11-22' });
+      expect(so.days[0]!.times[0]).toBe('11:00');
+      const juntos = (await app.browser()('GET', `/api/agenda/disponibilidade?produtos=${coxinha!.id},${empadinha!.id}`)).body as AgendaDTO;
+      expect(juntos.leadHours).toBe(24);
+      expect(juntos.days[0]).toMatchObject({ date: '2026-11-23' });
+    } finally {
+      await app.db.delete(product).where(eq(product.id, coxinha!.id));
+      await app.db.delete(product).where(eq(product.id, empadinha!.id));
+      await app.db.delete(category).where(eq(category.id, cat!.id));
+      await op('PUT', '/api/painel/agenda/regras', { minLeadHours: 2, windowMonths: 4 });
+    }
+  });
+
   it('C125: o prazo precisa ser antes da própria data', async () => {
     for (const deadline of ['2026-12-24', '2026-12-25']) {
       const res = await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-12-24', name: 'Véspera de Natal', deadline });

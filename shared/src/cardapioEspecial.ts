@@ -43,11 +43,15 @@ export type SpecialMenuState = 'oculto' | 'em-breve' | 'visivel' | 'encerrado';
  * contam, C122). Data especial: vale o prazo dela (RN58, RN59) e o bloqueio (RN60). Data normal:
  * vale enquanto algum item ainda chega nela pela antecedência normal (RN63).
  */
-export function menuPickups(input: AgendaInput, now: string, pickupDates: string[], leads: number[]): MenuPickup[] {
+/**
+ * Datas de retirada de um cardápio especial. `leads` são as antecedências cadastradas nos itens
+ * disponíveis dele (`null` = a padrão da loja, RF70).
+ */
+export function menuPickups(input: AgendaInput, now: string, pickupDates: string[], leads: (number | null)[]): MenuPickup[] {
   return [...pickupDates].sort().map((date) => {
     const special = input.specialDates.find((s) => s.date === date);
     if (special) {
-      const open = availableDays(input, now, 0, [date]).length > 0;
+      const open = availableDays(input, now, null, [date]).length > 0;
       return { date, special: true, open, until: specialClosing(input, special) };
     }
     const open = leads.some((lead) => availableDays(input, now, lead, [date]).length > 0);
@@ -56,13 +60,13 @@ export function menuPickups(input: AgendaInput, now: string, pickupDates: string
 }
 
 /** Último momento para pedir numa data normal: o último horário dela menos a menor antecedência. */
-function normalUntil(input: AgendaInput, date: string, leads: number[]): Until | null {
+function normalUntil(input: AgendaInput, date: string, leads: (number | null)[]): Until | null {
   const { weekday } = dayAt(dateMs(date));
   const closed = input.closedPeriods.filter((c) => c.date === date);
   const last = pickupTimes(periodsOn(input.schedules, date, weekday), input.restrictions, closed).at(-1);
   // Sem horário no dia, ou sem nenhum item disponível no cardápio, não há até quando pedir.
   if (!last || !leads.length) return null;
-  const lead = Math.max(input.minLeadHours, Math.min(...leads));
+  const lead = Math.min(...leads.map((l) => l ?? input.minLeadHours));
   const ms = dateMs(date, toMinutes(last)) - lead * 60 * MINUTE;
   return { date: dayAt(ms).date, time: toTime(Math.round((ms - dateMs(dayAt(ms).date)) / MINUTE)) };
 }
@@ -121,7 +125,7 @@ export function closedMenuProducts(
     .filter(
       (p) =>
         !pickups.some(
-          (pk) => pk.open && (pk.special || availableDays(input, now, p.leadTimeHours ?? 0, [pk.date]).length > 0),
+          (pk) => pk.open && (pk.special || availableDays(input, now, p.leadTimeHours, [pk.date]).length > 0),
         ),
     )
     .map((p) => p.id);

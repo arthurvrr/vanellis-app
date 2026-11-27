@@ -78,7 +78,8 @@ export async function specialMenus(db: DB, now: string, agenda?: AgendaInput): P
     const menu: SpecialMenu = { visibleFrom: c.visibleFrom ?? '', hidden: c.hidden, pickupDates: [...c.pickupDates].sort() };
     // Só os itens disponíveis contam para o cardápio continuar no site (C122).
     const itens = prods.filter((p) => p.categoryId === c.id && p.available);
-    const pickups = menuPickups(input, now, menu.pickupDates, itens.map((p) => p.leadTimeHours ?? 0));
+    // A antecedência de cada item, ou a padrão (null), para mais ou para menos (RF70).
+    const pickups = menuPickups(input, now, menu.pickupDates, itens.map((p) => p.leadTimeHours));
     out.set(c.id, {
       menu,
       pickups,
@@ -185,9 +186,10 @@ export async function getCatalogo(db: DB, now: string): Promise<CatalogoDTO> {
 
   const [settings] = await db.select({ pricesHidden: storeSettings.pricesHidden }).from(storeSettings).limit(1);
   const pricesHidden = settings?.pricesHidden ?? false;
-  // Primeira retirada no card (RF58): só para produto com antecedência própria maior que a da loja.
+  // Primeira retirada no card (RF58, RF70): só para produto com antecedência própria diferente da
+  // da loja, que já aparece na faixa do site.
   for (const p of produtos) {
-    if (!p.available || p.orderClosed || (p.leadTimeHours ?? 0) <= input.minLeadHours) continue;
+    if (!p.available || p.orderClosed || p.leadTimeHours === null || p.leadTimeHours === input.minLeadHours) continue;
     const [dia] = agendaForCart(input, false, now, { categorias, produtos }, [p.id]).days;
     if (dia) p.firstPickup = { date: dia.date, weekday: dia.weekday, time: dia.times[0] ?? null };
   }
