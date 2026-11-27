@@ -64,6 +64,8 @@ export interface ProdutoListaDTO {
   /** Sem código no produto e em nenhuma opção (RN41). */
   missingPdv: boolean;
   available: boolean;
+  /** Preço oculto no site (RF69): a lista marca o produto. */
+  priceHidden: boolean;
   imageUrl: string | null;
   saleUnit: string;
 }
@@ -290,6 +292,7 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
         name: product.name,
         pdvCode: product.pdvCode,
         available: product.available,
+        priceHidden: product.priceHidden,
         imageUrl: product.imageUrl,
         saleUnit: product.saleUnit,
       })

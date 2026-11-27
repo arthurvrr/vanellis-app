@@ -5,7 +5,6 @@ import {
   validateAddress,
   type Address,
   type AddressErrors,
-  formatBRL,
   formatCPF,
   formatDates,
   formatDay,
@@ -16,12 +15,14 @@ import {
   NAME_MAX_LENGTH,
   NOTE_MAX_LENGTH,
   buildOrderMessage,
+  cartTotal,
+  hiddenPriceNotice,
+  totalText,
   conflictText,
   limitText,
   orderWhatsAppUrl,
   shortDate,
   resolveCart,
-  sumRanges,
   validateCustomer,
   type AgendaDTO,
   type CustomerData,
@@ -150,8 +151,11 @@ export function CheckoutView({
 
   const errors = validateCustomer(customer);
   const addressErrors = entrega ? validateAddress(address) : {};
-  const estimated = lines.some((l) => l.product.saleUnit === 'KG');
-  const total = sumRanges(lines.map((l) => l.estimate));
+  // Só os itens com preço entram no total (RN77).
+  const totais = cartTotal(lines);
+  const { estimated } = totais;
+  const linhaTotal = totalText(totais);
+  const avisoOculto = hiddenPriceNotice(totais.hidden);
   const itemCount = lines.length === 1 ? '1 item' : `${lines.length} itens`;
   const day = visibleAgenda?.days.find((d) => d.date === pickup?.date);
 
@@ -204,7 +208,7 @@ export function CheckoutView({
         const choices = describeSelection(product, line.selection);
         return `${line.quantity}x ${product.name}${choices ? ` (${choices})` : ''}`;
       }),
-      total: total ? `${estimated ? 'Total estimado' : 'Total'}: ${formatRange(total)}` : null,
+      total: linhaTotal,
     });
     clear(); // RN50: o carrinho esvazia ao enviar
     onSent();
@@ -221,11 +225,8 @@ export function CheckoutView({
 
       <p className="checkout-summary">
         <span>{itemCount}</span>
-        {total && (
-          <strong>
-            {estimated ? 'Total estimado ' : 'Total '}
-            {total.min === total.max ? formatBRL(total.min) : `${formatBRL(total.min)} a ${formatBRL(total.max)}`}
-          </strong>
+        {linhaTotal && (
+          <strong>{totais.total ? `${estimated ? 'Total estimado' : 'Total'} ${formatRange(totais.total)}` : linhaTotal}</strong>
         )}
       </p>
 
@@ -276,6 +277,7 @@ export function CheckoutView({
                   outro horário conforme a disponibilidade.
                 </li>
               )}
+              {avisoOculto && <li>{avisoOculto}.</li>}
               {pricesHidden && (
                 <li>Os preços estão sendo atualizados: a padaria informa os valores na confirmação do pedido.</li>
               )}

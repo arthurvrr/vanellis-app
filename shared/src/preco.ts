@@ -119,6 +119,11 @@ export function formatBRL(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+/** Faixa em reais: "R$ 16,00" ou "R$ 96,00 a R$ 136,00". */
+export function formatRange(r: Range): string {
+  return r.min === r.max ? formatBRL(r.min) : `${formatBRL(r.min)} a ${formatBRL(r.max)}`;
+}
+
 /**
  * Cardápio sem nenhum valor, para quando o operador oculta os preços (RF39). Sem preço, o
  * card, o carrinho, a tela de retirada e a mensagem do pedido deixam de mostrar valores

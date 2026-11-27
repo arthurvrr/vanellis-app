@@ -171,6 +171,7 @@ describe('formulários vazios e modelo de produto', () => {
       minQuantity: 1,
       leadTimeHours: null,
       available: true,
+      priceHidden: false,
       groups: [],
     });
   });

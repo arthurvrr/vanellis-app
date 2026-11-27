@@ -769,6 +769,13 @@ body {
   color: var(--marrom);
 }
 
+/* Preço oculto de um produto (RF69, RN76): texto no lugar do valor. */
+.preco-oculto {
+  font-weight: normal;
+  font-style: italic;
+  white-space: normal;
+}
+
 /* Avisos de preço (RN07, RN38) */
 .cart__ref {
   margin: 0.5rem 0 0;

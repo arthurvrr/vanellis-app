@@ -53,6 +53,8 @@ export interface ProductForm {
   minQuantity: number;
   leadTimeHours: number | null;
   available: boolean;
+  /** "Ocultar o preço no site" (RF69): o preço continua cadastrado, só não vai para o site. */
+  priceHidden: boolean;
   groups: GroupForm[];
 }
 
@@ -116,6 +118,7 @@ export function productFromTemplate(
     minQuantity: 1,
     leadTimeHours: null,
     available: true,
+    priceHidden: false,
     groups: (t?.groups ?? []).map((g) => ({
       name: g.name,
       minSelect: g.minSelect,

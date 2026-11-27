@@ -311,3 +311,61 @@ describe('Novo produto', () => {
     expect(ordem).toEqual(['Torta Macron', 'Torta Macron (cópia)', 'Torta de Nozes']);
   });
 });
+
+describe('Preço oculto por produto (RF69, RN79; C146, C150)', () => {
+  const vulcao = (): ProductForm => ({ ...coxinha(), name: 'Bolo Vulcão', basePrice: 120, minQuantity: 1, priceHidden: true });
+
+  it('C146: o site não recebe o preço do produto nem o das opções; o painel continua com ele e a lista marca', async () => {
+    const id = await criar({
+      ...vulcao(),
+      groups: [{ ...emptyGroup(), name: 'Tamanho', priceMode: 'replace', options: [opt('Grande', { price: 150 })] }],
+    });
+    const outro = await criar(coxinha());
+
+    const noSiteVulcao = await noSite(id);
+    expect(noSiteVulcao).toMatchObject({ basePrice: null, priceHidden: true });
+    expect(noSiteVulcao.groups[0].options[0].price).toBeNull();
+    expect(JSON.stringify(await site())).not.toContain('150');
+    expect(await noSite(outro)).toMatchObject({ basePrice: 1.6 });
+    expect(await noSite(outro)).not.toHaveProperty('priceHidden');
+
+    expect(await cadastro(id)).toMatchObject({ basePrice: 120, priceHidden: true });
+    expect((await cadastro(id)).groups[0]!.options[0]!.price).toBe(150);
+    const lista = (await op('GET', '/api/painel/catalogo/produtos')).body as { id: number; priceHidden: boolean }[];
+    expect(lista.find((p) => p.id === id)?.priceHidden).toBe(true);
+    expect(lista.find((p) => p.id === outro)?.priceHidden).toBe(false);
+  });
+
+  it('desligar a opção volta a mostrar o preço; produto salvo sem o campo fica visível', async () => {
+    const id = await criar(vulcao());
+    await op('PUT', `/api/painel/catalogo/produtos/${id}`, { ...vulcao(), priceHidden: false });
+    expect(await noSite(id)).toMatchObject({ basePrice: 120 });
+    const { priceHidden: _, ...semCampo } = coxinha();
+    const antigo = await criar(semCampo as ProductForm);
+    expect(await cadastro(antigo)).toMatchObject({ priceHidden: false });
+  });
+
+  it('C150: com todos os preços ocultos (RF39), nenhum preço sai e nenhum produto fica marcado', async () => {
+    const id = await criar(vulcao());
+    const outro = await criar(coxinha());
+    await op('PUT', '/api/painel/status', { pricesHidden: true });
+    try {
+      const catalogo = await site();
+      expect(catalogo.pricesHidden).toBe(true);
+      for (const pid of [id, outro]) {
+        const p = catalogo.produtos.find((x: { id: number }) => x.id === pid);
+        expect(p.basePrice).toBeNull();
+        expect(p).not.toHaveProperty('priceHidden');
+      }
+    } finally {
+      await op('PUT', '/api/painel/status', { pricesHidden: false });
+    }
+  });
+
+  it('duplicar mantém o preço oculto', async () => {
+    const id = await criar(vulcao());
+    const res = await op('POST', `/api/painel/catalogo/produtos/${id}/duplicar`, {});
+    expect(await cadastro(res.body.id)).toMatchObject({ priceHidden: true, basePrice: 120 });
+  });
+});
+

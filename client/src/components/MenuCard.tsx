@@ -1,4 +1,4 @@
-import { cardImage, cardPrice, formatBRL, type ProductDTO } from '@vanellis/shared';
+import { cardImage, cardPrice, formatBRL, HIDDEN_PRICE_LABEL, type ProductDTO } from '@vanellis/shared';
 import { Photo } from './Photo';
 
 // Card leve do cardápio: foto, nome, preço e "Escolher". As opções ficam no detalhe.
@@ -41,6 +41,8 @@ export function MenuCard({
         </span>
         <span className="mcard__body">
           <span className="mcard__name">{product.name}</span>
+          {/* Preço oculto só deste produto (RF69, RN76). */}
+          {product.priceHidden && <span className="mcard__price preco-oculto">{HIDDEN_PRICE_LABEL}</span>}
           {price.value !== null && (
             <span className="mcard__price">
               {price.fromPrice && 'a partir de '}

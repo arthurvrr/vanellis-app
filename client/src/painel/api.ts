@@ -99,6 +99,8 @@ export interface ProdutoLista {
   pdvCode: string | null;
   missingPdv: boolean;
   available: boolean;
+  /** Preço oculto no site (RF69). */
+  priceHidden: boolean;
   imageUrl: string | null;
   saleUnit: string;
 }

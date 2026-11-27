@@ -469,6 +469,20 @@ export function ProdutoEditor({
           <input type="checkbox" checked={form.available} onChange={(e) => set({ available: e.target.checked })} />
           Disponível no cardápio
         </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={form.priceHidden}
+            onChange={(e) => set({ priceHidden: e.target.checked })}
+          />
+          Ocultar o preço no site
+        </label>
+        {form.priceHidden && (
+          <p className="field__help">
+            O cliente pode pedir normalmente: no lugar do preço, o site mostra "Preço informado pelo WhatsApp", e o valor
+            não entra no total. O preço continua aqui e na tela Preços.
+          </p>
+        )}
       </Bloco>
 
       <Bloco
