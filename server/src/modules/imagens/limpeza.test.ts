@@ -120,6 +120,33 @@ describe('agenda da limpeza', () => {
     const comFalha = agendarLimpeza(quebrado, { agora: () => AGORA, registrar });
     expect(await comFalha.primeira).toBe(0);
     expect(registrar).toHaveBeenCalledWith('Limpeza de fotos sem uso falhou: banco fora do ar');
+    expect(registrar).toHaveBeenCalledWith('Limpeza do histórico de avisos falhou: banco fora do ar');
     comFalha.parar();
+  });
+
+  it('uma falha no histórico tem o próprio rótulo, com a causa, e não impede a limpeza de fotos', async () => {
+    await foto(48);
+    const registrar = vi.fn();
+    // O banco de verdade, menos a tabela do histórico (como antes da migração 0021).
+    const semTabela = new Proxy(db, {
+      get: (alvo, nome, rec) =>
+        nome === 'delete'
+          ? (t: typeof storedImage) => {
+              if ((t as unknown) === avisoEvento) {
+                throw new Error('Failed query: delete from "aviso_evento"\nparams: x', {
+                  cause: new Error('relação "aviso_evento" não existe'),
+                });
+              }
+              return alvo.delete(t);
+            }
+          : Reflect.get(alvo, nome, rec),
+    });
+    const agenda = agendarLimpeza(semTabela, { agora: () => AGORA, registrar });
+    expect(await agenda.primeira).toBe(1);
+    agenda.parar();
+    expect(registrar.mock.calls).toEqual([
+      ['Limpeza de fotos sem uso: 1 apagada(s).'],
+      ['Limpeza do histórico de avisos falhou: relação "aviso_evento" não existe (Failed query: delete from "aviso_evento")'],
+    ]);
   });
 });

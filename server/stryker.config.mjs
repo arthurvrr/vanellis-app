@@ -15,6 +15,7 @@ export default {
     'src/modules/acesso/tentativas.ts', // bloqueio por tentativas de login (C3)
     'src/modules/configuracoes/validacao.ts', // telefones, links, modelo da mensagem, lembretes
     'src/db/conversao.ts', // números, dinheiro, peso e horas entre o banco e a aplicação
+    'src/db/erro.ts', // texto dos erros nos logs das tarefas agendadas
   ],
   coverageAnalysis: 'perTest',
   incremental: true,

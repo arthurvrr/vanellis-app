@@ -19,6 +19,7 @@ import {
 import { and, desc, eq, gte, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import { Router } from 'express';
 import type { DB } from '../../db/client';
+import { descreverErro } from '../../db/erro';
 import { requireUser, type SessionUser } from '../acesso/sessao';
 import { specialMenus } from '../catalogo/repository';
 import { category } from '../catalogo/schema';
@@ -216,7 +217,7 @@ export function agendarAvisos(db: DB, { backupDir, agora = () => new Date(), reg
         instante,
       );
     } catch (e) {
-      registrar(`Avisos: falha ao atualizar o histórico: ${(e as Error).message}`);
+      registrar(`Avisos: falha ao atualizar o histórico: ${descreverErro(e)}`);
     }
   };
   const timer = setInterval(() => void rodar(), INTERVALO_MS);
