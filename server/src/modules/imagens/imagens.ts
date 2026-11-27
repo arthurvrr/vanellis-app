@@ -17,7 +17,8 @@ const MAX_SIDE = 1200;
 // cerca de 1 GB de memória ao ser decodificado.
 export const MAX_INPUT_PIXELS = 60_000_000;
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'];
-const URL_PREFIX = '/api/imagens/';
+/** Começo da URL de uma foto guardada no banco: /api/imagens/<id>. */
+export const URL_PREFIX = '/api/imagens/';
 
 export const imageUrl = (id: number) => `${URL_PREFIX}${id}`;
 
