@@ -63,6 +63,12 @@ dentro() {
 # O que o destino mostra, já sem a criptografia (como o rclone do servidor vê).
 no_destino() { dentro 'rclone lsf cripto: --files-only 2>/dev/null | sort' || true; }
 
+# Um campo do estado que a cópia grava para o painel (backups/.copia-externa.json), ou "null".
+estado() {
+  python3 -c 'import json,sys; v=json.load(open(sys.argv[1])).get(sys.argv[2]); print("null" if v is None else v)' \
+    "$LOCAL/.copia-externa.json" "$1" 2>/dev/null || echo "sem-arquivo"
+}
+
 # Cria um backup local "bom" (gzip com o fim do dump) com a idade dada em dias.
 backup_local() { # $1 = nome, $2 = dias
   dentro "printf 'insert Coxinha;\n-- PostgreSQL database dump complete\n' | gzip > /backups/$1 && touch -d \"@\$(( \$(date +%s) - $2 * 86400 ))\" /backups/$1"
@@ -73,6 +79,7 @@ backup_local vanellis-2026-11-26_0300.sql.gz 1
 if copiar "" >"$LOCAL.log" 2>&1; then ok "terminou sem erro"; else falhou "deu erro com a cópia desligada"; fi
 grep -q 'desligada' "$LOCAL.log" && ok "avisou que está desligada" || falhou "não avisou que está desligada"
 [ -z "$(dentro 'ls -A /remoto')" ] && ok "não enviou nada" || falhou "enviou algo com a cópia desligada"
+[ "$(estado ligada)" = False ] && ok "estado: desligada" || falhou "estado da cópia desligada: $(estado ligada)"
 
 echo "==> 2. Envio"
 backup_local vanellis-2026-11-27_0300.sql.gz 0
@@ -81,6 +88,12 @@ if copiar cripto: >"$LOCAL.log" 2>&1; then ok "terminou sem erro"; else falhou "
 [ "$(no_destino)" = "$(printf 'vanellis-2026-11-26_0300.sql.gz\nvanellis-2026-11-27_0300.sql.gz')" ] &&
   ok "enviou os dois backups, sem .tmp nem outros arquivos" || falhou "destino inesperado: $(no_destino | tr '\n' ' ')"
 grep -q 'vanellis-2026-11-27_0300.sql.gz' "$LOCAL.log" && ok "registrou o backup enviado" || falhou "não registrou o envio"
+if [ "$(estado ligada)" = True ] && [ "$(estado erro)" = null ] && [ "$(estado falhaDesde)" = null ] &&
+  [[ "$(estado ultimaOk)" =~ ^20[0-9-]+T[0-9:]+Z$ ]] && [ "$(estado ultimaTentativa)" = "$(estado ultimaOk)" ]; then
+  ok "estado: ligada, última cópia boa agora, sem erro"
+else
+  falhou "estado depois do envio: $(cat "$LOCAL/.copia-externa.json" 2>/dev/null)"
+fi
 crus="$(dentro 'find /remoto -type f')"
 echo "$crus" | grep -q 'vanellis-20' && falhou "o nome do arquivo aparece no destino sem criptografia" ||
   ok "nomes criptografados no destino"
@@ -96,10 +109,22 @@ grep -q 'conferido' "$LOCAL.log" && ok "conferiu o arquivo baixado" || falhou "n
 dentro 'rm -rf /backups/baixado'
 
 echo "==> 4. Destino fora do ar"
+OK_ANTES="$(estado ultimaOk)"
 antes="$(dentro 'ls -1 /backups | sort')"
 if copiar naoexiste: >"$LOCAL.log" 2>&1; then falhou "terminou sem erro com o destino fora do ar"; else ok "terminou com erro"; fi
 grep -q 'FALHA' "$LOCAL.log" && ok "registrou FALHA" || falhou "não registrou FALHA"
 [ "$(dentro 'ls -1 /backups | sort')" = "$antes" ] && ok "backups locais intactos" || falhou "a falha mexeu nos backups locais"
+if [[ "$(estado erro)" == *"não foi possível enviar"* ]] && [ "$(estado ultimaOk)" = "$OK_ANTES" ] &&
+  [ "$(estado falhaDesde)" != null ]; then
+  ok "estado: o erro, a primeira falha e a última cópia boa de antes"
+else
+  falhou "estado depois da falha: $(cat "$LOCAL/.copia-externa.json" 2>/dev/null)"
+fi
+FALHA_DESDE="$(estado falhaDesde)"
+sleep 1
+copiar naoexiste: >/dev/null 2>&1 || true
+[ "$(estado falhaDesde)" = "$FALHA_DESDE" ] && ok "estado: a segunda falha mantém a data da primeira" ||
+  falhou "a segunda falha mudou a data da primeira: $FALHA_DESDE → $(estado falhaDesde)"
 
 echo "==> 5. Retenção"
 # 10 backups antigos (40 a 31 dias) chegam ao destino com um prazo longo; com o prazo de 30 dias,
@@ -122,6 +147,7 @@ dentro 'rm -f /backups/*'
 backup_local vanellis-2026-10-20_0300.sql.gz 35
 if copiar cripto: >"$LOCAL.log" 2>&1; then falhou "não reclamou do backup parado"; else ok "terminou com erro"; fi
 grep -q 'FALHA.*parou' "$LOCAL.log" && ok "registrou FALHA dizendo que o backup parou" || falhou "não explicou a falha: $(cat "$LOCAL.log")"
+[[ "$(estado erro)" == *parou* ]] && ok "estado: o erro de backup parado" || falhou "estado do backup parado: $(estado erro)"
 
 echo
 if [ "$FALHAS" = 0 ]; then

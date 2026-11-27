@@ -11,3 +11,4 @@ export * from './lembretes';
 export * from './busca';
 export * from './datas';
 export * from './texto';
+export * from './avisos';

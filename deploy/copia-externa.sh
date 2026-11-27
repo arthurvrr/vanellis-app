@@ -11,18 +11,67 @@
 # BACKUP_REMOTE vazio = cópia desligada (o serviço fica parado, sem erro).
 # COPIA_ONCE=1 roda uma vez e sai (código 0 = deu certo), para testes e uso manual.
 # COPIA_BAIXAR=<pasta> baixa o backup mais recente do destino para a pasta, confere e sai.
+#
+# Cada rodada grava o estado em backups/.copia-externa.json, que o painel lê para avisar quando a
+# cópia falha ou para (RF67): ligada, última cópia boa, última tentativa, primeira falha depois
+# da última cópia boa e o erro da última tentativa (instantes em UTC).
 set -eu
 REMOTE="${BACKUP_REMOTE:-}"
 KEEP="${BACKUP_REMOTE_KEEP_DAYS:-30}"
 INTERVALO="${COPIA_INTERVALO:-3600}"
 MIN_KEEP=7
 FILTRO='vanellis-*.sql.gz'
+ESTADO=/backups/.copia-externa.json
 ultimo=''
+ultimoErro=''
+nada=0
+
+# Depois de reiniciar, continua do estado anterior: a última cópia boa e a primeira falha.
+campo() { sed -n "s/.*\"$1\":\"\([^\"]*\)\".*/\1/p" "$ESTADO" 2>/dev/null || true; }
+ultimaOk="$(campo ultimaOk)"
+falhaDesde="$(campo falhaDesde)"
 
 log() { echo "$(date '+%F %T') $*"; }
 falha() {
+  ultimoErro="$*"
   echo "$(date '+%F %T') FALHA na cópia externa: $*" >&2
   return 1
+}
+
+# Texto em JSON (entre aspas, com \ e " escapados), ou null se vazio.
+json_texto() {
+  if [ -n "$1" ]; then
+    printf '"%s"' "$(printf '%s' "$1" | tr -d '\n\r\t' | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  else
+    printf null
+  fi
+}
+
+# Grava o estado da rodada ($1 = ok ou falha), trocando o arquivo de uma vez.
+gravar_estado() {
+  tentativa="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  erro=''
+  if [ "$1" = ok ]; then
+    ultimaOk="$tentativa"
+    falhaDesde=''
+  else
+    [ -n "$falhaDesde" ] || falhaDesde="$tentativa"
+    erro="$ultimoErro"
+  fi
+  printf '{"ligada":true,"ultimaOk":%s,"ultimaTentativa":"%s","falhaDesde":%s,"erro":%s}\n' \
+    "$(json_texto "$ultimaOk")" "$tentativa" "$(json_texto "$falhaDesde")" "$(json_texto "$erro")" >"$ESTADO.tmp"
+  mv "$ESTADO.tmp" "$ESTADO"
+}
+
+# Uma rodada: envia e grava o estado (sem backup local ainda, não há o que registrar).
+rodada() {
+  nada=0
+  if copiar; then
+    [ "$nada" = 1 ] || gravar_estado ok
+  else
+    gravar_estado falha
+    return 1
+  fi
 }
 
 # Envia os backups conferidos (não os .tmp) e confere que o mais recente chegou.
@@ -30,6 +79,7 @@ copiar() {
   novo="$(cd /backups && ls -1t $FILTRO 2>/dev/null | head -n 1)" || true
   if [ -z "$novo" ]; then
     log "nenhum backup local para enviar ainda"
+    nada=1
     return 0
   fi
   if [ -n "$(find "/backups/$novo" -mtime +"$KEEP")" ]; then
@@ -87,6 +137,7 @@ baixar() {
 
 if [ -z "$REMOTE" ]; then
   log "cópia externa desligada: defina BACKUP_REMOTE no .env (ver deploy/BACKUP-DRIVE.md)"
+  echo '{"ligada":false}' >"$ESTADO.tmp" && mv "$ESTADO.tmp" "$ESTADO"
   [ "${COPIA_ONCE:-}" = 1 ] && exit 0
   # Fica parado sem sair, para o Docker não reiniciar o serviço em laço.
   while true; do sleep 86400; done
@@ -98,11 +149,11 @@ if [ -n "${COPIA_BAIXAR:-}" ]; then
 fi
 
 if [ "${COPIA_ONCE:-}" = 1 ]; then
-  copiar
+  rodada
   exit
 fi
 
 while true; do
-  copiar || true
+  rodada || true
   sleep "$INTERVALO"
 done

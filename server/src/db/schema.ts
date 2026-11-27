@@ -5,3 +5,4 @@ export * from '../modules/agenda/schema';
 export * from '../modules/configuracoes/schema';
 export * from '../modules/acesso/schema';
 export * from '../modules/imagens/schema';
+export * from '../modules/avisos/schema';

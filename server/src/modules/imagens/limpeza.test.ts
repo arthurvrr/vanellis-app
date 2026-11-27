@@ -8,6 +8,7 @@ import { inserirProdutos } from '../../test/produtos';
 import { category, option, optionGroup, product } from '../catalogo/schema';
 import { imageUrl } from './imagens';
 import { agendarLimpeza, limparFotosOrfas } from './limpeza';
+import { avisoEvento } from '../avisos/schema';
 import { storedImage } from './schema';
 
 let app: Awaited<ReturnType<typeof startTestApp>>;
@@ -76,6 +77,19 @@ describe('limpeza das fotos sem uso (B02)', () => {
 });
 
 describe('agenda da limpeza', () => {
+  it('também apaga o histórico de avisos com mais de 1 ano e registra quantos (RN75)', async () => {
+    const velho = new Date(AGORA.getTime() - 400 * 24 * 3_600_000);
+    await app.db
+      .insert(avisoEvento)
+      .values({ tipo: 'revisao-marcada', chave: 'r', gravidade: 'azul', titulo: 'velho', inicio: velho, fim: velho });
+    const registrar = vi.fn();
+    const agenda = agendarLimpeza(db, { agora: () => AGORA, registrar });
+    await agenda.primeira;
+    agenda.parar();
+    expect(registrar).toHaveBeenCalledWith('Histórico de avisos: 1 registro(s) com mais de 1 ano apagado(s).');
+    expect(await app.db.select().from(avisoEvento)).toEqual([]);
+  });
+
   it('roda ao subir o servidor, registra quantas apagou e se repete uma vez por dia', async () => {
     await foto(48);
     const registrar = vi.fn();
