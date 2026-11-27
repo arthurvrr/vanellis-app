@@ -10,7 +10,7 @@ import type { DB } from '../../db/client';
 import { startTestApp } from '../../test/app';
 import { agendaConfig } from '../agenda/schema';
 import { reviewReminder, storeSettings } from '../configuracoes/schema';
-import { agendarAvisos, limparHistorico } from './avisos';
+import { agendarAvisos, lerEstadoBackup, limparHistorico } from './avisos';
 import { avisoEvento } from './schema';
 
 const H = 3_600_000;
@@ -270,14 +270,13 @@ describe('Tudo certo e próxima revisão (RN74)', () => {
   });
 
   it('sem pasta de backups configurada (desenvolvimento), o backup não é monitorado', async () => {
-    const outro = await startTestApp({ now: () => agora });
-    try {
-      const quem = outro.browser();
-      await quem('POST', '/api/auth/login', { usuario: 'arthur', senha: 'senha-admin' });
-      expect((await quem('GET', '/api/painel/avisos')).body.agora).toEqual([]);
-    } finally {
-      await outro.stop();
-    }
+    expect(await lerEstadoBackup(undefined)).toBeNull();
+    expect(await lerEstadoBackup(null)).toBeNull();
+    expect(await lerEstadoBackup('')).toBeNull();
+  });
+
+  it('pasta configurada mas ausente: nenhum backup encontrado (avisa)', async () => {
+    expect(await lerEstadoBackup(join(pasta, 'nao-existe'))).toEqual({ ultimoBackup: null, copia: null });
   });
 
   it('exige login', async () => {
