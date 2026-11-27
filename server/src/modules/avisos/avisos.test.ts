@@ -314,4 +314,21 @@ describe('agenda dos avisos', () => {
     expect(registrar).toHaveBeenCalledWith('Avisos: falha ao atualizar o histórico: banco fora do ar');
     agenda.parar();
   });
+
+  it('a falha no log traz a causa, não só a consulta', async () => {
+    const registrar = vi.fn();
+    const quebrado = {
+      select: () => {
+        throw new Error('Failed query: select "id" from "aviso_evento"\nparams: vermelho', {
+          cause: new Error('relação "aviso_evento" não existe'),
+        });
+      },
+    } as unknown as DB;
+    const agenda = agendarAvisos(quebrado, { backupDir: pasta, agora: () => new Date(AGORA()), registrar });
+    await agenda.primeira;
+    agenda.parar();
+    expect(registrar).toHaveBeenCalledWith(
+      'Avisos: falha ao atualizar o histórico: relação "aviso_evento" não existe (Failed query: select "id" from "aviso_evento")',
+    );
+  });
 });
