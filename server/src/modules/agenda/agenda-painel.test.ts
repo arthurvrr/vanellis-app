@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { startTestApp } from '../../test/app';
 import { category, product } from '../catalogo/schema';
 import { blockedDate, closedPeriod, openingHours, pickupRestriction, specialDate, weeklySchedule } from './schema';
+import { inserirProdutos } from '../../test/produtos';
 
 const NOW = '2026-11-22T10:00';
 let app: Awaited<ReturnType<typeof startTestApp>>;
@@ -256,10 +257,7 @@ describe('Exceções no calendário', () => {
   it('RF58, RF62 (C105–C107): primeira retirada no catálogo, item que limita e motivo de cada dia', async () => {
     // "Agora" é domingo 22/11, 10h; a semana do teste abre todos os dias.
     const [cat] = await app.db.insert(category).values({ name: 'Bolos RF58', slug: 'bolos-rf58', position: 98 }).returning();
-    const [bolo] = await app.db
-      .insert(product)
-      .values({ categoryId: cat!.id, name: 'Bolo de Nozes', saleUnit: 'UN', basePrice: '90.00', leadTimeHours: 72 })
-      .returning();
+    const [bolo] = await inserirProdutos(app.db, [{ categoryId: cat!.id, name: 'Bolo de Nozes', saleUnit: 'UN', basePrice: '90.00', leadTimeHours: 72 }]);
     try {
       await op('POST', '/api/painel/agenda/datas-bloqueadas', { date: '2026-11-26', reason: 'Folga' });
       const catalogo = (await app.browser()('GET', '/api/catalogo')).body;
@@ -295,10 +293,7 @@ describe('Exceções no calendário', () => {
   it('C94: com prazo, o site oferece a data especial mesmo para produto de antecedência longa', async () => {
     // "Agora" é 22/11; um bolo de 72h só chegaria a 25/11, mas 24/11 é data especial com prazo em 23/11.
     const [cat] = await app.db.insert(category).values({ name: 'Bolos C94', slug: 'bolos-c94', position: 99 }).returning();
-    const [bolo] = await app.db
-      .insert(product)
-      .values({ categoryId: cat!.id, name: 'Bolo de Nozes', saleUnit: 'UN', basePrice: '90.00', leadTimeHours: 72 })
-      .returning();
+    const [bolo] = await inserirProdutos(app.db, [{ categoryId: cat!.id, name: 'Bolo de Nozes', saleUnit: 'UN', basePrice: '90.00', leadTimeHours: 72 }]);
     try {
       await op('POST', '/api/painel/agenda/datas-especiais', { date: '2026-11-24', name: 'Encomenda especial', deadline: '2026-11-23' });
       const res = await app.browser()('GET', `/api/agenda/disponibilidade?produtos=${bolo!.id}`);

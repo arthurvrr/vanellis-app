@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { DB } from '../client';
 import { kg, money } from '../conversao';
-import { category, option, optionGroup, product, productTemplate } from '../schema';
+import { category, option, optionGroup, product, productCategory, productTemplate } from '../schema';
 import type { SeedCatalogo } from './types';
 
 
@@ -25,7 +25,6 @@ export async function loadCatalogo(db: DB, seed: SeedCatalogo): Promise<void> {
       const [row] = await tx
         .insert(product)
         .values({
-          categoryId: categoryIds.get(p.categoryProtoId)!,
           pdvCode: p.pdvCode ?? null,
           name: p.name,
           description: p.description,
@@ -36,9 +35,11 @@ export async function loadCatalogo(db: DB, seed: SeedCatalogo): Promise<void> {
           weightMinKg: kg(p.weightMinKg),
           weightMaxKg: kg(p.weightMaxKg),
           minQuantity: p.minQuantity,
-          position: p.position,
         })
         .returning({ id: product.id });
+      await tx
+        .insert(productCategory)
+        .values({ productId: row!.id, categoryId: categoryIds.get(p.categoryProtoId)!, position: p.position });
 
       for (const [gi, g] of p.groups.entries()) {
         const [group] = await tx

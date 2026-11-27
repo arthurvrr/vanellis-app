@@ -10,7 +10,7 @@
 #
 # As migrações do banco rodam quando o app sobe e NÃO são desfeitas na volta automática. Uma
 # migração que só acrescenta (coluna, tabela) não atrapalha a versão anterior. Uma que apaga ou
-# transforma (já houve: 0002 apagou tabelas, 0004 uma coluna) exige volta manual, com
+# transforma (já houve: 0002 apagou tabelas, 0004 e 0020 colunas) exige volta manual, com
 # deploy/restore.sh e o backup feito no passo 3; avalie isso no PR antes de aprovar a publicação.
 #
 # Tudo fica dentro de main(): o Bash lê a função inteira antes de executar, então o passo 1 pode

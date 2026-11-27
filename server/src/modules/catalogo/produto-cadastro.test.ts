@@ -305,7 +305,8 @@ describe('Novo produto', () => {
     expect(copia).toMatchObject({ name: 'Torta Macron (cópia)', pdvCode: null, available: false, basePrice: 80 });
     expect(copia.groups[0]!.options.map((o) => o.name)).toEqual(['Mini', 'Grande']);
     const ordem = (await op('GET', '/api/painel/catalogo/produtos')).body
-      .filter((p: { categoryId: number }) => p.categoryId === tortas)
+      .filter((p: { categoryIds: number[] }) => p.categoryIds.includes(tortas))
+      .sort((a: { posicoes: Record<number, number> }, b: { posicoes: Record<number, number> }) => a.posicoes[tortas]! - b.posicoes[tortas]!)
       .map((p: { name: string }) => p.name);
     expect(ordem).toEqual(['Torta Macron', 'Torta Macron (cópia)', 'Torta de Nozes']);
   });

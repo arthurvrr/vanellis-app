@@ -6,6 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { startTestApp } from '../../test/app';
 import { storedImage } from '../imagens/schema';
 import { category, option, optionGroup, product } from './schema';
+import { inserirProdutos } from '../../test/produtos';
 
 let app: Awaited<ReturnType<typeof startTestApp>>;
 let op: ReturnType<typeof app.browser>;
@@ -32,7 +33,7 @@ beforeEach(async () => {
     .returning({ id: category.id });
   salgados = s!.id;
   doces = d!.id;
-  await app.db.insert(product).values([
+  await inserirProdutos(app.db, [
     { categoryId: salgados, name: 'Bolinha de Queijo', saleUnit: 'UN', basePrice: '1.80', position: 0, pdvCode: '1001' },
     { categoryId: salgados, name: 'Coxinha', saleUnit: 'UN', basePrice: '1.60', position: 1 },
     { categoryId: doces, name: 'Brigadeiro', saleUnit: 'UN', basePrice: '2.00', position: 0 },
@@ -61,13 +62,16 @@ describe('Lista de produtos', () => {
 
   it('C44: subir um produto muda a ordem no site; o primeiro não sobe', async () => {
     const id = await idOf('Coxinha');
-    await op('POST', `/api/painel/catalogo/produtos/${id}/mover`, { direcao: 'subir' });
-    const nomes = (await site()).produtos
-      .filter((p: { categoryId: number }) => p.categoryId === salgados)
-      .map((p: { name: string }) => p.name);
+    await op('POST', `/api/painel/catalogo/produtos/${id}/mover`, { direcao: 'subir', categoryId: salgados });
+    // A ordem de cada cardápio vem em productIds.
+    const s = await site();
+    const nomes = s.categorias
+      .find((c: { id: number }) => c.id === salgados)
+      .productIds.map((pid: number) => s.produtos.find((p: { id: number }) => p.id === pid).name);
     expect(nomes).toEqual(['Coxinha', 'Bolinha de Queijo']);
-    const res = await op('POST', `/api/painel/catalogo/produtos/${id}/mover`, { direcao: 'subir' });
-    expect(res.body.filter((p: { categoryId: number }) => p.categoryId === salgados)[0].name).toBe('Coxinha');
+    const res = await op('POST', `/api/painel/catalogo/produtos/${id}/mover`, { direcao: 'subir', categoryId: salgados });
+    const primeiro = res.body.find((p: { posicoes: Record<number, number> }) => p.posicoes[salgados] === 0);
+    expect(primeiro.name).toBe('Coxinha');
   });
 
   it('C45: excluir apaga o produto, com grupos e opções', async () => {

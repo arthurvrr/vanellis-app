@@ -135,7 +135,7 @@ export async function getCatalogo(db: DB, now: string): Promise<CatalogoDTO> {
   };
 
   const rows = await db.query.product.findMany({
-    orderBy: [asc(product.position), asc(product.id)],
+    orderBy: [asc(product.id)],
     with: {
       groups: {
         orderBy: [asc(optionGroup.position), asc(optionGroup.id)],
@@ -147,7 +147,6 @@ export async function getCatalogo(db: DB, now: string): Promise<CatalogoDTO> {
   // O produto aparece enquanto algum cardápio dele estiver visível (RN69).
   const produtos: ProductDTO[] = rows.filter((p) => cardapiosDe.has(p.id)).map((p) => ({
     id: p.id,
-    categoryId: p.categoryId,
     categoryIds: cardapiosDe.get(p.id)!,
     pdvCode: p.pdvCode,
     name: p.name,

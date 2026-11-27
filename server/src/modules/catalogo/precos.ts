@@ -16,7 +16,7 @@ import { z } from 'zod';
 import type { DB } from '../../db/client';
 import { money, num } from '../../db/conversao';
 import { requireUser } from '../acesso/sessao';
-import { category, option, optionGroup, product } from './schema';
+import { category, option, optionGroup, product, productCategory } from './schema';
 
 const alteracao = z.object({ id: z.number().int().positive(), price: z.number() });
 const patchBody = z.object({
@@ -28,10 +28,16 @@ class PrecoError extends Error {}
 
 export async function listPrecos(db: DB): Promise<PrecoCategoriaDTO[]> {
   const cats = await db.select().from(category).orderBy(asc(category.position), asc(category.id));
-  const prods = await db
-    .select()
-    .from(product)
-    .orderBy(asc(product.position), asc(product.id));
+  const prods = await db.select().from(product).orderBy(asc(product.id));
+  // Cada produto aparece uma vez, no primeiro cardápio dele (pela ordem das categorias) e na
+  // ordem desse cardápio; quem não tem cardápio fica num grupo no fim (RF64).
+  const vinculos = await db.select().from(productCategory);
+  const ordemCat = new Map(cats.map((c, i) => [c.id, i]));
+  const ondeFica = new Map<number, { categoryId: number; position: number }>();
+  for (const v of vinculos) {
+    const atual = ondeFica.get(v.productId);
+    if (!atual || ordemCat.get(v.categoryId)! < ordemCat.get(atual.categoryId)!) ondeFica.set(v.productId, v);
+  }
   const opts = await db
     .select({
       id: option.id,
@@ -60,11 +66,14 @@ export async function listPrecos(db: DB): Promise<PrecoCategoriaDTO[]> {
     byProduct.set(o.productId, list);
   }
 
-  return cats.map((c) => ({
+  const semCardapio = prods.some((p) => !ondeFica.has(p.id)) ? [{ id: 0, name: 'Sem cardápio' }] : [];
+  const grupos = [...cats.map((c) => ({ id: c.id, name: c.name })), ...semCardapio];
+  return grupos.map((c) => ({
     id: c.id,
     name: c.name,
     produtos: prods
-      .filter((p) => p.categoryId === c.id)
+      .filter((p) => (ondeFica.get(p.id)?.categoryId ?? 0) === c.id)
+      .sort((a, b) => (ondeFica.get(a.id)?.position ?? 0) - (ondeFica.get(b.id)?.position ?? 0))
       .map((p) => ({
         id: p.id,
         name: p.name,

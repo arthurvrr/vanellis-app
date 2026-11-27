@@ -27,13 +27,12 @@ export const category = pgTable('category', {
   coverImageUrl: varchar('cover_image_url', { length: 255 }),
   position: integer('position').notNull().default(0),
   /**
-   * Cardápio especial (RF16–RF19, RN16–RN19): só aparece no site entre `visibleFrom` e
-   * `visibleUntil`, se não estiver oculto, e seus produtos só podem ser retirados nas
-   * `pickupDates`. Validado na API: especial exige período e ao menos uma data.
+   * Cardápio especial (RF16–RF19, RN16–RN19): aparece no site a partir de `visibleFrom`, se não
+   * estiver oculto, enquanto alguma das `pickupDates` aceitar pedidos (RF60, RN63); seus produtos
+   * só podem ser retirados nessas datas. Validado na API: especial exige início e uma data.
    */
   special: boolean('special').notNull().default(false),
   visibleFrom: date('visible_from', { mode: 'string' }),
-  visibleUntil: date('visible_until', { mode: 'string' }),
   hidden: boolean('hidden').notNull().default(false),
   pickupDates: date('pickup_dates', { mode: 'string' }).array().notNull().default(sql`'{}'::date[]`),
 });
@@ -44,8 +43,6 @@ export const product = pgTable(
     id: serial('id').primaryKey(),
     // Obrigatório conforme o tipo de produto (RN41): validado no painel, não no banco.
     pdvCode: varchar('pdv_code', { length: 20 }).unique(),
-    // Cardápio principal (até o PR E4); vazio = produto sem cardápio, fora do site (RF64).
-    categoryId: integer('category_id').references(() => category.id, { onDelete: 'restrict' }),
     name: varchar('name', { length: 100 }).notNull(),
     description: text('description'),
     imageUrl: varchar('image_url', { length: 255 }),
@@ -57,7 +54,6 @@ export const product = pgTable(
     minQuantity: integer('min_quantity').notNull().default(1),
     leadTimeHours: integer('lead_time_hours'),
     available: boolean('available').notNull().default(true),
-    position: integer('position').notNull().default(0),
   },
   (t) => [
     check('product_sale_unit_check', sql`${t.saleUnit} in ('UN', 'KG')`),
@@ -67,10 +63,8 @@ export const product = pgTable(
 );
 
 /**
- * Produto num cardápio (RF64): um produto pode estar em vários, cada um com a sua ordem. Até o PR
- * E3, o painel edita só o cardápio principal (product.category_id) e um gatilho do banco
- * (migração 0018) mantém o vínculo dele igual: produto novo, troca de cardápio e mudança de
- * posição. Os outros vínculos não mudam com o gatilho.
+ * Produto num cardápio (RF64): um produto pode estar em vários, ou em nenhum, cada um com a sua
+ * ordem. É a única ligação entre produto e cardápio (o cardápio principal saiu na migração 0020).
  */
 export const productCategory = pgTable(
   'product_category',
@@ -145,12 +139,7 @@ export const productTemplate = pgTable('product_template', {
   groups: jsonb('groups').notNull(),
 });
 
-export const categoryRelations = relations(category, ({ many }) => ({
-  products: many(product),
-}));
-
-export const productRelations = relations(product, ({ one, many }) => ({
-  category: one(category, { fields: [product.categoryId], references: [category.id] }),
+export const productRelations = relations(product, ({ many }) => ({
   groups: many(optionGroup),
 }));
 
