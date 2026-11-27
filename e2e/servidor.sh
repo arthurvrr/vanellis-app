@@ -7,6 +7,7 @@
 #   E2E_DATABASE_URL  banco de teste
 #   E2E_PORT          porta do servidor de teste
 #   E2E_SENHA         senha da conta "e2e" criada para os testes
+# Os backups que o painel confere ficam em e2e/.backups (BACKUP_DIR).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -22,6 +23,13 @@ psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -q -c "DROP DATABASE IF EXISTS \"$DB_NAME\"
 
 echo "==> Compilando site, painel e servidor"
 npm run build --silent
+
+# Pasta de backups que o painel confere (RF67), com um backup recente; os testes de avisos mudam
+# a data do arquivo para simular um backup atrasado.
+export BACKUP_DIR="$PWD/e2e/.backups"
+mkdir -p "$BACKUP_DIR"
+rm -f "$BACKUP_DIR"/*
+echo x >"$BACKUP_DIR/vanellis-e2e.sql.gz"
 
 cd server
 echo "==> Migrações, carga inicial e dados previsíveis para os testes"
