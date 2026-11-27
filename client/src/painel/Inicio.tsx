@@ -1,14 +1,25 @@
-import { overdueText, REMINDERS, type ReminderKind, type ReminderWithStatus } from '@vanellis/shared';
+import {
+  overdueText,
+  REMINDERS,
+  type AvisosDTO,
+  type ReminderKind,
+  type ReminderWithStatus,
+} from '@vanellis/shared';
 import { useEffect, useState } from 'react';
 import { api, type Status } from './api';
 
 interface Props {
   onAuthError: (e: unknown) => boolean;
 }
+interface InicioProps extends Props {
+  avisos: AvisosDTO | null;
+  /** Depois de pausar ou ocultar, os avisos e o sino mudam. */
+  onMudou: () => Promise<void>;
+}
 
-// Tela 2 do painel: Início (RF24, RF39, cenários C9–C14) e lembretes de revisão vencidos
-// (RF36, RN34–RN36, cenários C89–C91).
-export function Inicio({ onAuthError }: Props) {
+// Tela 2 do painel: Início (RF24, RF39, cenários C9–C14), resumo dos avisos (RF66, C143) e
+// lembretes de revisão vencidos (RF36, RN34–RN36, cenários C89–C91).
+export function Inicio({ avisos, onMudou, onAuthError }: InicioProps) {
   const [status, setStatus] = useState<Status | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState<keyof Status | null>(null);
@@ -26,6 +37,7 @@ export function Inicio({ onAuthError }: Props) {
     setSalvando(key);
     try {
       setStatus(await api.setStatus({ [key]: !status[key] }));
+      await onMudou();
     } catch (e) {
       if (!onAuthError(e)) setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -40,31 +52,7 @@ export function Inicio({ onAuthError }: Props) {
       <h2 id="inicio-title">Início</h2>
       <Lembretes onAuthError={onAuthError} />
 
-      {/* Avisos permanentes: ficam aqui enquanto a opção estiver ligada (RF39). */}
-      {/* Produtos sem código PDV: aviso até zerar (RN41, cenário C46). */}
-      {!!status.pdvMissing && (
-        <p className="alert alert--info" role="status">
-          <strong>
-            {status.pdvMissing} {status.pdvMissing === 1 ? 'produto sem' : 'produtos sem'} código PDV.
-          </strong>{' '}
-          Eles continuam no cardápio, mas a mensagem do pedido vai sem o código.{' '}
-          <a href="#produtos-sem-pdv">Ver produtos</a>
-        </p>
-      )}
-      {(status.ordersPaused || status.pricesHidden) && (
-        <div className="alerts">
-          {status.ordersPaused && (
-            <p className="alert" role="status">
-              <strong>Pedidos pausados.</strong> O site não está aceitando novos pedidos.
-            </p>
-          )}
-          {status.pricesHidden && (
-            <p className="alert" role="status">
-              <strong>Preços ocultos.</strong> O cardápio do site está sem valores.
-            </p>
-          )}
-        </div>
-      )}
+      <ResumoAvisos avisos={avisos} />
       {erro && (
         <p className="field__error" role="alert">
           {erro}
@@ -114,6 +102,43 @@ export function Inicio({ onAuthError }: Props) {
           </button>
         </article>
       </div>
+    </section>
+  );
+}
+
+/** Quantos avisos o Início mostra; o resto fica na tela Avisos. */
+const NO_RESUMO = 3;
+
+/**
+ * Os avisos mais importantes, com o atalho, e o link para a tela Avisos (RF66, C143). As revisões
+ * vencidas ficam de fora: o bloco Revisões, logo abaixo, já mostra cada uma com o "revisado".
+ */
+function ResumoAvisos({ avisos }: { avisos: AvisosDTO | null }) {
+  if (!avisos || avisos.sino.total === 0) return null;
+  const lista = avisos.agora.filter((a) => a.tipo !== 'revisao-vencida').slice(0, NO_RESUMO);
+  return (
+    <section className="resumo-avisos" aria-labelledby="resumo-avisos-title">
+      <h3 id="resumo-avisos-title">Avisos</h3>
+      {lista.length > 0 && (
+        <ul>
+          {lista.map((a) => (
+            <li key={a.chave} className={`aviso aviso--${a.gravidade}`}>
+              <div>
+                <strong>{a.titulo}</strong>
+                {a.detalhe && <p>{a.detalhe}</p>}
+              </div>
+              {a.acao && a.acao.href !== '#inicio' && (
+                <a className="switch__btn" href={a.acao.href}>
+                  {a.acao.rotulo}
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <a className="resumo-avisos__todos" href="#avisos">
+        Ver todos os avisos ({avisos.sino.total})
+      </a>
     </section>
   );
 }

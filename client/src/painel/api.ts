@@ -1,4 +1,5 @@
 import type {
+  AvisosDTO,
   PrecoCategoriaDTO,
   PrecosPatch,
   ProductForm,
@@ -149,6 +150,10 @@ export const api = {
   /** Marca a revisão como feita hoje (RF36). */
   revisado: (kind: ReminderKind) =>
     call<ReminderWithStatus[]>('POST', `/painel/configuracoes/lembretes/${kind}/revisado`, {}),
+  /** Central de avisos: Agora, Histórico e o número do sino (RF66–RF68). */
+  avisos: () => call<AvisosDTO>('GET', '/painel/avisos'),
+  /** O admin marca que viu um aviso vermelho (RN72). */
+  ciente: (id: number) => call<AvisosDTO>('POST', `/painel/avisos/${id}/ciente`, {}),
   agenda: () => call<AgendaPainel>('GET', '/painel/agenda'),
   /** Qualquer mudança na agenda; a resposta é a agenda inteira atualizada. */
   agendaMuda: (method: 'POST' | 'PUT' | 'DELETE', path: string, body: unknown = {}) =>

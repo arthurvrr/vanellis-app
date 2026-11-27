@@ -34,6 +34,31 @@ export interface AvisoDTO {
   acao: AcaoAviso | null;
 }
 
+/** Um registro do histórico de avisos (RF68). */
+export interface EventoDTO {
+  id: number;
+  tipo: string;
+  gravidade: string;
+  titulo: string;
+  /** Instantes em ms. */
+  inicio: number;
+  fim: number | null;
+  conta: string | null;
+  contaFim: string | null;
+  cientePor: string | null;
+  cienteEm: number | null;
+  /** Vermelho ainda sem Ciente: conta no sino (RN72). */
+  pedeCiente: boolean;
+}
+
+export interface AvisosDTO {
+  agora: (AvisoDTO & { eventoId: number | null })[];
+  historico: EventoDTO[];
+  sino: { total: number; vermelho: boolean };
+  proximaRevisao: string | null;
+  podeMarcarCiente: boolean;
+}
+
 /** Sem backup bom (ou sem cópia boa no Drive) há mais que isso, o painel avisa (RF67). */
 export const HORAS_SEM_BACKUP = 26;
 const HORA = 3_600_000;

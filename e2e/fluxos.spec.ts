@@ -119,7 +119,7 @@ test('4. reajuste de preço no painel aparece no cardápio', async ({ page }) =>
 test('5. pedidos pausados no painel bloqueiam o envio no site', async ({ page }) => {
   await entrarNoPainel(page, '#inicio');
   await page.getByRole('button', { name: 'Pausar pedidos' }).click();
-  await expect(page.getByText('Pedidos pausados.')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Avisos' }).getByText('Pedidos pausados')).toBeVisible();
   try {
     await adicionar(page, 'salgados', 'Coxinha');
     await page.goto('/#dados');
