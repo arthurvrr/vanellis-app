@@ -62,6 +62,8 @@ export const productFormSchema = z.object({
   minQuantity: z.number().int(),
   leadTimeHours: z.number().int().nullable(),
   available: z.boolean(),
+  // Ausente (painel aberto antes da atualização) = preço visível.
+  priceHidden: z.boolean().default(false),
   groups: z.array(groupSchema).max(10),
 });
 
@@ -125,6 +127,7 @@ export async function loadProductForm(db: DB, id: number): Promise<ProductForm |
     minQuantity: p.minQuantity,
     leadTimeHours: p.leadTimeHours,
     available: p.available,
+    priceHidden: p.priceHidden,
     groups: p.groups.map(
       (g): GroupForm => ({
         id: g.id,
@@ -216,6 +219,7 @@ const productValues = (f: ProductForm) => ({
   minQuantity: f.minQuantity,
   leadTimeHours: f.leadTimeHours,
   available: f.available,
+  priceHidden: f.priceHidden,
 });
 
 /** Grava grupos e opções: atualiza os que têm id, cria os novos, apaga os que saíram. */

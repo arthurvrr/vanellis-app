@@ -1,5 +1,6 @@
 export * from './catalogo';
 export * from './preco';
+export * from './precoOculto';
 export * from './carrinho';
 export * from './agenda';
 export * from './cliente';

@@ -4,8 +4,8 @@
 import type { ProductDTO, Selection } from './catalogo';
 import { formatAddress, type Address, type CustomerData } from './cliente';
 import type { ResolvedLine } from './carrinho';
-import { sumRanges } from './carrinho';
-import { formatBRL, type Range } from './preco';
+import { formatRange } from './preco';
+import { cartTotal, juntarNomes } from './precoOculto';
 import { formatDay } from './agenda';
 import { onlyDigits } from './texto';
 
@@ -37,9 +37,6 @@ export function pdvCodeFor(product: ProductDTO, selection: Selection): string | 
   return product.pdvCode;
 }
 
-export function formatRange(r: Range): string {
-  return r.min === r.max ? formatBRL(r.min) : `${formatBRL(r.min)} a ${formatBRL(r.max)}`;
-}
 
 export interface OrderPickup {
   date: string;
@@ -158,8 +155,7 @@ export function formatPickup(p: OrderPickup): string {
  */
 export function buildOrderMessage(input: OrderMessageInput, compact = false): string {
   const { code, lines, pickup, customer, delivery, template } = input;
-  const estimated = lines.some((l) => l.product.saleUnit === 'KG');
-  const total = sumRanges(lines.map((l) => l.estimate));
+  const { total, estimated, hidden } = cartTotal(lines);
 
   const items = lines.map(({ line, product, estimate }) => {
     const choices = describeSelection(product, line.selection);
@@ -167,14 +163,21 @@ export function buildOrderMessage(input: OrderMessageInput, compact = false): st
     let text = `• ${line.quantity}x ${product.name}`;
     if (choices) text += ` (${choices})`;
     if (pdv) text += ` [cód. ${pdv}]`;
-    if (!compact && estimate) text += ` — ${formatRange(estimate)}${product.saleUnit === 'KG' ? ' (estimado)' : ''}`;
+    // Preço oculto (RN78): a marca fica até na versão compacta, para a padaria saber o que cotar.
+    if (product.priceHidden) text += ' — (preço a informar)';
+    else if (!compact && estimate) text += ` — ${formatRange(estimate)}${product.saleUnit === 'KG' ? ' (estimado)' : ''}`;
     return text;
   });
+  let totalLine = '';
+  if (total) {
+    totalLine = `${estimated ? 'Total estimado' : 'Total'}: ${formatRange(total)}`;
+    if (hidden.length) totalLine += ` (sem ${juntarNomes(hidden)}, preço a informar)`;
+  } else if (hidden.length) totalLine = 'Total: a informar';
 
   const values: Record<MessageField, string> = {
     codigo: code,
     itens: items.join('\n'),
-    total: total ? `${estimated ? 'Total estimado' : 'Total'}: ${formatRange(total)}` : '',
+    total: totalLine,
     recebimento: delivery
       ? `*Entrega:* ${formatPickup(pickup)}\n*Endereço:* ${formatAddress(delivery)}`
       : `*Retirada:* ${formatPickup(pickup)}`,

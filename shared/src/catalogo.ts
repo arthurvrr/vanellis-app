@@ -73,6 +73,11 @@ export interface ProductDTO {
    * "Encomende com 72h de antecedência: retirada a partir de sex 27/11, 10h" (RF58).
    */
   firstPickup?: { date: string; weekday: number; time: string | null };
+  /**
+   * Preço oculto só deste produto (RF69): o preço e o das opções não vêm, e o site mostra "Preço
+   * informado pelo WhatsApp". Ausente = preço visível; nunca vem com os preços do site ocultos (RN79).
+   */
+  priceHidden?: boolean;
   groups: OptionGroupDTO[];
 }
 

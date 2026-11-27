@@ -1,19 +1,17 @@
 import {
   cardImage,
-  formatBRL,
+  cartTotal,
+  formatRange,
+  HIDDEN_PRICE_LABEL,
+  hiddenPriceNotice,
   resolveCart,
-  sumRanges,
+  totalText,
   type ProductDTO,
-  type Range,
   type Selection,
 } from '@vanellis/shared';
 import { useEffect, useState } from 'react';
 import { useCart } from '../lib/cart';
 import { QuantityStepper } from './QuantityStepper';
-
-function formatRange(r: Range): string {
-  return r.min === r.max ? formatBRL(r.min) : `${formatBRL(r.min)} a ${formatBRL(r.max)}`;
-}
 
 /** "Naked · Grande · Morangos": as escolhas na ordem dos grupos. */
 function describe(product: ProductDTO, selection: Selection): string {
@@ -49,8 +47,10 @@ export function CartView({
     for (const l of invalid) remove(l.key);
   }, [invalid, remove]);
 
-  const total = sumRanges(valid.map((v) => v.estimate));
-  const estimated = valid.some((v) => v.product.saleUnit === 'KG');
+  // Só os itens com preço entram no total (RN77).
+  const totais = cartTotal(valid);
+  const linhaTotal = totalText(totais);
+  const aviso = hiddenPriceNotice(totais.hidden);
 
   return (
     <section className="cart" aria-labelledby="cart-title">
@@ -95,7 +95,8 @@ export function CartView({
                       </button>
                     </div>
                   </div>
-                  <p className="cart__price">
+                  <p className={product.priceHidden ? 'cart__price preco-oculto' : 'cart__price'}>
+                    {product.priceHidden && HIDDEN_PRICE_LABEL}
                     {estimate ? formatRange(estimate) : ''}
                     {estimate && product.saleUnit === 'KG' && <span className="cart__approx">estimado pelo peso</span>}
                   </p>
@@ -104,12 +105,19 @@ export function CartView({
             })}
           </ul>
 
-          {total && (
+          {linhaTotal && (
             <p className="cart__total">
-              <span>{estimated ? 'Total estimado' : 'Total'}</span>
-              <strong>{formatRange(total)}</strong>
+              {totais.total ? (
+                <>
+                  <span>{totais.estimated ? 'Total estimado' : 'Total'}</span>
+                  <strong>{formatRange(totais.total)}</strong>
+                </>
+              ) : (
+                <span>{linhaTotal}</span>
+              )}
             </p>
           )}
+          {aviso && <p className="cart__ref">{aviso}.</p>}
           {/* RN07: preço de referência; RN38: com preços ocultos, valores vêm na confirmação. */}
           <p className="cart__ref">
             {pricesHidden

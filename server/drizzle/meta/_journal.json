@@ -155,6 +155,13 @@
       "when": 1795785866447,
       "tag": "0021_avisos",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795801183096,
+      "tag": "0022_preco_oculto",
+      "breakpoints": true
     }
   ]
 }

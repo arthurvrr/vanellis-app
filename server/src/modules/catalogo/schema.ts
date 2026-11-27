@@ -54,6 +54,8 @@ export const product = pgTable(
     minQuantity: integer('min_quantity').notNull().default(1),
     leadTimeHours: integer('lead_time_hours'),
     available: boolean('available').notNull().default(true),
+    // Preço oculto só deste produto (RF69): o preço fica no banco, mas não vai para o site.
+    priceHidden: boolean('price_hidden').notNull().default(false),
   },
   (t) => [
     check('product_sale_unit_check', sql`${t.saleUnit} in ('UN', 'KG')`),

@@ -5,6 +5,7 @@ import {
   cardPrice,
   formatBRL,
   formatRange,
+  HIDDEN_PRICE_LABEL,
   leadNotice,
   type OptionGroupDTO,
   type ProductDTO,
@@ -76,6 +77,8 @@ export function ProductDetail({ product, onAdded }: { product: ProductDTO; onAdd
             </p>
           )}
         </div>
+        {/* Preço oculto só deste produto (RF69, RN76): numa linha própria, sem apertar o nome. */}
+        {product.priceHidden && <p className="card__price preco-oculto">{HIDDEN_PRICE_LABEL}</p>}
         {product.description && <p className="card__desc">{product.description}</p>}
         {/* Antecedência própria do produto e a primeira retirada possível (RF58, C105). */}
         {leadNotice(product) && <p className="card__lead">{leadNotice(product)}</p>}

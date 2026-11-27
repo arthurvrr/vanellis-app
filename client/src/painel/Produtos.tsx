@@ -253,6 +253,7 @@ function ListaProdutos({
                       ) : (
                         <span className="tag">{p.pdvCode ? `PDV ${p.pdvCode}` : 'Códigos nas opções'}</span>
                       )}
+                      {p.priceHidden && <span className="tag">Preço oculto</span>}
                     </div>
                     <a className="link" href={`#produto/${p.id}`}>
                       Editar

@@ -5,7 +5,7 @@ import {
   menuPickups,
   pdvWarning,
   specialMenuState,
-  withoutPrices,
+  applyHiddenPrices,
   type AgendaInput,
   type MenuPickup,
   type PublicSpecialMenu,
@@ -161,6 +161,7 @@ export async function getCatalogo(db: DB, now: string): Promise<CatalogoDTO> {
     leadTimeHours: p.leadTimeHours,
     available: p.available,
     orderClosed: fechado(p.id),
+    priceHidden: p.priceHidden,
     groups: p.groups.map((g) => ({
       id: g.id,
       name: g.name,
@@ -190,7 +191,6 @@ export async function getCatalogo(db: DB, now: string): Promise<CatalogoDTO> {
     const [dia] = agendaForCart(input, false, now, { categorias, produtos }, [p.id]).days;
     if (dia) p.firstPickup = { date: dia.date, weekday: dia.weekday, time: dia.times[0] ?? null };
   }
-  // Preços ocultos (RF39): os valores nem saem do servidor.
-  const catalogo: CatalogoDTO = { categorias, produtos, pricesHidden };
-  return pricesHidden ? withoutPrices(catalogo) : catalogo;
+  // Preços ocultos, todos (RF39) ou de um produto (RF69): os valores nem saem do servidor.
+  return applyHiddenPrices<CatalogoDTO>({ categorias, produtos, pricesHidden });
 }

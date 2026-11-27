@@ -12,6 +12,7 @@ import {
   type OrderMessageInput,
 } from './mensagem';
 import { cardPrice, withoutPrices } from './preco';
+import { applyHiddenPrices } from './precoOculto';
 import { group, line, option, product } from './test-utils';
 
 const coxinha = product({ id: 1, name: 'Coxinha', basePrice: 1.6, minQuantity: 25, pdvCode: '1001' });
@@ -229,5 +230,27 @@ describe('preços ocultos (RF39, cenário C13)', () => {
         '*Telefone:* (51) 99528-4226',
       ].join('\n'),
     );
+  });
+});
+
+describe('preço oculto por produto (RN78, C149)', () => {
+  const vulcao = product({ id: 9, name: 'Bolo Vulcão', basePrice: 120, pdvCode: '3001', priceHidden: true });
+  const coxinha10 = product({ id: 1, name: 'Coxinha', basePrice: 1.6, minQuantity: 10, pdvCode: '1001' });
+  const { produtos } = applyHiddenPrices({ pricesHidden: false, produtos: [vulcao, coxinha10] });
+  const pedido = (lines: CartLine[]): OrderMessageInput => ({ ...input([]), lines: resolveCart(lines, produtos).valid });
+
+  it('C149: a linha do item sai com "(preço a informar)" e o total diz quem ficou de fora', () => {
+    const msg = buildOrderMessage(pedido([line(9, {}, 1), line(1, {}, 10)]));
+    expect(msg).toContain('• 1x Bolo Vulcão [cód. 3001] — (preço a informar)\n• 10x Coxinha [cód. 1001] — R$ 16,00\nTotal: R$ 16,00 (sem Bolo Vulcão, preço a informar)');
+  });
+
+  it('na versão compacta, o item continua marcado', () => {
+    const msg = buildOrderMessage(pedido([line(9, {}, 1), line(1, {}, 10)]), true);
+    expect(msg).toContain('• 1x Bolo Vulcão [cód. 3001] — (preço a informar)\n• 10x Coxinha [cód. 1001]\nTotal: R$ 16,00 (sem Bolo Vulcão, preço a informar)');
+  });
+
+  it('só itens de preço oculto: o total fica a informar', () => {
+    const msg = buildOrderMessage(pedido([line(9, {}, 2)]));
+    expect(msg).toContain('• 2x Bolo Vulcão [cód. 3001] — (preço a informar)\nTotal: a informar');
   });
 });
