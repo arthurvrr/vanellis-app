@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { db as defaultDb, type DB } from './db/client';
 import { acessoRouter } from './modules/acesso/routes';
+import { avisosPainelRouter } from './modules/avisos/avisos';
 import { agendaPainelRouter } from './modules/agenda/painel';
 import { agendaRouter } from './modules/agenda/routes';
 import { catalogoPainelRouter } from './modules/catalogo/painel';
@@ -16,9 +17,11 @@ import { painelRouter } from './modules/painel/routes';
 export interface AppOptions {
   /** Agora em Brasília, 'AAAA-MM-DDTHH:MM'. Fixo nos testes. */
   now?: () => string;
+  /** Pasta dos backups, lida para os avisos de backup (RF67); sem ela, o backup não é monitorado. */
+  backupDir?: string | null;
 }
 
-export function createApp(db: DB = defaultDb, { now = () => nowInBrasilia() }: AppOptions = {}) {
+export function createApp(db: DB = defaultDb, { now = () => nowInBrasilia(), backupDir = null }: AppOptions = {}) {
   const app = express();
   app.disable('x-powered-by');
   // Em produção o Caddy fica na frente e repassa o HTTPS.
@@ -35,13 +38,14 @@ export function createApp(db: DB = defaultDb, { now = () => nowInBrasilia() }: A
   app.use('/api/agenda', agendaRouter(db, now));
   app.use('/api/configuracoes', configuracoesRouter(db));
   app.use('/api/auth', acessoRouter(db));
-  app.use('/api/painel/configuracoes', configuracoesPainelRouter(db, () => now().slice(0, 10)));
+  app.use('/api/painel/configuracoes', configuracoesPainelRouter(db, now));
   app.use('/api/imagens', imagensRouter(db));
   app.use('/api/painel/imagens', imagensPainelRouter(db));
   app.use('/api/painel/catalogo', catalogoPainelRouter(db, now));
   app.use('/api/painel/precos', precosPainelRouter(db));
   app.use('/api/painel/agenda', agendaPainelRouter(db, () => now().slice(0, 10)));
-  app.use('/api/painel', painelRouter(db));
+  app.use('/api/painel/avisos', avisosPainelRouter(db, now, backupDir));
+  app.use('/api/painel', painelRouter(db, now));
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'Rota não encontrada' });

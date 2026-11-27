@@ -148,6 +148,13 @@
       "when": 1795731829401,
       "tag": "0020_remover_cardapio_principal",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795785866447,
+      "tag": "0021_avisos",
+      "breakpoints": true
     }
   ]
 }

@@ -31,6 +31,10 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://vanellis:${POSTGRES_PASSWORD}@db:5432/vanellis
+      BACKUP_DIR: /backups
+    volumes:
+      # Só leitura: o painel confere a data do último backup e o estado da cópia externa (RF67).
+      - ./backups:/backups:ro
     depends_on:
       db:
         condition: service_healthy

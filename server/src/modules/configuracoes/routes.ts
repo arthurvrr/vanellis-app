@@ -1,8 +1,9 @@
-import { REMINDERS, reminderStatus, type ReminderKind, type ReminderWithStatus } from '@vanellis/shared';
+import { instanteBrasilia, REMINDERS, reminderStatus, type ReminderKind, type ReminderWithStatus } from '@vanellis/shared';
 import { Router } from 'express';
 import type { DB } from '../../db/client';
 import { inTransaction } from '../../db/transacao';
 import { requireUser, type SessionUser } from '../acesso/sessao';
+import { registrarAcao } from '../avisos/registro';
 import { getSettings, toPublicSettings } from './repository';
 import { reviewReminder, storeSettings } from './schema';
 import { remindersPatch, settingsPatch } from './validacao';
@@ -22,7 +23,7 @@ export function configuracoesRouter(db: DB) {
 }
 
 /** Os três lembretes, na ordem da tela, com a situação de hoje; um que falte no banco vem com o padrão. */
-async function listReminders(db: DB, today: string): Promise<ReminderWithStatus[]> {
+export async function listReminders(db: DB, today: string): Promise<ReminderWithStatus[]> {
   const rows = await db.select().from(reviewReminder);
   return REMINDERS.map((r) => {
     const row = rows.find((x) => x.kind === r.kind);
@@ -34,7 +35,8 @@ async function listReminders(db: DB, today: string): Promise<ReminderWithStatus[
 // Tela Configurações do painel (RF23, RF34, RF37). O operador muda contatos e localização; o
 // número que recebe os pedidos só o superusuário muda (RN54).
 /** `today` devolve 'AAAA-MM-DD' no horário de Brasília (fixo nos testes). */
-export function configuracoesPainelRouter(db: DB, today: () => string) {
+export function configuracoesPainelRouter(db: DB, now: () => string) {
+  const today = () => now().slice(0, 10);
   const router = Router();
   router.use(requireUser(db));
 
@@ -75,11 +77,20 @@ export function configuracoesPainelRouter(db: DB, today: () => string) {
       res.status(404).json({ error: 'Lembrete não encontrado' });
       return;
     }
-    // Insere ou atualiza num comando só (G10): sem a janela entre o update e o insert.
-    await db
-      .insert(reviewReminder)
-      .values({ kind, everyDays: def.defaultDays, lastReviewed: today() })
-      .onConflictDoUpdate({ target: reviewReminder.kind, set: { lastReviewed: today() } });
+    // Insere ou atualiza num comando só (G10), e a revisão entra no histórico de avisos junto (RF68).
+    await inTransaction(db, async (tx) => {
+      await tx
+        .insert(reviewReminder)
+        .values({ kind, everyDays: def.defaultDays, lastReviewed: today() })
+        .onConflictDoUpdate({ target: reviewReminder.kind, set: { lastReviewed: today() } });
+      await registrarAcao(tx, {
+        tipo: 'revisao-marcada',
+        chave: `revisao-marcada:${kind}`,
+        titulo: `Revisão de ${def.label.toLowerCase()} marcada`,
+        conta: (res.locals.user as SessionUser).username,
+        agora: new Date(instanteBrasilia(now())),
+      });
+    });
     res.json(await listReminders(db, today()));
   });
   router.put('/lembretes', async (req, res) => {

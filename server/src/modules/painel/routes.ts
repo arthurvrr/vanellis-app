@@ -4,7 +4,9 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { DB } from '../../db/client';
 import { inTransaction } from '../../db/transacao';
-import { requireUser } from '../acesso/sessao';
+import { instanteBrasilia } from '@vanellis/shared';
+import { requireUser, type SessionUser } from '../acesso/sessao';
+import { registrarSituacao } from '../avisos/registro';
 import { agendaConfig } from '../agenda/schema';
 import { productsMissingPdv } from '../catalogo/repository';
 import { storeSettings } from '../configuracoes/schema';
@@ -20,7 +22,7 @@ const statusBody = z
   .object({ ordersPaused: z.boolean().optional(), pricesHidden: z.boolean().optional() })
   .strict();
 
-async function readStatus(db: DB): Promise<PainelStatusDTO> {
+export async function readStatus(db: DB): Promise<PainelStatusDTO> {
   const [agenda] = await db.select({ ordersPaused: agendaConfig.ordersPaused }).from(agendaConfig).limit(1);
   const [settings] = await db.select({ pricesHidden: storeSettings.pricesHidden }).from(storeSettings).limit(1);
   return {
@@ -30,7 +32,7 @@ async function readStatus(db: DB): Promise<PainelStatusDTO> {
   };
 }
 
-export function painelRouter(db: DB) {
+export function painelRouter(db: DB, now: () => string) {
   const router = Router();
   router.use(requireUser(db));
 
@@ -45,16 +47,24 @@ export function painelRouter(db: DB) {
       return;
     }
     const { ordersPaused, pricesHidden } = parsed.data;
-    // As duas mudanças pedidas juntas valem juntas, ou nenhuma (G10).
+    const conta = (res.locals.user as SessionUser).username;
+    const agora = new Date(instanteBrasilia(now()));
+    // As duas mudanças pedidas juntas valem juntas, ou nenhuma (G10), e entram no histórico de
+    // avisos junto (RF68): só o que mudou de fato abre ou fecha um registro.
     await inTransaction(db, async (tx) => {
+      const antes = await readStatus(tx);
       if (ordersPaused !== undefined) {
         await tx
           .insert(agendaConfig)
           .values({ id: 1, ordersPaused })
           .onConflictDoUpdate({ target: agendaConfig.id, set: { ordersPaused } });
+        if (ordersPaused !== antes.ordersPaused)
+          await registrarSituacao(tx, { chave: 'pedidos-pausados', titulo: 'Pedidos pausados', ligado: ordersPaused, conta, agora });
       }
       if (pricesHidden !== undefined) {
         await tx.update(storeSettings).set({ pricesHidden });
+        if (pricesHidden !== antes.pricesHidden)
+          await registrarSituacao(tx, { chave: 'precos-ocultos', titulo: 'Preços ocultos', ligado: pricesHidden, conta, agora });
       }
     });
     res.json(await readStatus(db));

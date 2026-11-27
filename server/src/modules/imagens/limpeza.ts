@@ -7,6 +7,7 @@ import { and, eq, lt, notExists, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import type { DB } from '../../db/client';
 import { category, option, product } from '../catalogo/schema';
+import { limparHistorico } from '../avisos/avisos';
 import { URL_PREFIX } from './imagens';
 import { storedImage } from './schema';
 
@@ -38,7 +39,8 @@ interface OpcoesAgenda {
 }
 
 /**
- * Roda a limpeza ao subir o servidor e depois uma vez por dia. Uma falha só fica registrada no
+ * Roda a limpeza (fotos sem uso e histórico de avisos antigo) ao subir o servidor e depois uma
+ * vez por dia. Uma falha só fica registrada no
  * log: não derruba o servidor e a próxima rodada tenta de novo.
  */
 export function agendarLimpeza(db: DB, { agora = () => new Date(), registrar = console.log }: OpcoesAgenda = {}) {
@@ -46,6 +48,9 @@ export function agendarLimpeza(db: DB, { agora = () => new Date(), registrar = c
     try {
       const n = await limparFotosOrfas(db, agora());
       if (n) registrar(`Limpeza de fotos sem uso: ${n} apagada(s).`);
+      // O histórico de avisos guarda 1 ano (RN75): sai na mesma rodada diária.
+      const h = await limparHistorico(db, agora());
+      if (h) registrar(`Histórico de avisos: ${h} registro(s) com mais de 1 ano apagado(s).`);
       return n;
     } catch (e) {
       registrar(`Limpeza de fotos sem uso falhou: ${(e as Error).message}`);
