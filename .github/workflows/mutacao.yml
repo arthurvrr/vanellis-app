@@ -44,7 +44,7 @@ jobs:
       matrix:
         pacote: [shared, server]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Precisa mutar? Os mesmos caminhos do gatilho de push, acima (mantenha os dois iguais).
       - name: Mudou código mutado ou os testes dele?
@@ -73,7 +73,7 @@ jobs:
             echo "roda=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.mudou.outputs.roda == 'true'
         with:
           node-version: 22
@@ -82,7 +82,7 @@ jobs:
         if: steps.mudou.outputs.roda == 'true'
 
       # Base do modo incremental: o resultado da última execução (da main ou deste PR).
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         if: steps.mudou.outputs.roda == 'true'
         with:
           path: ${{ matrix.pacote }}/reports/stryker-incremental.json
@@ -122,7 +122,7 @@ jobs:
         env:
           PACOTE: ${{ matrix.pacote }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always() && steps.mudou.outputs.roda == 'true'
         with:
           name: mutacao-${{ matrix.pacote }}
