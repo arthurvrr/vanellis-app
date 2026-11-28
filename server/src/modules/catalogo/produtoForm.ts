@@ -19,7 +19,7 @@ import { kg, money, num } from '../../db/conversao';
 import { inTransaction } from '../../db/transacao';
 import { deleteStoredImage, photoUrl } from '../imagens/imagens';
 import { cardapiosDe, ordensAntes, vincular } from './cardapios';
-import { category, option, optionGroup, product, productCategory, productTemplate } from './schema';
+import { category, menuSection, option, optionGroup, product, productCategory, productTemplate } from './schema';
 
 const txt = (v: string | null) => (v && v.trim() ? v.trim() : null);
 
@@ -50,6 +50,11 @@ const groupSchema = z.object({
 });
 export const productFormSchema = z.object({
   categoryIds: z.array(z.number().int().positive()).max(30),
+  // As chaves chegam como texto no JSON: o id do cardápio.
+  sectionIds: z
+    .record(z.string().regex(/^\d+$/, 'Cardápio inválido'), z.number().int().positive())
+    .default({})
+    .transform((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [Number(k), v])) as Record<number, number>),
   name: z.string().max(100),
   description: z.string().max(1000).nullable(),
   imageUrl: photoUrl,
@@ -108,13 +113,14 @@ export async function loadProductForm(db: DB, id: number): Promise<ProductForm |
   if (!p) return null;
   // Cardápios do produto, na ordem da tela (RF64); pode não haver nenhum.
   const vinculos = await db
-    .select({ id: productCategory.categoryId })
+    .select({ id: productCategory.categoryId, sectionId: productCategory.sectionId })
     .from(productCategory)
     .innerJoin(category, eq(category.id, productCategory.categoryId))
     .where(eq(productCategory.productId, id))
     .orderBy(asc(category.position), asc(category.id));
   return {
     categoryIds: vinculos.map((v) => v.id),
+    sectionIds: Object.fromEntries(vinculos.filter((v) => v.sectionId !== null).map((v) => [v.id, v.sectionId!])),
     name: p.name,
     description: p.description,
     imageUrl: p.imageUrl,
@@ -198,6 +204,18 @@ async function check(db: DB, raw: unknown, productId: number | null): Promise<{ 
   if (errors.length) throw new FormError(400, errors);
   const cats = await db.select({ id: category.id }).from(category).where(inArray(category.id, form.categoryIds));
   if (cats.length !== form.categoryIds.length) throw new FormError(400, ['Cardápio não encontrado']);
+  const secoes = Object.entries(form.sectionIds ?? {}).map(([c, s]) => ({ categoryId: Number(c), id: s }));
+  if (secoes.some((s) => !form.categoryIds.includes(s.categoryId))) {
+    throw new FormError(400, ['Seção de um cardápio em que o produto não está']);
+  }
+  if (secoes.length) {
+    const achadas = await db
+      .select({ id: menuSection.id, categoryId: menuSection.categoryId })
+      .from(menuSection)
+      .where(inArray(menuSection.id, secoes.map((s) => s.id)));
+    const ok = secoes.every((s) => achadas.some((a) => a.id === s.id && a.categoryId === s.categoryId));
+    if (!ok) throw new FormError(400, ['Seção não encontrada no cardápio']);
+  }
   const conflicts = await pdvConflicts(db, form, productId);
   if (conflicts.length) throw new FormError(409, conflicts);
   return { form, warnings };
@@ -308,7 +326,7 @@ export async function createProduct(db: DB, raw: unknown): Promise<{ id: number;
       .insert(product)
       .values(productValues(form))
       .returning({ id: product.id });
-    await vincular(tx, row!.id, form.categoryIds, antes);
+    await vincular(tx, row!.id, form.categoryIds, antes, form.sectionIds ?? {});
     await saveGroups(tx, row!.id, form.groups);
     return row!.id;
   });
@@ -324,7 +342,7 @@ export async function updateProduct(db: DB, id: number, raw: unknown): Promise<{
     const antes = await ordensAntes(tx, [...form.categoryIds, ...atuais]);
     await tx.update(product).set(productValues(form)).where(eq(product.id, id));
     // Onde já estava, mantém o lugar; num cardápio novo, entra no fim (RF64).
-    await vincular(tx, id, form.categoryIds, antes);
+    await vincular(tx, id, form.categoryIds, antes, form.sectionIds ?? {});
     const imgs = await saveGroups(tx, id, form.groups);
     if (atual.imageUrl && atual.imageUrl !== form.imageUrl) imgs.push(atual.imageUrl);
     return imgs;
@@ -348,7 +366,7 @@ export async function duplicate(db: DB, id: number): Promise<{ id: number }> {
     const newId = row!.id;
     await saveGroups(tx, newId, copy.groups);
     // Nos mesmos cardápios do original, logo depois dele em cada um.
-    await vincular(tx, newId, copy.categoryIds, antes, id);
+    await vincular(tx, newId, copy.categoryIds, antes, copy.sectionIds ?? {}, id);
     return { id: newId };
   });
 }

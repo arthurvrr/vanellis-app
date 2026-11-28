@@ -1,5 +1,5 @@
-import { productsOf, visibleCategories, type CatalogoDTO, type ProductDTO } from '@vanellis/shared';
-import { useCallback, useEffect, useState } from 'react';
+import { menuGroups, visibleCategories, type CatalogoDTO, type ProductDTO } from '@vanellis/shared';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { CartView } from './components/CartView';
 import { ContactIcons } from './components/ContactIcons';
@@ -171,8 +171,10 @@ export function App() {
   }
 
   const categoria = catalogo.categorias.find((c) => c.slug === route.slug) ?? catalogo.categorias[0];
-  // Um produto pode estar em vários cardápios, cada um na sua ordem (RF64).
-  const produtos = categoria ? productsOf(catalogo, categoria.id) : [];
+  // Um produto pode estar em vários cardápios, cada um na sua ordem (RF64), e o cardápio pode estar
+  // dividido em seções, com os produtos sem seção no fim (RF73).
+  const grupos = categoria ? menuGroups(catalogo, categoria.id) : [];
+  const produtos = grupos.flatMap((g) => g.products);
   // Computador: ao abrir a categoria, o primeiro produto disponível já aparece no painel.
   const selecionado =
     (aberto && produtos.some((p) => p.id === aberto.id) ? aberto : null) ?? produtos.find((p) => p.available) ?? null;
@@ -198,28 +200,49 @@ export function App() {
       )}
       {desktop ? (
         <div className="menu-layout">
-          <main className="grid grid--side">
-            {produtos.map((p) => (
-              <MenuCard
-                key={p.id}
-                product={p}
-                compact
-                selected={selecionado?.id === p.id}
-                onOpen={() => setAberto(p)}
-              />
+          <main className="menu-secoes">
+            {grupos.map((g) => (
+              <MenuSecao key={g.section?.id ?? 'sem-secao'} nome={g.section?.name ?? null} className="grid grid--side">
+                {g.products.map((p) => (
+                  <MenuCard
+                    key={p.id}
+                    product={p}
+                    compact
+                    selected={selecionado?.id === p.id}
+                    onOpen={() => setAberto(p)}
+                  />
+                ))}
+              </MenuSecao>
             ))}
           </main>
           <SidePanel product={selecionado} />
         </div>
       ) : (
-        <main className="grid">
-          {produtos.map((p) => (
-            <MenuCard key={p.id} product={p} onOpen={() => setAberto(p)} />
+        <main className="menu-secoes">
+          {grupos.map((g) => (
+            <MenuSecao key={g.section?.id ?? 'sem-secao'} nome={g.section?.name ?? null} className="grid">
+              {g.products.map((p) => (
+                <MenuCard key={p.id} product={p} onOpen={() => setAberto(p)} />
+              ))}
+            </MenuSecao>
           ))}
         </main>
       )}
       {aberto && !desktop && <ProductSheet product={aberto} onClose={closeSheet} />}
       <SiteFooter />
     </>
+  );
+}
+
+/**
+ * Uma seção do cardápio (RF73): o nome como subtítulo e os cards. Os produtos sem seção vêm sem
+ * subtítulo; num cardápio com seções, uma linha os separa da última seção.
+ */
+function MenuSecao({ nome, className, children }: { nome: string | null; className: string; children: ReactNode }) {
+  return (
+    <section className={nome ? 'menu-secao' : 'menu-secao menu-secao--sem-nome'} aria-label={nome ?? undefined}>
+      {nome && <h3 className="menu-secao__titulo">{nome}</h3>}
+      <div className={className}>{children}</div>
+    </section>
   );
 }

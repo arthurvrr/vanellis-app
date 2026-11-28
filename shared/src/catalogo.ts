@@ -2,6 +2,7 @@
 // Espelham o esquema proposto no doc de requisitos (Modelo de produtos e banco de dados).
 
 import type { PublicSpecialMenu } from './cardapioEspecial';
+import type { MenuSection } from './secoes';
 
 export type SaleUnit = 'UN' | 'KG';
 export type PriceMode = 'replace' | 'add';
@@ -18,6 +19,8 @@ export interface CategoryDTO {
   special: PublicSpecialMenu | null;
   /** Os produtos do cardápio, na ordem dele (RF64); ausente = a ordem do catálogo. */
   productIds?: number[];
+  /** As seções do cardápio, na ordem do operador (RF73); ausente ou vazio = sem seções. */
+  sections?: MenuSection[];
 }
 
 export interface OptionDTO {

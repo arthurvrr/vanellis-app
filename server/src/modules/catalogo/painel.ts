@@ -4,7 +4,11 @@
 
 import {
   menuEnd,
+  moveWithinSection,
   normalize,
+  sectionNameProblem,
+  sendToEnd,
+  type MenuSection,
   specialMenuProblem,
   specialMenuWarnings,
   type SpecialMenu,
@@ -26,9 +30,9 @@ import {
   loadProductForm,
   updateProduct,
 } from './produtoForm';
-import { idsNoCardapio, ordenar } from './cardapios';
+import { idsNoCardapio, ordenar, secaoDe, secoesPorCardapio } from './cardapios';
 import { productsMissingPdv, specialMenus } from './repository';
-import { category, option, optionGroup, product, productCategory } from './schema';
+import { category, menuSection, option, optionGroup, product, productCategory } from './schema';
 
 export interface CategoriaPainelDTO {
   id: number;
@@ -39,6 +43,8 @@ export interface CategoriaPainelDTO {
   productCount: number;
   /** Os produtos do cardápio, na ordem dele (RF64). */
   productIds: number[];
+  /** As seções do cardápio, na ordem do operador, com os produtos de cada uma (RF71). */
+  sections: MenuSection[];
   /** Quantos produtos só estão neste cardápio: ao excluí-lo, ficam sem cardápio (RN70). */
   exclusiveCount: number;
   /** Configuração do cardápio especial; `null` = categoria regular. */
@@ -59,6 +65,8 @@ export interface ProdutoListaDTO {
   categoryIds: number[];
   /** Posição do produto em cada cardápio dele, pelo id do cardápio (C134). */
   posicoes: Record<number, number>;
+  /** Seção do produto em cada cardápio dele, pelo id do cardápio; ausente = sem seção (RF74). */
+  secoes: Record<number, number>;
   name: string;
   pdvCode: string | null;
   /** Sem código no produto e em nenhuma opção (RN41). */
@@ -115,6 +123,7 @@ function specialColumns(sp: z.infer<typeof especialBody>) {
 const direcaoBody = z.object({ direcao: z.enum(['subir', 'descer']) });
 const moverBody = direcaoBody.extend({ categoryId: z.number().int().positive() });
 const disponivelBody = z.object({ available: z.boolean() });
+const secaoBody = z.object({ name: z.string().max(200) });
 
 /**
  * Troca um item de lugar com o vizinho. Antes, renumera as posições em sequência para não
@@ -158,6 +167,7 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
     for (const v of vinculos) quantos.set(v.productId, (quantos.get(v.productId) ?? 0) + 1);
     const rows = await db.select().from(category).orderBy(asc(category.position), asc(category.id));
     const especiais = await specialMenus(db, now());
+    const secoes = await secoesPorCardapio(db);
     return rows.map((c) => {
       const sp = c.special ? especiais.get(c.id) : undefined;
       const special: SpecialMenu | null = sp?.menu ?? null;
@@ -169,6 +179,7 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
         coverImageUrl: c.coverImageUrl,
         productCount: (ordens.get(c.id) ?? []).length,
         productIds: ordens.get(c.id) ?? [],
+        sections: secoes.get(c.id) ?? [],
         exclusiveCount: (ordens.get(c.id) ?? []).filter((pid) => (quantos.get(pid) ?? 0) === 1).length,
         special,
         specialState: sp?.state ?? null,
@@ -301,10 +312,20 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
       .orderBy(asc(product.id));
     const vinculos = await db.select().from(productCategory);
     const posicoes = new Map<number, Record<number, number>>();
-    for (const v of vinculos) posicoes.set(v.productId, { ...posicoes.get(v.productId), [v.categoryId]: v.position });
+    const secoes = new Map<number, Record<number, number>>();
+    for (const v of vinculos) {
+      posicoes.set(v.productId, { ...posicoes.get(v.productId), [v.categoryId]: v.position });
+      if (v.sectionId !== null) secoes.set(v.productId, { ...secoes.get(v.productId), [v.categoryId]: v.sectionId });
+    }
     return rows.map((p) => {
       const pos = posicoes.get(p.id) ?? {};
-      return { ...p, categoryIds: Object.keys(pos).map(Number), posicoes: pos, missingPdv: missing.has(p.id) };
+      return {
+        ...p,
+        categoryIds: Object.keys(pos).map(Number),
+        posicoes: pos,
+        secoes: secoes.get(p.id) ?? {},
+        missingPdv: missing.has(p.id),
+      };
     });
   }
 
@@ -324,21 +345,83 @@ export function catalogoPainelRouter(db: DB, now: () => string) {
     res.json(await listProdutos());
   });
 
-  // Subir ou descer um produto num cardápio dele; a ordem de cada cardápio é própria (C134).
+  // Subir ou descer um produto num cardápio dele; a ordem de cada cardápio é própria (C134). Com
+  // seções, o produto troca com o vizinho da mesma seção, ou do grupo sem seção (RN83, C162).
   router.post('/produtos/:id/mover', async (req, res) => {
     const parsed = moverBody.safeParse(req.body);
     if (!parsed.success) return fail(res, 400, 'Direção inválida');
     const id = Number(req.params.id);
     const cardapio = parsed.data.categoryId;
     await inTransaction(db, async (tx) => {
-      const ids = await idsNoCardapio(tx, cardapio);
-      const i = ids.indexOf(id);
-      const j = parsed.data.direcao === 'subir' ? i - 1 : i + 1;
-      if (i < 0 || j < 0 || j >= ids.length) return;
-      [ids[i], ids[j]] = [ids[j]!, ids[i]!];
-      await ordenar(tx, cardapio, ids);
+      const ids = moveWithinSection(await idsNoCardapio(tx, cardapio), await secaoDe(tx, cardapio), id, parsed.data.direcao);
+      if (ids) await ordenar(tx, cardapio, ids);
     });
     res.json(await listProdutos());
+  });
+
+  // ---------- seções do cardápio (RF71, RN81, RN82) ----------
+
+  /** Seções de um cardápio, na ordem. */
+  const secoesDo = (categoryId: number) =>
+    db
+      .select({ id: menuSection.id, name: menuSection.name })
+      .from(menuSection)
+      .where(eq(menuSection.categoryId, categoryId))
+      .orderBy(asc(menuSection.position), asc(menuSection.id));
+  const nomeProblema = (problema: string) => (problema.startsWith('Já existe') ? 409 : 400);
+
+  router.post('/categorias/:id/secoes', async (req, res) => {
+    const categoryId = Number(req.params.id);
+    const parsed = secaoBody.safeParse(req.body);
+    if (!parsed.success) return fail(res, 400, 'Informe o nome da seção');
+    const [cat] = await db.select({ id: category.id }).from(category).where(eq(category.id, categoryId)).limit(1);
+    if (!cat) return fail(res, 404, 'Cardápio não encontrado');
+    const outras = await secoesDo(categoryId);
+    const problema = sectionNameProblem(parsed.data.name, outras);
+    if (problema) return fail(res, nomeProblema(problema), problema);
+    // Entra no fim; as posições são renumeradas ao mover, então o tamanho basta.
+    await db.insert(menuSection).values({ categoryId, name: parsed.data.name.trim(), position: outras.length });
+    res.status(201).json(await listCategorias());
+  });
+
+  const secaoPorId = async (id: number) =>
+    (await db.select().from(menuSection).where(eq(menuSection.id, id)).limit(1))[0];
+
+  router.put('/secoes/:id', async (req, res) => {
+    const parsed = secaoBody.safeParse(req.body);
+    if (!parsed.success) return fail(res, 400, 'Informe o nome da seção');
+    const s = await secaoPorId(Number(req.params.id));
+    if (!s) return fail(res, 404, 'Seção não encontrada');
+    const problema = sectionNameProblem(parsed.data.name, await secoesDo(s.categoryId), s.id);
+    if (problema) return fail(res, nomeProblema(problema), problema);
+    await db.update(menuSection).set({ name: parsed.data.name.trim() }).where(eq(menuSection.id, s.id));
+    res.json(await listCategorias());
+  });
+
+  router.post('/secoes/:id/mover', async (req, res) => {
+    const parsed = direcaoBody.safeParse(req.body);
+    if (!parsed.success) return fail(res, 400, 'Direção inválida');
+    const s = await secaoPorId(Number(req.params.id));
+    if (!s) return fail(res, 404, 'Seção não encontrada');
+    const ids = (await secoesDo(s.categoryId)).map((x) => x.id);
+    await move(db, ids, s.id, parsed.data.direcao, (tx, sid, position) =>
+      tx.update(menuSection).set({ position }).where(eq(menuSection.id, sid)),
+    );
+    res.json(await listCategorias());
+  });
+
+  // Excluir a seção deixa os produtos dela sem seção, no fim do cardápio, na ordem que tinham (RN82).
+  router.delete('/secoes/:id', async (req, res) => {
+    const s = await secaoPorId(Number(req.params.id));
+    if (!s) return fail(res, 404, 'Seção não encontrada');
+    await inTransaction(db, async (tx) => {
+      const secao = await secaoDe(tx, s.categoryId);
+      const ids = await idsNoCardapio(tx, s.categoryId);
+      await ordenar(tx, s.categoryId, sendToEnd(ids, ids.filter((id) => secao[id] === s.id)));
+      await tx.update(productCategory).set({ sectionId: null }).where(eq(productCategory.sectionId, s.id));
+      await tx.delete(menuSection).where(eq(menuSection.id, s.id));
+    });
+    res.json(await listCategorias());
   });
 
   // ---------- cadastro completo (3c, 3d, 3e) ----------

@@ -41,6 +41,11 @@ export interface ProductForm {
    * guarda em product.category_id até o PR E4.
    */
   categoryIds: number[];
+  /**
+   * Seção do produto em cada cardápio dele, pelo id do cardápio (RF72); cardápio ausente = sem
+   * seção (RN80). Ausente = nenhuma seção.
+   */
+  sectionIds?: Record<number, number>;
   name: string;
   description: string | null;
   imageUrl: string | null;

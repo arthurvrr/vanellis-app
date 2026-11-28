@@ -13,3 +13,4 @@ export * from './busca';
 export * from './datas';
 export * from './texto';
 export * from './avisos';
+export * from './secoes';
