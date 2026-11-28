@@ -1,5 +1,5 @@
-import { formatDates, shortDate, specialMenuProblem, type Until } from '@vanellis/shared';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { formatDates, sectionNameProblem, shortDate, specialMenuProblem, type Until } from '@vanellis/shared';
+import { Fragment, useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, type CategoriaPainel, type ProdutoLista } from './api';
 import { useEnvioFoto } from './FotoUpload';
 import { ProdutoEditor } from './ProdutoEditor';
@@ -234,88 +234,146 @@ function ListaProdutos({
                 .sort((a, b) => (a.posicoes[c.id!] ?? 0) - (b.posicoes[c.id!] ?? 0));
         const lista = todos.filter((p) => !soSemPdv || p.missingPdv);
         if (!lista.length) return null;
+        // Com seções, o cardápio aparece agrupado como no site: cada seção, e os sem seção no fim (RF74).
+        const secoes = c.id === null ? [] : (categorias.find((x) => x.id === c.id)?.sections ?? []);
+        const secaoDe = (p: ProdutoLista) => (c.id === null ? undefined : p.secoes[c.id]);
+        const semSecao = secoes.length ? todos.filter((p) => secaoDe(p) === undefined).length : 0;
+        const blocos = secoes.length
+          ? [
+              ...secoes.map((s) => ({ key: String(s.id), nome: s.name as string | null, id: s.id as number | undefined })),
+              { key: 'sem', nome: 'Sem seção', id: undefined },
+            ]
+          : [{ key: 'todos', nome: null, id: undefined }];
         return (
           <section key={c.id ?? 'sem'} className="card-form plist">
             <h3>{c.name}</h3>
+            {semSecao > 0 && (
+              <p className="plist__aviso">
+                <span className="tag tag--warn">
+                  {semSecao} {semSecao === 1 ? 'produto' : 'produtos'} sem seção
+                </span>
+              </p>
+            )}
             {c.id === null && (
               <p className="field__help">Não aparecem no site. Edite o produto para vinculá-lo a um cardápio.</p>
             )}
-            <ul>
-              {lista.map((p) => {
-                const pos = todos.indexOf(p);
-                return (
-                  <li key={p.id} className={p.available ? 'prow' : 'prow prow--off'}>
-                    <Thumb src={p.imageUrl} />
-                    <div className="prow__info">
-                      <strong>{p.name}</strong>
-                      {p.missingPdv ? (
-                        <span className="tag tag--warn">Sem código PDV</span>
-                      ) : (
-                        <span className="tag">{p.pdvCode ? `PDV ${p.pdvCode}` : 'Códigos nas opções'}</span>
-                      )}
-                      {p.priceHidden && <span className="tag">Preço oculto</span>}
-                    </div>
-                    <a className="link" href={`#produto/${p.id}`}>
-                      Editar
-                    </a>
-                    <button
-                      type="button"
-                      className={p.available ? 'toggle toggle--on' : 'toggle'}
-                      aria-pressed={p.available}
-                      onClick={() =>
-                        act(
-                          () => api.disponivel(p.id, !p.available),
-                          setProdutos,
-                          `${p.name}: ${p.available ? 'indisponível' : 'disponível'} no cardápio.`,
-                        )
-                      }
-                    >
-                      {p.available ? 'Disponível' : 'Indisponível'}
-                    </button>
-                    <span className="prow__order">
-                      {c.id !== null && pos > 0 && (
-                        <Seta
-                          dir="subir"
-                          label={`Subir ${p.name}`}
-                          onClick={() => act(() => api.moveProduto(p.id, 'subir', c.id!), setProdutos)}
-                        />
-                      )}
-                      {c.id !== null && pos < todos.length - 1 && (
-                        <Seta
-                          dir="descer"
-                          label={`Descer ${p.name}`}
-                          onClick={() => act(() => api.moveProduto(p.id, 'descer', c.id!), setProdutos)}
-                        />
-                      )}
-                    </span>
-                    <button
-                      type="button"
-                      className="link link--danger"
-                      onClick={() => {
-                        if (window.confirm(`Excluir ${p.name}? Isso não pode ser desfeito.`)) {
-                          void act(
-                            () => api.excluiProduto(p.id),
-                            (ps) => {
-                              setProdutos(ps);
-                              // A contagem de cada cardápio muda junto (RF64).
-                              void api.categorias().then(setCategorias).catch(() => undefined);
-                            },
-                            `${p.name} excluído.`,
-                          );
-                        }
-                      }}
-                    >
-                      Excluir
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            {blocos.map((b) => {
+              // A ordem e as setas valem dentro da seção (RN83).
+              const doBloco = secoes.length ? todos.filter((p) => secaoDe(p) === b.id) : todos;
+              const visiveis = doBloco.filter((p) => lista.includes(p));
+              if (!visiveis.length) return null;
+              return (
+                <div key={b.key}>
+                  {b.nome && <h4 className="plist__secao">{b.nome}</h4>}
+                  <LinhasProdutos
+                    lista={visiveis}
+                    todos={doBloco}
+                    categoryId={c.id}
+                    act={act}
+                    setProdutos={setProdutos}
+                    setCategorias={setCategorias}
+                  />
+                </div>
+              );
+            })}
           </section>
         );
       })}
       {soSemPdv && semPdv === 0 && <p className="agenda__empty">Todos os produtos têm código PDV.</p>}
     </>
+  );
+}
+
+/** As linhas de um bloco da lista: um cardápio, ou uma seção dele. */
+function LinhasProdutos({
+  lista,
+  todos,
+  categoryId,
+  act,
+  setProdutos,
+  setCategorias,
+}: {
+  lista: ProdutoLista[];
+  /** Todos os produtos do bloco, mesmo os escondidos pelo filtro: as setas usam essa ordem. */
+  todos: ProdutoLista[];
+  categoryId: number | null;
+  act: <T>(fn: () => Promise<T>, apply: (v: T) => void, ok?: string) => Promise<boolean>;
+  setProdutos: (p: ProdutoLista[]) => void;
+  setCategorias: (c: CategoriaPainel[]) => void;
+}) {
+  const c = { id: categoryId };
+  return (
+    <ul>
+      {lista.map((p) => {
+        const pos = todos.indexOf(p);
+        return (
+          <li key={p.id} className={p.available ? 'prow' : 'prow prow--off'}>
+            <Thumb src={p.imageUrl} />
+            <div className="prow__info">
+              <strong>{p.name}</strong>
+              {p.missingPdv ? (
+                <span className="tag tag--warn">Sem código PDV</span>
+              ) : (
+                <span className="tag">{p.pdvCode ? `PDV ${p.pdvCode}` : 'Códigos nas opções'}</span>
+              )}
+              {p.priceHidden && <span className="tag">Preço oculto</span>}
+            </div>
+            <a className="link" href={`#produto/${p.id}`}>
+              Editar
+            </a>
+            <button
+              type="button"
+              className={p.available ? 'toggle toggle--on' : 'toggle'}
+              aria-pressed={p.available}
+              onClick={() =>
+                act(
+                  () => api.disponivel(p.id, !p.available),
+                  setProdutos,
+                  `${p.name}: ${p.available ? 'indisponível' : 'disponível'} no cardápio.`,
+                )
+              }
+            >
+              {p.available ? 'Disponível' : 'Indisponível'}
+            </button>
+            <span className="prow__order">
+              {c.id !== null && pos > 0 && (
+                <Seta
+                  dir="subir"
+                  label={`Subir ${p.name}`}
+                  onClick={() => act(() => api.moveProduto(p.id, 'subir', c.id!), setProdutos)}
+                />
+              )}
+              {c.id !== null && pos < todos.length - 1 && (
+                <Seta
+                  dir="descer"
+                  label={`Descer ${p.name}`}
+                  onClick={() => act(() => api.moveProduto(p.id, 'descer', c.id!), setProdutos)}
+                />
+              )}
+            </span>
+            <button
+              type="button"
+              className="link link--danger"
+              onClick={() => {
+                if (window.confirm(`Excluir ${p.name}? Isso não pode ser desfeito.`)) {
+                  void act(
+                    () => api.excluiProduto(p.id),
+                    (ps) => {
+                      setProdutos(ps);
+                      // A contagem de cada cardápio muda junto (RF64).
+                      void api.categorias().then(setCategorias).catch(() => undefined);
+                    },
+                    `${p.name} excluído.`,
+                  );
+                }
+              }}
+            >
+              Excluir
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -476,6 +534,7 @@ function ListaCategorias({
   erro: (e: unknown) => void;
 }) {
   const [editando, setEditando] = useState<number | 'nova' | null>(null);
+  const [comSecoes, setComSecoes] = useState<number | null>(null);
   const [form, setForm] = useState(vazio);
   const [enviandoCapa, setEnviandoCapa] = useState(false);
 
@@ -580,83 +639,99 @@ function ListaCategorias({
               {formulario}
             </li>
           ) : (
-            <li key={c.id} className="prow">
-              <Thumb src={c.coverImageUrl} />
-              <div className="prow__info">
-                <strong>{c.name}</strong>
-                <span className="prow__desc">{c.description ?? 'Sem frase'}</span>
-                <span className="tag">
-                  {c.productCount} {c.productCount === 1 ? 'produto' : 'produtos'}
-                  {c.productCount === 0 && ' · não aparece no site'}
-                </span>
+            <Fragment key={c.id}>
+              <li className="prow">
+                <Thumb src={c.coverImageUrl} />
+                <div className="prow__info">
+                  <strong>{c.name}</strong>
+                  <span className="prow__desc">{c.description ?? 'Sem frase'}</span>
+                  <span className="tag">
+                    {c.productCount} {c.productCount === 1 ? 'produto' : 'produtos'}
+                    {c.productCount === 0 && ' · não aparece no site'}
+                  </span>
+                  {c.special && (
+                    <span className={situacaoEspecial(c).aviso ? 'tag tag--warn' : 'tag tag--especial'}>
+                      ★ Especial · {situacaoEspecial(c).texto}
+                    </span>
+                  )}
+                  {c.specialWarnings.map((w) => (
+                    <span key={w} className="tag tag--warn">
+                      {w}
+                    </span>
+                  ))}
+                </div>
                 {c.special && (
-                  <span className={situacaoEspecial(c).aviso ? 'tag tag--warn' : 'tag tag--especial'}>
-                    ★ Especial · {situacaoEspecial(c).texto}
-                  </span>
+                  <button
+                    type="button"
+                    className={c.special.hidden ? 'toggle' : 'toggle toggle--on'}
+                    aria-pressed={!c.special.hidden}
+                    onClick={() =>
+                      act(
+                        () => api.ocultaCategoria(c.id, !c.special!.hidden),
+                        setCategorias,
+                        c.special!.hidden ? `${c.name} reexibido.` : `${c.name} oculto: saiu do site.`,
+                      )
+                    }
+                  >
+                    {c.special.hidden ? 'Reexibir' : 'Ocultar'}
+                  </button>
                 )}
-                {c.specialWarnings.map((w) => (
-                  <span key={w} className="tag tag--warn">
-                    {w}
-                  </span>
-                ))}
-              </div>
-              {c.special && (
+                <span className="prow__order">
+                  {i > 0 && (
+                    <Seta
+                      dir="subir"
+                      label={`Subir ${c.name}`}
+                      onClick={() => act(() => api.moveCategoria(c.id, 'subir'), setCategorias)}
+                    />
+                  )}
+                  {i < categorias.length - 1 && (
+                    <Seta
+                      dir="descer"
+                      label={`Descer ${c.name}`}
+                      onClick={() => act(() => api.moveCategoria(c.id, 'descer'), setCategorias)}
+                    />
+                  )}
+                </span>
                 <button
                   type="button"
-                  className={c.special.hidden ? 'toggle' : 'toggle toggle--on'}
-                  aria-pressed={!c.special.hidden}
-                  onClick={() =>
-                    act(
-                      () => api.ocultaCategoria(c.id, !c.special!.hidden),
-                      setCategorias,
-                      c.special!.hidden ? `${c.name} reexibido.` : `${c.name} oculto: saiu do site.`,
-                    )
-                  }
+                  className="link"
+                  aria-label={`Seções de ${c.name}`}
+                  aria-expanded={comSecoes === c.id}
+                  onClick={() => setComSecoes(comSecoes === c.id ? null : c.id)}
                 >
-                  {c.special.hidden ? 'Reexibir' : 'Ocultar'}
+                  Seções ({c.sections.length})
                 </button>
+                <button type="button" className="link" onClick={() => abrir(c)}>
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  className="link link--danger"
+                  onClick={() => {
+                    // Os produtos dela são desvinculados, sem ser excluídos (RF65, RN70, C132, C133).
+                    const sozinhos = c.exclusiveCount;
+                    const outros = c.productCount - sozinhos;
+                    const partes = [
+                      outros ? `${outros} ${outros === 1 ? 'produto continua' : 'produtos continuam'} nos outros cardápios` : '',
+                      sozinhos
+                        ? `${sozinhos} ${sozinhos === 1 ? 'produto fica' : 'produtos ficam'} sem cardápio e ${sozinhos === 1 ? 'sai' : 'saem'} do site, até ser${sozinhos === 1 ? '' : 'em'} vinculado${sozinhos === 1 ? '' : 's'} de novo`
+                        : '',
+                    ].filter(Boolean);
+                    const aviso = partes.length ? ` ${partes.join('; ')}. Nenhum produto é excluído.` : '';
+                    if (window.confirm(`Excluir a categoria ${c.name}?${aviso} Isso não pode ser desfeito.`)) {
+                      void act(() => api.excluiCategoria(c.id), setCategorias, `Categoria ${c.name} excluída.`);
+                    }
+                  }}
+                >
+                  Excluir
+                </button>
+              </li>
+              {comSecoes === c.id && (
+                <li className="prow prow--form">
+                  <SecoesDoCardapio categoria={c} act={act} setCategorias={setCategorias} />
+                </li>
               )}
-              <span className="prow__order">
-                {i > 0 && (
-                  <Seta
-                    dir="subir"
-                    label={`Subir ${c.name}`}
-                    onClick={() => act(() => api.moveCategoria(c.id, 'subir'), setCategorias)}
-                  />
-                )}
-                {i < categorias.length - 1 && (
-                  <Seta
-                    dir="descer"
-                    label={`Descer ${c.name}`}
-                    onClick={() => act(() => api.moveCategoria(c.id, 'descer'), setCategorias)}
-                  />
-                )}
-              </span>
-              <button type="button" className="link" onClick={() => abrir(c)}>
-                Editar
-              </button>
-              <button
-                type="button"
-                className="link link--danger"
-                onClick={() => {
-                  // Os produtos dela são desvinculados, sem ser excluídos (RF65, RN70, C132, C133).
-                  const sozinhos = c.exclusiveCount;
-                  const outros = c.productCount - sozinhos;
-                  const partes = [
-                    outros ? `${outros} ${outros === 1 ? 'produto continua' : 'produtos continuam'} nos outros cardápios` : '',
-                    sozinhos
-                      ? `${sozinhos} ${sozinhos === 1 ? 'produto fica' : 'produtos ficam'} sem cardápio e ${sozinhos === 1 ? 'sai' : 'saem'} do site, até ser${sozinhos === 1 ? '' : 'em'} vinculado${sozinhos === 1 ? '' : 's'} de novo`
-                      : '',
-                  ].filter(Boolean);
-                  const aviso = partes.length ? ` ${partes.join('; ')}. Nenhum produto é excluído.` : '';
-                  if (window.confirm(`Excluir a categoria ${c.name}?${aviso} Isso não pode ser desfeito.`)) {
-                    void act(() => api.excluiCategoria(c.id), setCategorias, `Categoria ${c.name} excluída.`);
-                  }
-                }}
-              >
-                Excluir
-              </button>
-            </li>
+            </Fragment>
           ),
         )}
       </ul>
@@ -668,5 +743,143 @@ function ListaCategorias({
         </button>
       )}
     </section>
+  );
+}
+
+/**
+ * As seções de um cardápio (RF71): criar, renomear, ordenar e excluir. Excluir deixa os produtos
+ * sem seção, no cardápio, depois de confirmar quantos são (RN82).
+ */
+function SecoesDoCardapio({
+  categoria,
+  act,
+  setCategorias,
+}: {
+  categoria: CategoriaPainel;
+  act: <T>(fn: () => Promise<T>, apply: (v: T) => void, ok?: string) => Promise<boolean>;
+  setCategorias: (c: CategoriaPainel[]) => void;
+}) {
+  const [nova, setNova] = useState('');
+  const [renomeando, setRenomeando] = useState<{ id: number; nome: string } | null>(null);
+  const [problema, setProblema] = useState<string | null>(null);
+  const secoes = categoria.sections;
+
+  // A mesma regra do servidor (RN81), para avisar antes de enviar.
+  const conferir = (nome: string, selfId?: number) => {
+    const p = sectionNameProblem(nome, secoes, selfId);
+    setProblema(p);
+    return p === null;
+  };
+
+  const incluir = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!conferir(nova)) return;
+    if (await act(() => api.criaSecao(categoria.id, nova), setCategorias)) setNova('');
+  };
+
+  const renomear = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!renomeando || !conferir(renomeando.nome, renomeando.id)) return;
+    if (await act(() => api.renomeiaSecao(renomeando.id, renomeando.nome), setCategorias)) setRenomeando(null);
+  };
+
+  return (
+    <div className="secoes">
+      <p className="field__help">
+        As seções organizam {categoria.name} no site, na ordem abaixo. Os produtos sem seção aparecem no fim. A seção de
+        cada produto é escolhida no cadastro dele.
+      </p>
+      {secoes.length > 0 && (
+        <ul className="secoes__lista" aria-label={`Seções de ${categoria.name}`}>
+          {secoes.map((s, i) => (
+            <li key={s.id} className="secao">
+              {renomeando?.id === s.id ? (
+                <form className="secao__form" onSubmit={renomear}>
+                  <input
+                    aria-label={`Novo nome de ${s.name}`}
+                    maxLength={50}
+                    value={renomeando.nome}
+                    onChange={(e) => setRenomeando({ id: s.id, nome: e.target.value })}
+                  />
+                  <button type="submit" className="switch__btn">
+                    Salvar nome
+                  </button>
+                  <button type="button" className="link" onClick={() => setRenomeando(null)}>
+                    Cancelar
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <span className="prow__order">
+                    {i > 0 && (
+                      <Seta
+                        dir="subir"
+                        label={`Subir seção ${s.name}`}
+                        onClick={() => act(() => api.moveSecao(s.id, 'subir'), setCategorias)}
+                      />
+                    )}
+                    {i < secoes.length - 1 && (
+                      <Seta
+                        dir="descer"
+                        label={`Descer seção ${s.name}`}
+                        onClick={() => act(() => api.moveSecao(s.id, 'descer'), setCategorias)}
+                      />
+                    )}
+                  </span>
+                  <span className="secao__nome">{s.name}</span>
+                  <span className="tag">
+                    {s.productIds.length} {s.productIds.length === 1 ? 'produto' : 'produtos'}
+                  </span>
+                  <button
+                    type="button"
+                    className="link"
+                    aria-label={`Renomear seção ${s.name}`}
+                    onClick={() => {
+                      setProblema(null);
+                      setRenomeando({ id: s.id, nome: s.name });
+                    }}
+                  >
+                    Renomear
+                  </button>
+                  <button
+                    type="button"
+                    className="link link--danger"
+                    aria-label={`Excluir seção ${s.name}`}
+                    onClick={() => {
+                      const n = s.productIds.length;
+                      const aviso = n
+                        ? ` ${n} ${n === 1 ? 'produto fica' : 'produtos ficam'} sem seção e ${n === 1 ? 'continua' : 'continuam'} no cardápio.`
+                        : '';
+                      if (window.confirm(`Excluir a seção ${s.name}?${aviso} Isso não pode ser desfeito.`)) {
+                        void act(() => api.excluiSecao(s.id), setCategorias, `Seção ${s.name} excluída.`);
+                      }
+                    }}
+                  >
+                    Excluir
+                  </button>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <form className="secao__form" onSubmit={incluir}>
+        <input
+          aria-label={`Nova seção em ${categoria.name}`}
+          placeholder="Ex: Sobremesas"
+          maxLength={50}
+          value={nova}
+          onChange={(e) => setNova(e.target.value)}
+        />
+        <button type="submit" className="switch__btn">
+          Incluir seção
+        </button>
+      </form>
+      {problema && (
+        <p className="field__error" role="alert">
+          {problema}
+        </p>
+      )}
+    </div>
   );
 }
