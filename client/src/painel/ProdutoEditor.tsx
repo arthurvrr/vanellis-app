@@ -244,8 +244,24 @@ export function ProdutoEditor({
   // nesse meio-tempo não pode se perder.
   const set = (patch: Partial<ProductForm>) => setForm((f) => (f ? { ...f, ...patch } : f));
   // Cliques seguidos em "×" ou no menu: cada um parte da lista mais recente.
+  // Tirar o produto de um cardápio tira também a seção dele lá (RF72).
   const setCardapios = (fn: (ids: number[]) => number[]) =>
-    setForm((f) => (f ? { ...f, categoryIds: fn(f.categoryIds) } : f));
+    setForm((f) => {
+      if (!f) return f;
+      const categoryIds = fn(f.categoryIds);
+      const sectionIds = Object.fromEntries(
+        Object.entries(f.sectionIds ?? {}).filter(([c]) => categoryIds.includes(Number(c))),
+      );
+      return { ...f, categoryIds, sectionIds };
+    });
+  const setSecao = (categoryId: number, sectionId: number | null) =>
+    setForm((f) => {
+      if (!f) return f;
+      const sectionIds = { ...f.sectionIds };
+      if (sectionId === null) delete sectionIds[categoryId];
+      else sectionIds[categoryId] = sectionId;
+      return { ...f, sectionIds };
+    });
   const setGroup = (gi: number, patch: Partial<GroupForm>) =>
     setForm((f) => (f ? { ...f, groups: f.groups.map((g, i) => (i === gi ? { ...g, ...patch } : g)) } : f));
   const setOption = (gi: number, oi: number, patch: Partial<OptionForm>) =>
@@ -341,6 +357,22 @@ export function ProdutoEditor({
                     >
                       ×
                     </button>
+                    {/* A seção vale só neste cardápio; só aparece se ele tiver seções (RF72). */}
+                    {c && c.sections.length > 0 && (
+                      <select
+                        className="cardapios__secao"
+                        aria-label={`Seção em ${c.name}`}
+                        value={form.sectionIds?.[id] ?? ''}
+                        onChange={(e) => setSecao(id, e.target.value ? Number(e.target.value) : null)}
+                      >
+                        <option value="">Sem seção</option>
+                        {c.sections.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </li>
                 );
               })}

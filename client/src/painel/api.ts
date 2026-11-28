@@ -1,5 +1,6 @@
 import type {
   AvisosDTO,
+  MenuSection,
   PrecoCategoriaDTO,
   PrecosPatch,
   ProductForm,
@@ -76,6 +77,8 @@ export interface CategoriaPainel {
   productCount: number;
   /** Os produtos do cardápio, na ordem dele (RF64). */
   productIds: number[];
+  /** As seções do cardápio, na ordem do operador, com os produtos de cada uma (RF71). */
+  sections: MenuSection[];
   /** Quantos só estão neste cardápio: ao excluí-lo, ficam sem cardápio (RN70). */
   exclusiveCount: number;
   /** Cardápio especial (RF16–RF19); `null` = categoria regular. */
@@ -95,6 +98,8 @@ export interface ProdutoLista {
   categoryIds: number[];
   /** Posição em cada cardápio, pelo id do cardápio. */
   posicoes: Record<number, number>;
+  /** Seção em cada cardápio, pelo id do cardápio; ausente = sem seção (RF74). */
+  secoes: Record<number, number>;
   name: string;
   pdvCode: string | null;
   missingPdv: boolean;
@@ -169,6 +174,13 @@ export const api = {
   moveCategoria: (id: number, direcao: 'subir' | 'descer') =>
     call<CategoriaPainel[]>('POST', `/painel/catalogo/categorias/${id}/mover`, { direcao }),
   excluiCategoria: (id: number) => call<CategoriaPainel[]>('DELETE', `/painel/catalogo/categorias/${id}`, {}),
+  // Seções do cardápio (RF71).
+  criaSecao: (categoryId: number, name: string) =>
+    call<CategoriaPainel[]>('POST', `/painel/catalogo/categorias/${categoryId}/secoes`, { name }),
+  renomeiaSecao: (id: number, name: string) => call<CategoriaPainel[]>('PUT', `/painel/catalogo/secoes/${id}`, { name }),
+  moveSecao: (id: number, direcao: 'subir' | 'descer') =>
+    call<CategoriaPainel[]>('POST', `/painel/catalogo/secoes/${id}/mover`, { direcao }),
+  excluiSecao: (id: number) => call<CategoriaPainel[]>('DELETE', `/painel/catalogo/secoes/${id}`, {}),
   produtos: () => call<ProdutoLista[]>('GET', '/painel/catalogo/produtos'),
   disponivel: (id: number, available: boolean) =>
     call<ProdutoLista[]>('PUT', `/painel/catalogo/produtos/${id}/disponivel`, { available }),

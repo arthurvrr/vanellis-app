@@ -1577,3 +1577,48 @@
   color: var(--marrom);
   font-weight: bold;
 }
+
+/* ---------- Seções do cardápio no painel (RF71, RF72, RF74) ---------- */
+.secoes {
+  display: grid;
+  gap: 0.6rem;
+  width: 100%;
+}
+.secoes__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.secao {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--borda);
+}
+.secao__nome {
+  flex: 1;
+  font-weight: 600;
+}
+.secao__form {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.secao__form input {
+  flex: 1;
+  min-width: 12rem;
+}
+.plist__secao {
+  margin: 0.9rem 0 0.3rem;
+  font-size: 0.95rem;
+  color: var(--marrom-forte);
+}
+.plist__aviso {
+  margin: 0 0 0.4rem;
+}
+.cardapios__secao {
+  margin-left: 0.4rem;
+}
