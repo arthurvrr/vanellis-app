@@ -162,6 +162,13 @@
       "when": 1795801183096,
       "tag": "0022_preco_oculto",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795830690677,
+      "tag": "0023_secoes_cardapio",
+      "breakpoints": true
     }
   ]
 }

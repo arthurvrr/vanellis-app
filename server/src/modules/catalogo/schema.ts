@@ -6,6 +6,7 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
   integer,
   jsonb,
   numeric,
@@ -14,6 +15,7 @@ import {
   serial,
   text,
   unique,
+  uniqueIndex,
   varchar,
 } from 'drizzle-orm/pg-core';
 
@@ -65,6 +67,27 @@ export const product = pgTable(
 );
 
 /**
+ * Seção dentro de um cardápio (RF71, RN81): só organiza o que o cliente vê. O nome não se repete
+ * no mesmo cardápio, sem diferenciar maiúsculas; excluir o cardápio exclui as seções dele.
+ */
+export const menuSection = pgTable(
+  'menu_section',
+  {
+    id: serial('id').primaryKey(),
+    categoryId: integer('category_id')
+      .notNull()
+      .references(() => category.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 50 }).notNull(),
+    position: integer('position').notNull().default(0),
+  },
+  (t) => [
+    // Alvo da chave composta de product_category: a seção é sempre do mesmo cardápio do vínculo.
+    unique('menu_section_id_category_unique').on(t.id, t.categoryId),
+    uniqueIndex('menu_section_category_name_unique').on(t.categoryId, sql`lower(${t.name})`),
+  ],
+);
+
+/**
  * Produto num cardápio (RF64): um produto pode estar em vários, ou em nenhum, cada um com a sua
  * ordem. É a única ligação entre produto e cardápio (o cardápio principal saiu na migração 0020).
  */
@@ -78,8 +101,18 @@ export const productCategory = pgTable(
       .notNull()
       .references(() => category.id, { onDelete: 'restrict' }),
     position: integer('position').notNull().default(0),
+    /** Seção do produto neste cardápio (RF72); vazio = sem seção (RN80). */
+    sectionId: integer('section_id'),
   },
-  (t) => [primaryKey({ columns: [t.productId, t.categoryId] })],
+  (t) => [
+    primaryKey({ columns: [t.productId, t.categoryId] }),
+    // A seção é do mesmo cardápio do vínculo. Ao excluir uma seção, a API tira os produtos dela antes.
+    foreignKey({
+      name: 'product_category_section_fk',
+      columns: [t.sectionId, t.categoryId],
+      foreignColumns: [menuSection.id, menuSection.categoryId],
+    }),
+  ],
 );
 
 export const optionGroup = pgTable(

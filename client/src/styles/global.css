@@ -1627,3 +1627,30 @@ body {
   color: #6b3d0c;
   font-size: 0.85rem;
 }
+
+/* ---------- Seções dentro do cardápio (RF73) ---------- */
+.menu-secao__titulo {
+  margin: 0.5rem 1rem 0.75rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--borda);
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--marrom-forte);
+}
+.menu-layout .menu-secao__titulo {
+  margin: 0.5rem 0.25rem 0.5rem;
+}
+/* Os produtos sem seção, depois de uma ou mais seções: uma linha tracejada separa. */
+.menu-secao + .menu-secao--sem-nome {
+  border-top: 1px dashed var(--borda);
+  margin: 0.5rem 1rem 0;
+  padding-top: 1rem;
+}
+.menu-layout .menu-secao + .menu-secao--sem-nome {
+  margin: 0.5rem 0.25rem 0;
+}
+.menu-secao + .menu-secao--sem-nome > .grid {
+  padding-left: 0;
+  padding-right: 0;
+}

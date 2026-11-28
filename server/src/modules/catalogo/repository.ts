@@ -22,6 +22,7 @@ import type { DB } from '../../db/client';
 import { num } from '../../db/conversao';
 import { getAgendaInput } from '../agenda/repository';
 import { storeSettings } from '../configuracoes/schema';
+import { secoesPorCardapio } from './cardapios';
 import { category, option, optionGroup, product, productCategory } from './schema';
 
 /**
@@ -124,8 +125,11 @@ export async function getCatalogo(db: DB, now: string): Promise<CatalogoDTO> {
     if (!shown.has(v.categoryId)) continue;
     cardapiosDe.set(v.productId, [...(cardapiosDe.get(v.productId) ?? []), v.categoryId]);
   }
+  const secoes = await secoesPorCardapio(db);
   for (const c of categorias as CategoryDTO[]) {
     c.productIds = vinculos.filter((v) => v.categoryId === c.id).map((v) => v.productId);
+    // As seções do cardápio, na ordem do operador (RF73); vazio = sem seções.
+    c.sections = secoes.get(c.id) ?? [];
   }
   // "Prazo encerrado" (RN67): só se o item não chega a nenhuma data de nenhum cardápio especial
   // visível dele e não está em nenhum cardápio regular (RN68).
