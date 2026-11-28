@@ -827,7 +827,10 @@ function Regras({ agenda, muda, ocupado, marcar }: SecaoProps) {
           Salvar
         </button>
       </form>
-      <p className="field__help">Produtos com antecedência própria (ex: bolos de 48h) continuam valendo quando são maiores.</p>
+      <p className="field__help">
+        A antecedência própria de um produto vale no lugar desta, para mais (ex: bolos de 48h) ou para menos (ex: salgados
+        de 2h).
+      </p>
     </Bloco>
   );
 }

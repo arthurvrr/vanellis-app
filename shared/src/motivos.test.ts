@@ -57,7 +57,7 @@ describe('scanDays: os dias disponíveis e o motivo dos outros', () => {
   });
 
   it('sem item de antecedência longa, o motivo é a antecedência da loja', () => {
-    const r = scanDays(base, '2026-11-24T18:00', 0, null, { leadItem: null, menus: [] });
+    const r = scanDays(base, '2026-11-24T18:00', null, null, { leadItem: null, menus: [] });
     expect(motivo(r, '2026-11-24')).toBe('é preciso encomendar com 2h de antecedência');
   });
 
@@ -187,7 +187,7 @@ describe('motivos: casos de borda', () => {
   it('o lotado vai do início, inclusive, ao fim, exclusive; antes e depois vale o outro motivo', () => {
     const input = { ...base, closedPeriods: [{ date: '2026-11-28', start: '09:00', end: '10:00' }] };
     // Sábado 28/11 às 8h30 + 2h: o primeiro horário livre seria 10:30.
-    const r = scanDays(input, '2026-11-28T08:30', 0, null, sem);
+    const r = scanDays(input, '2026-11-28T08:30', null, null, sem);
     expect(motivoHora(r, '2026-11-28', '08:30')).toBe('é preciso encomendar com 2h de antecedência');
     expect(motivoHora(r, '2026-11-28', '09:00')).toBe('horário lotado');
     expect(motivoHora(r, '2026-11-28', '10:00')).toBe('é preciso encomendar com 2h de antecedência');

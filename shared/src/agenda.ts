@@ -320,15 +320,15 @@ export interface ScanContext {
  * para os outros dias da janela, o motivo (RF62). Uma busca só, para as duas listas nunca
  * discordarem.
  *
- * A antecedência é a maior entre a padrão e a exigida pelos itens do carrinho (RN13, RN14): um
- * horário só aparece se é depois de `now` + antecedência. Na data especial, quem controla é o
+ * A antecedência é a do carrinho (`leadHours`, ver agendaForCart; `null` = a padrão da loja, RN13): um
+ * horário só aparece se é depois de `now` + antecedência. Ela pode ser menor que a padrão (RF70). Na data especial, quem controla é o
  * prazo dela (RN57–RN59), não a antecedência dos itens, e a janela de agendamento não vale
  * (RN65).
  */
 export function scanDays(
   input: AgendaInput,
   now: string,
-  itemsLeadHours = 0,
+  leadHours: number | null = null,
   /** Só estas datas, quando o carrinho tem cardápio especial (RN19); null = todas. */
   allowedDates: string[] | null = null,
   // Stryker disable next-line ArrayDeclaration: equivalente, sem contexto o chamador (availableDays) descarta os motivos
@@ -336,7 +336,8 @@ export function scanDays(
 ): { days: AvailableDay[]; blocked: BlockedDay[]; blockedTimes: BlockedTime[] } {
   const allowed = allowedDates ? new Set(allowedDates) : null;
   const [today, time] = now.split('T') as [string, string];
-  const leadMinutes = Math.max(input.minLeadHours, itemsLeadHours) * 60;
+  const lead = leadHours ?? input.minLeadHours;
+  const leadMinutes = lead * 60;
   const earliest = dateMs(today, toMinutes(time) + leadMinutes);
   const nowMs = dateMs(today, toMinutes(time));
   const closedDates = new Set(input.blockedDates);
@@ -344,7 +345,7 @@ export function scanDays(
   const lastSpecialMs = Math.max(lastMs, ...input.specialDates.map((s) => dateMs(s.date)));
   const leadReason = why.leadItem
     ? `${why.leadItem.name} precisa de ${why.leadItem.hours}h de antecedência`
-    : `é preciso encomendar com ${input.minLeadHours}h de antecedência`;
+    : `é preciso encomendar com ${lead}h de antecedência`;
   const days: AvailableDay[] = [];
   const blocked: BlockedDay[] = [];
   const blockedTimes: BlockedTime[] = [];
@@ -423,10 +424,18 @@ export function scanDays(
 export function availableDays(
   input: AgendaInput,
   now: string,
-  itemsLeadHours = 0,
+  leadHours: number | null = null,
   allowedDates: string[] | null = null,
 ): AvailableDay[] {
-  return scanDays(input, now, itemsLeadHours, allowedDates).days;
+  return scanDays(input, now, leadHours, allowedDates).days;
+}
+
+/**
+ * Antecedência de um produto: a cadastrada nele vale no lugar da padrão da loja, para mais
+ * (RN14) ou para menos (RF70); vazia = a padrão (RN13).
+ */
+export function productLeadHours(input: Pick<AgendaInput, 'minLeadHours'>, p: Pick<ProductDTO, 'leadTimeHours'>): number {
+  return p.leadTimeHours ?? input.minLeadHours;
 }
 
 /** A primeira retirada possível: dia e o primeiro horário dele (ou só o dia, numa data especial sem horário). */
@@ -446,10 +455,15 @@ export function limitText(limit: { name: string; hours: number; from: FirstPicku
   return `${limit.name} precisa de ${limit.hours}h de antecedência: a retirada é a partir de ${describeFirst(limit.from)}`;
 }
 
-/** Card do produto (RF58, C105): só para produto com antecedência própria maior que a da loja. */
+/**
+ * Card do produto (RF58, C105, C154): só para produto com antecedência própria diferente da da loja
+ * (o servidor só manda `firstPickup` nesse caso).
+ */
 export function leadNotice(product: Pick<ProductDTO, 'leadTimeHours' | 'firstPickup'>): string | null {
-  if (!product.firstPickup || !product.leadTimeHours) return null;
-  return `Encomende com ${product.leadTimeHours}h de antecedência: retirada a partir de ${describeFirst(product.firstPickup)}`;
+  if (!product.firstPickup || product.leadTimeHours === null) return null;
+  const desde = `retirada a partir de ${describeFirst(product.firstPickup)}`;
+  if (product.leadTimeHours === 0) return `Sem antecedência: ${desde}`;
+  return `Encomende com ${product.leadTimeHours}h de antecedência: ${desde}`;
 }
 
 /** Sem data em comum entre os cardápios do carrinho (C108): quais e o que fazer. */
@@ -599,7 +613,8 @@ export function storeInfo(input: AgendaInput, paused: boolean, now: string): Sto
 }
 
 /**
- * Dias de retirada para os produtos do carrinho: antecedência dos itens (RN14) e, com
+ * Dias de retirada para os produtos do carrinho: a maior antecedência entre os itens, cada um com
+ * a sua ou a padrão (RN14, RF70); carrinho vazio = a padrão. Com
  * cardápio especial, só as datas dele (RN19, RN29); sem data em comum, nenhuma (RN30).
  * Usada pelo servidor e pela versão de teste.
  */
@@ -612,14 +627,14 @@ export function agendaForCart(
 ): AgendaDTO {
   const ids = new Set(productIds);
   const itens = catalogo.produtos.filter((p) => ids.has(p.id));
-  const lead = Math.max(0, ...itens.map((p) => p.leadTimeHours ?? 0));
+  const lead = itens.length ? Math.max(...itens.map((p) => productLeadHours(input, p))) : input.minLeadHours;
   const rule = pickupRule(catalogo, productIds);
   // Um item que saiu do cardápio (cardápio encerrado ou oculto, produto excluído) não pode virar
   // item regular, liberado para qualquer dia (G36): ele bloqueia a retirada até sair do carrinho.
   const visivel = new Map(catalogo.produtos.map((p) => [p.id, p]));
   const unavailable = [...ids].filter((id) => !visivel.get(id)?.available).sort((a, b) => a - b);
   // O item que limita, quando a antecedência dele passa a da loja (C106, C107).
-  const limitante = lead > input.minLeadHours ? itens.find((p) => (p.leadTimeHours ?? 0) === lead)! : null;
+  const limitante = lead > input.minLeadHours ? itens.find((p) => p.leadTimeHours === lead)! : null;
   const leadItem = limitante ? { name: limitante.name, hours: lead } : null;
   const nada = { days: [], blocked: [], blockedTimes: [] };
   const scan =
@@ -629,7 +644,7 @@ export function agendaForCart(
   const primeiro = scan.days.find((d) => !d.special);
   return {
     paused,
-    leadHours: Math.max(input.minLeadHours, lead),
+    leadHours: lead,
     days: scan.days,
     rule,
     unavailable,

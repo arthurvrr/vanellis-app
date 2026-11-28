@@ -316,8 +316,10 @@ describe('cardápio especial: datas abertas, anúncio e fim', () => {
       expect(menuPickups(lotado, '2026-11-20T10:00', festival, [24])[0]!.until).toEqual({ date: '2026-11-27', time: '17:30' });
       const outroDia = { ...agenda, closedPeriods: [{ date: '2026-11-27', start: '18:00', end: '19:00' }] };
       expect(menuPickups(outroDia, '2026-11-20T10:00', festival, [24])[0]!.until).toEqual({ date: '2026-11-27', time: '18:30' });
-      // A antecedência padrão da loja (2h) vale quando é maior que a dos itens.
-      expect(menuPickups(agenda, '2026-11-20T10:00', festival, [0])[0]!.until).toEqual({ date: '2026-11-28', time: '16:30' });
+      // Item sem antecedência própria (null) usa a padrão da loja (2h); com a sua, vale a dele,
+      // mesmo menor que a padrão (RF70).
+      expect(menuPickups(agenda, '2026-11-20T10:00', festival, [null])[0]!.until).toEqual({ date: '2026-11-28', time: '16:30' });
+      expect(menuPickups(agenda, '2026-11-20T10:00', festival, [0])[0]!.until).toEqual({ date: '2026-11-28', time: '18:30' });
       // Dia sem horário: sem fim e fechado.
       expect(menuPickups(agenda, '2026-11-20T10:00', ['2026-11-29'], [0])[0]).toEqual({
         date: '2026-11-29',
