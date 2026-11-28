@@ -199,25 +199,33 @@ test('8. item de antecedência longa: o card, a linha do limite e o motivo do di
   const { id } = await (await api.post(`/api/painel/catalogo/produtos/${coxinha.id}/duplicar`, { data: {} })).json();
   try {
     const form = await (await api.get(`/api/painel/catalogo/produtos/${id}/cadastro`)).json();
-    const salvo = await api.put(`/api/painel/catalogo/produtos/${id}`, {
-      data: { ...form, name: 'Bolo E2E', available: true, leadTimeHours: 72, minQuantity: 1 },
-    });
-    expect(salvo.ok()).toBeTruthy();
+    // O calendário abre no mês do primeiro dia livre. Se ele cair no dia 1, os dias apagados
+    // ficam no mês anterior e o C107 não tem o que testar: aí a antecedência sobe um dia.
+    let horas = 0;
+    for (const h of [72, 96]) {
+      horas = h;
+      const salvo = await api.put(`/api/painel/catalogo/produtos/${id}`, {
+        data: { ...form, name: 'Bolo E2E', available: true, leadTimeHours: h, minQuantity: 1 },
+      });
+      expect(salvo.ok()).toBeTruthy();
+      const { days } = await (await api.get(`/api/agenda/disponibilidade?produtos=${id}`)).json();
+      if (!days[0].date.endsWith('-01')) break;
+    }
     // C105: o card avisa a antecedência e a primeira retirada.
     await page.goto('/#salgados');
     await page.getByRole('button', { name: /Bolo E2E/ }).first().click();
-    await expect(page.getByText(/Encomende com 72h de antecedência: retirada a partir de \S+ \d{2}\/\d{2}/)).toBeVisible();
+    await expect(page.getByText(new RegExp(`Encomende com ${horas}h de antecedência: retirada a partir de \\S+ \\d{2}/\\d{2}`))).toBeVisible();
     await adicionar(page, 'salgados', 'Bolo E2E');
     await page.goto('/#dados');
     // C106: a linha fixa acima do calendário.
-    await expect(page.getByText(/Bolo E2E precisa de 72h de antecedência: a retirada é a partir de/)).toBeVisible();
+    await expect(page.getByText(`Bolo E2E precisa de ${horas}h de antecedência: a retirada é a partir de`)).toBeVisible();
     // C107: um dia apagado continua clicável e diz por quê, sem escolher nada.
     const calendario = page.getByRole('grid', { name: 'Dia da retirada' });
     await expect(calendario.getByRole('button', { disabled: false }).first()).toBeVisible();
     // Pelo teclado, como pede o C107 (o dia apagado continua focável).
     await calendario.locator('button[aria-disabled="true"]').first().focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('status').filter({ hasText: 'Bolo E2E precisa de 72h de antecedência' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: `Bolo E2E precisa de ${horas}h de antecedência` })).toBeVisible();
     await expect(page.getByText(/^Retirada em /)).toHaveCount(0);
   } finally {
     await api.delete(`/api/painel/catalogo/produtos/${id}`, { data: {} });
